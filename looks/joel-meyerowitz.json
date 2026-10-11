@@ -1,0 +1,64 @@
+{
+  "name": "Joel Meyerowitz style",
+  "description": "Soft, luminous colour in warm light: gentle contrast, open shadows, delicate pastels and creamy highlights.",
+  "exposure": 0.25,
+  "tone": {
+    "contrast": 0.95,
+    "pivot": 0.45,
+    "shadows": 0.15,
+    "highlights": -0.2,
+    "black": 0.0,
+    "white": 1.0
+  },
+  "color": {
+    "saturation": 1.05,
+    "vibrance": 0.15,
+    "temp": 10,
+    "tint": 1,
+    "hsl": {
+      "red": {
+        "sat": 0.05
+      },
+      "orange": {
+        "sat": -0.05,
+        "lum": 0.05
+      },
+      "yellow": {
+        "hue": -3,
+        "lum": 0.05
+      },
+      "green": {
+        "hue": -5,
+        "sat": -0.2
+      },
+      "aqua": {
+        "hue": -5,
+        "sat": -0.1,
+        "lum": 0.05
+      },
+      "blue": {
+        "hue": -5,
+        "sat": -0.15,
+        "lum": 0.08
+      }
+    },
+    "split": {
+      "shadows": {
+        "hue": 200,
+        "amount": 0.08
+      },
+      "highlights": {
+        "hue": 50,
+        "amount": 0.2
+      }
+    }
+  },
+  "grain": {
+    "amount": 0.08,
+    "size": 1.0
+  },
+  "vignette": {
+    "amount": 0.05,
+    "midpoint": 0.5
+  }
+}

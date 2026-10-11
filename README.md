@@ -6,7 +6,8 @@ Plain-English tweaks ("warmer, deeper reds, like Saul Leiter") come from Claude 
 using the `grade` skill in this repo.
 
 **Built-in looks:** Classic Chrome · Leica M9 · Tri-X Gold (gritty B&W, golden tint) ·
-Saul Leiter style · Fan Ho style · Alex Webb style · Daido Moriyama style. Every look is
+Saul Leiter style · Fan Ho style · Alex Webb style · Daido Moriyama style ·
+Martin Parr style · Joel Meyerowitz style. Every look is
 a small JSON recipe you can tweak and save as your own.
 
 ## Setup (once)
