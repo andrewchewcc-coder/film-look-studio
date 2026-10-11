@@ -1,0 +1,29 @@
+[project]
+name = "filmlook"
+version = "0.1.0"
+description = "Film looks for RAW photos: preview, tweak, export full-resolution JPG."
+requires-python = ">=3.10"
+dependencies = [
+  "rawpy>=0.21",
+  "numpy>=1.24",
+  "pillow>=10.0",
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+  "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+filmlook = "filmlook.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["filmlook"]
+
+[tool.setuptools.package-data]
+filmlook = ["static/*"]

@@ -1,0 +1,8 @@
+{
+  "name": "Daido Moriyama style",
+  "description": "Are-bure-boke: harsh, grainy, high-contrast black & white with crushed blacks and blown highlights.",
+  "mono": {"enabled": true, "mix": [0.3, 0.59, 0.11]},
+  "tone": {"contrast": 2.0, "pivot": 0.5, "shadows": -0.4, "highlights": 0.3},
+  "grain": {"amount": 1.0, "size": 2.2},
+  "vignette": {"amount": 0.4, "midpoint": 0.4}
+}

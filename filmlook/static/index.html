@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Film Look Studio</title>
+<style>
+  :root {
+    --bg: #141414; --panel: #1d1d1d; --line: #2c2c2c; --text: #e8e6e3; --muted: #9a9792;
+    --accent: #e0b34a; --accent-ink: #1a1408; --danger: #e06a5a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+  header { display: flex; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; font-weight: 600; margin: 0 12px 0 0; white-space: nowrap; }
+  header input { flex: 1; min-width: 0; }
+  input[type=text] { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 7px 10px; border-radius: 6px; font: inherit; }
+  button { background: #2a2a2a; color: var(--text); border: 1px solid #383838; padding: 7px 12px; border-radius: 6px; font: inherit; cursor: pointer; }
+  button:hover { border-color: #555; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .45; cursor: default; }
+  main { display: grid; grid-template-columns: 210px 1fr 290px; height: calc(100vh - 53px); }
+  #film { border-right: 1px solid var(--line); overflow-y: auto; padding: 10px; }
+  #film .hint { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .thumb { position: relative; margin-bottom: 10px; cursor: pointer; border: 2px solid transparent; border-radius: 4px; }
+  .thumb.active { border-color: var(--accent); }
+  .thumb img { width: 100%; display: block; border-radius: 2px; }
+  .thumb input { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; accent-color: var(--accent); }
+  .thumb .nm { font-size: 11px; color: var(--muted); padding: 2px 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #center { display: flex; flex-direction: column; min-width: 0; }
+  #stage { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 0; padding: 12px; }
+  #stage img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 6px 30px #000a; }
+  #badge { position: absolute; top: 18px; left: 18px; background: #000b; padding: 3px 9px; border-radius: 4px; font-size: 12px; }
+  #busy { position: absolute; top: 18px; right: 18px; font-size: 12px; color: var(--muted); }
+  #empty { color: var(--muted); text-align: center; max-width: 420px; }
+  #looks { display: flex; gap: 10px; overflow-x: auto; padding: 10px 12px 14px; border-top: 1px solid var(--line); }
+  .look { flex: 0 0 168px; cursor: pointer; }
+  .look img { width: 168px; height: 112px; object-fit: cover; display: block; border-radius: 3px; border: 2px solid transparent; background: #222; }
+  .look.active img { border-color: var(--accent); }
+  .look .nm { font-size: 12px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .look .nm small { color: var(--accent); }
+  aside { border-left: 1px solid var(--line); overflow-y: auto; padding: 14px; }
+  aside h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
+  aside h2:first-child { margin-top: 0; }
+  #lookname { font-size: 16px; font-weight: 600; }
+  #lookdesc { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .slider { margin: 9px 0; }
+  .slider label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .slider label span { color: var(--text); font-variant-numeric: tabular-nums; }
+  .slider input { width: 100%; accent-color: var(--accent); }
+  .row { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+  .row > * { flex: 1; }
+  #status { font-size: 12px; color: var(--muted); min-height: 18px; margin-top: 8px; word-break: break-all; }
+  #status.err { color: var(--danger); }
+  .small { font-size: 12px; color: var(--muted); }
+  input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Film Look Studio</h1>
+  <input type="text" id="folder" placeholder="Paste a folder path, e.g. /Users/andrew/Pictures/2026-10 Street walk" spellcheck="false">
+  <button id="open" class="primary">Open folder</button>
+</header>
+<main>
+  <section id="film"><div class="hint">Tick photos to batch-export.</div><div id="thumbs"></div></section>
+  <section id="center">
+    <div id="stage">
+      <div id="empty">Open a folder of DNG files to start.<br><br>Tip: in Finder, right-click the folder while holding ⌥ Option → “Copy … as Pathname”, then paste it above.</div>
+      <img id="big" alt="" hidden>
+      <div id="badge" hidden></div>
+      <div id="busy"></div>
+    </div>
+    <div id="looks"></div>
+  </section>
+  <aside>
+    <h2>Look</h2>
+    <div id="lookname">Neutral</div>
+    <div id="lookdesc"></div>
+    <div class="row"><button id="compare" title="Hold to see the neutral image (or press B)">Hold: before</button></div>
+
+    <h2>Adjust</h2>
+    <div id="sliders"></div>
+    <div class="row"><button id="reset">Reset sliders</button></div>
+
+    <h2>Save</h2>
+    <div class="row"><input type="text" id="savename" placeholder="Name, e.g. My Chrome"></div>
+    <div class="row"><button id="save">Save as my look</button><button id="lut" title="For ON1 Photo RAW → Effects → LUT">Download LUT</button></div>
+
+    <h2>Export full-res JPG</h2>
+    <div class="row"><button id="exportone" class="primary">This photo</button><button id="exportsel">Ticked (0)</button></div>
+    <div class="small">Saved to a <b>graded</b> folder next to your DNGs. Originals are never changed.</div>
+    <div id="status"></div>
+
+    <h2>Match a reference photo</h2>
+    <div class="small">Any image whose colour or tone you love — your own JPG, a film scan, a photo you saved.</div>
+    <div class="row"><input type="file" id="reffile" accept="image/*,.dng"></div>
+    <div class="row"><input type="text" id="refname" placeholder="Name for the new look"></div>
+    <div class="row"><button id="refgo">Create look (on top of current)</button></div>
+  </aside>
+</main>
+<script>
+const SLIDERS = [
+  ["strength", "Look strength", 0, 1, 0.05, 1],
+  ["exposure", "Exposure (EV)", -2, 2, 0.1, 0],
+  ["warmth", "Warmth", -50, 50, 1, 0],
+  ["tint", "Tint (green ↔ magenta)", -30, 30, 1, 0],
+  ["contrast", "Contrast", -0.5, 0.5, 0.02, 0],
+  ["saturation", "Saturation", -0.6, 0.6, 0.02, 0],
+  ["tone", "Toning (e.g. gold)", -1, 1, 0.05, 0],
+  ["grain", "Grain", -0.5, 1, 0.02, 0],
+  ["vignette", "Vignette", -0.3, 0.6, 0.02, 0],
+];
+const $ = (id) => document.getElementById(id);
+let S = { photos: [], looks: [], current: null, look: "neutral", adjust: {}, ticked: new Set() };
+let renderTimer = null, renderSeq = 0;
+
+function defaults() { return Object.fromEntries(SLIDERS.map(s => [s[0], s[5]])); }
+S.adjust = defaults();
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, opts);
+  if (!r.ok) { let m = r.statusText; try { m = (await r.json()).detail || m; } catch {} throw new Error(m); }
+  return r;
+}
+function status(msg, err = false) { $("status").textContent = msg; $("status").className = err ? "err" : ""; }
+function q(o) { return new URLSearchParams(o).toString(); }
+
+function buildSliders() {
+  $("sliders").innerHTML = "";
+  for (const [key, label, min, max, step] of SLIDERS) {
+    const d = document.createElement("div"); d.className = "slider";
+    d.innerHTML = `<label>${label}<span id="v_${key}"></span></label><input type="range" id="s_${key}" min="${min}" max="${max}" step="${step}">`;
+    $("sliders").appendChild(d);
+    const inp = d.querySelector("input");
+    inp.addEventListener("input", () => { S.adjust[key] = parseFloat(inp.value); showVal(key); scheduleRender(); });
+  }
+  syncSliders();
+}
+function showVal(key) {
+  const v = S.adjust[key];
+  $("v_" + key).textContent = key === "strength" ? Math.round(v * 100) + "%" :
+    (v > 0 && key !== "strength" ? "+" : "") + (Number.isInteger(v) ? v : v.toFixed(2));
+}
+function syncSliders() { for (const [key] of SLIDERS) { $("s_" + key).value = S.adjust[key]; showVal(key); } }
+
+async function loadState(st) {
+  S.photos = st.photos; S.looks = st.looks;
+  if (st.folder) $("folder").value = st.folder;
+  $("thumbs").innerHTML = "";
+  S.ticked.clear(); updateTicked();
+  for (const name of S.photos) {
+    const t = document.createElement("div"); t.className = "thumb"; t.dataset.name = name;
+    t.innerHTML = `<img loading="lazy" src="/api/thumb?${q({ name })}"><input type="checkbox" title="Include in batch export"><div class="nm">${name}</div>`;
+    t.querySelector("input").addEventListener("click", (e) => {
+      e.stopPropagation(); e.target.checked ? S.ticked.add(name) : S.ticked.delete(name); updateTicked();
+    });
+    t.addEventListener("click", () => select(name));
+    $("thumbs").appendChild(t);
+  }
+  if (S.photos.length) { select(S.photos.includes(S.current) ? S.current : S.photos[0]); }
+  else if (st.folder) { $("empty").textContent = "No RAW files (.dng) in this folder."; }
+}
+function updateTicked() { $("exportsel").textContent = `Ticked (${S.ticked.size})`; $("exportsel").disabled = !S.ticked.size; }
+
+function select(name) {
+  S.current = name;
+  document.querySelectorAll(".thumb").forEach(t => t.classList.toggle("active", t.dataset.name === name));
+  $("empty").hidden = true; $("big").hidden = false;
+  buildLookStrip(); renderBig();
+}
+
+function buildLookStrip() {
+  const all = [{ id: "neutral", name: "Neutral", description: "No look — the corrected RAW" }, ...S.looks];
+  $("looks").innerHTML = "";
+  for (const lk of all) {
+    const d = document.createElement("div"); d.className = "look" + (lk.id === S.look ? " active" : ""); d.dataset.id = lk.id;
+    d.innerHTML = `<img loading="lazy" src="/api/render?${q({ name: S.current, look: lk.id, edge: 400 })}"><div class="nm">${lk.name}${lk.user ? " <small>yours</small>" : ""}</div>`;
+    d.title = lk.description || "";
+    d.addEventListener("click", () => chooseLook(lk.id));
+    $("looks").appendChild(d);
+  }
+  showLookInfo();
+}
+function showLookInfo() {
+  const lk = S.looks.find(l => l.id === S.look) || { name: "Neutral", description: "No look — the corrected RAW" };
+  $("lookname").textContent = lk.name; $("lookdesc").textContent = lk.description || "";
+}
+function chooseLook(id) {
+  S.look = id;
+  document.querySelectorAll(".look").forEach(d => d.classList.toggle("active", d.dataset.id === id));
+  showLookInfo(); renderBig();
+}
+
+function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(renderBig, 180); }
+function renderBig(before = false) {
+  if (!S.current) return;
+  const seq = ++renderSeq;
+  const params = before ? { name: S.current, look: "neutral" } : { name: S.current, look: S.look, adjust: JSON.stringify(S.adjust) };
+  $("busy").textContent = "rendering…";
+  const img = new Image();
+  img.onload = () => { if (seq === renderSeq) { $("big").src = img.src; $("busy").textContent = ""; } };
+  img.onerror = () => { if (seq === renderSeq) $("busy").textContent = "render failed"; };
+  img.src = "/api/render?" + q({ ...params, edge: 1600, t: seq });
+  $("badge").hidden = false;
+  $("badge").textContent = before ? "Before" : ($("lookname").textContent + (S.adjust.strength < 1 ? ` · ${Math.round(S.adjust.strength * 100)}%` : ""));
+}
+
+async function exportNames(names) {
+  if (!names.length) return;
+  status(`Exporting ${names.length} photo(s)… full-size renders take a little while each.`);
+  try {
+    const r = await api("/api/export", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ names, look: S.look, adjust: S.adjust }) });
+    const { job } = await r.json();
+    const poll = async () => {
+      const j = await (await api("/api/jobs/" + job)).json();
+      if (j.error) return status("Export failed: " + j.error, true);
+      if (j.done < j.total) { status(`Exporting ${j.done + 1}/${j.total}: ${j.current}`); return setTimeout(poll, 800); }
+      status(`Done. Saved ${j.total} JPG(s), e.g. ${j.outputs[0]}`);
+    };
+    poll();
+  } catch (e) { status(e.message, true); }
+}
+
+$("open").onclick = async () => {
+  try { loadState(await (await api("/api/folder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folder: $("folder").value }) })).json()); }
+  catch (e) { alert(e.message); }
+};
+$("folder").addEventListener("keydown", e => { if (e.key === "Enter") $("open").click(); });
+$("reset").onclick = () => { S.adjust = defaults(); syncSliders(); renderBig(); };
+$("exportone").onclick = () => S.current && exportNames([S.current]);
+$("exportsel").onclick = () => exportNames([...S.ticked]);
+$("lut").onclick = () => { location.href = "/api/lut?" + q({ look: S.look, adjust: JSON.stringify(S.adjust), name: S.current || "" }); };
+$("save").onclick = async () => {
+  const name = $("savename").value.trim();
+  if (!name) return alert("Give your look a name first.");
+  try {
+    const r = await (await api("/api/looks", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, look: S.look, adjust: S.adjust }) })).json();
+    S.looks = r.looks; S.look = r.id; S.adjust = defaults(); syncSliders(); buildLookStrip(); renderBig();
+    status(`Saved look “${name}”.`);
+  } catch (e) { status(e.message, true); }
+};
+$("refgo").onclick = async () => {
+  const f = $("reffile").files[0];
+  if (!f) return alert("Choose a reference image first.");
+  const fd = new FormData();
+  fd.append("image", f); fd.append("name", $("refname").value.trim() || f.name.replace(/\.[^.]+$/, "") + " match"); fd.append("base", S.look);
+  status("Analysing reference…");
+  try {
+    const r = await (await api("/api/reference", { method: "POST", body: fd })).json();
+    S.looks = r.looks; S.look = r.id; buildLookStrip(); renderBig(); status("Created a look from your reference.");
+  } catch (e) { status(e.message, true); }
+};
+const cmp = $("compare");
+cmp.addEventListener("mousedown", () => renderBig(true));
+["mouseup", "mouseleave"].forEach(ev => cmp.addEventListener(ev, () => renderBig()));
+let bDown = false;
+document.addEventListener("keydown", e => { if (e.key === "b" && !bDown && e.target.tagName !== "INPUT") { bDown = true; renderBig(true); } });
+document.addEventListener("keyup", e => { if (e.key === "b" && bDown) { bDown = false; renderBig(); } });
+
+buildSliders();
+api("/api/state").then(r => r.json()).then(loadState);
+</script>
+</body>
+</html>

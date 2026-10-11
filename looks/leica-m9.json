@@ -1,0 +1,63 @@
+{
+  "order": 2,
+  "name": "Leica M9",
+  "description": "The CCD look: dense, rich colour, crimson reds, golden yellows, deep blues and greens, slightly warm.",
+  "tone": {
+    "contrast": 1.15,
+    "pivot": 0.5,
+    "shadows": -0.15,
+    "highlights": -0.1
+  },
+  "color": {
+    "saturation": 1.12,
+    "vibrance": 0.1,
+    "temp": 6,
+    "tint": 3,
+    "hsl": {
+      "red": {
+        "hue": -6,
+        "sat": 0.2,
+        "lum": -0.1
+      },
+      "orange": {
+        "hue": -3,
+        "sat": 0.05
+      },
+      "yellow": {
+        "hue": -8,
+        "sat": 0.1
+      },
+      "green": {
+        "hue": 10,
+        "sat": -0.05,
+        "lum": -0.15
+      },
+      "aqua": {
+        "sat": 0.05
+      },
+      "blue": {
+        "hue": 4,
+        "sat": 0.15,
+        "lum": -0.2
+      }
+    },
+    "split": {
+      "shadows": {
+        "hue": 290,
+        "amount": 0.15
+      },
+      "highlights": {
+        "hue": 70,
+        "amount": 0.2
+      }
+    }
+  },
+  "grain": {
+    "amount": 0.08,
+    "size": 0.8
+  },
+  "vignette": {
+    "amount": 0.15,
+    "midpoint": 0.5
+  }
+}

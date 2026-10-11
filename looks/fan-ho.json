@@ -1,0 +1,8 @@
+{
+  "name": "Fan Ho style",
+  "description": "Dramatic, clean black & white: deep blacks, glowing light, strong vignette, fine grain.",
+  "mono": {"enabled": true, "mix": [0.4, 0.45, 0.15]},
+  "tone": {"contrast": 1.55, "pivot": 0.45, "shadows": -0.35, "highlights": 0.15},
+  "grain": {"amount": 0.12, "size": 0.9},
+  "vignette": {"amount": 0.35, "midpoint": 0.4}
+}

@@ -1,0 +1,45 @@
+{
+  "order": 3,
+  "name": "Tri-X Gold",
+  "description": "Gritty, punchy black & white film with a honey-gold tint, like a print on warm-tone fibre paper.",
+  "mono": {
+    "enabled": true,
+    "mix": [
+      0.45,
+      0.45,
+      0.1
+    ]
+  },
+  "tone": {
+    "contrast": 1.45,
+    "pivot": 0.5,
+    "shadows": -0.2,
+    "highlights": 0.05,
+    "black": 0.02,
+    "white": 0.97
+  },
+  "color": {
+    "split": {
+      "shadows": {
+        "hue": 75,
+        "amount": 0.1
+      },
+      "midtones": {
+        "hue": 88,
+        "amount": 0.6
+      },
+      "highlights": {
+        "hue": 95,
+        "amount": 0.55
+      }
+    }
+  },
+  "grain": {
+    "amount": 0.55,
+    "size": 1.6
+  },
+  "vignette": {
+    "amount": 0.3,
+    "midpoint": 0.45
+  }
+}

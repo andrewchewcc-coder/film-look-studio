@@ -1,0 +1,65 @@
+{
+  "order": 1,
+  "name": "Classic Chrome",
+  "description": "Fujifilm-style documentary colour: muted, hard shadows, cyan-leaning skies, olive greens, subdued reds.",
+  "tone": {
+    "contrast": 1.18,
+    "pivot": 0.42,
+    "shadows": -0.25,
+    "highlights": -0.15,
+    "white": 0.98
+  },
+  "color": {
+    "saturation": 0.78,
+    "temp": 2,
+    "hsl": {
+      "red": {
+        "hue": 4,
+        "sat": -0.15,
+        "lum": -0.2
+      },
+      "orange": {
+        "hue": -2,
+        "sat": -0.05
+      },
+      "yellow": {
+        "hue": -6,
+        "sat": -0.25
+      },
+      "green": {
+        "hue": -8,
+        "sat": -0.35,
+        "lum": -0.2
+      },
+      "aqua": {
+        "hue": -6,
+        "sat": -0.2
+      },
+      "blue": {
+        "hue": -12,
+        "sat": -0.25,
+        "lum": -0.15
+      },
+      "purple": {
+        "sat": -0.3
+      },
+      "magenta": {
+        "sat": -0.3
+      }
+    },
+    "split": {
+      "shadows": {
+        "hue": 230,
+        "amount": 0.3
+      },
+      "highlights": {
+        "hue": 75,
+        "amount": 0.25
+      }
+    }
+  },
+  "grain": {
+    "amount": 0.15,
+    "size": 1.0
+  }
+}

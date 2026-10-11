@@ -1,0 +1,3 @@
+#!/bin/bash
+# Run Film Look Studio from this folder without activating the virtualenv.
+exec "$(dirname "$0")/.venv/bin/filmlook" "$@"
