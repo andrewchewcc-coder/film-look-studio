@@ -1,0 +1,8 @@
+{
+  "name": "Fire Dragon Chrome",
+  "description": "",
+  "extends": "classic-chrome",
+  "color": {
+    "temp": 20
+  }
+}
