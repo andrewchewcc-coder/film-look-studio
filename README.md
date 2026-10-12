@@ -49,6 +49,10 @@ scoring your taste.
 - Sliders: strength, exposure, warmth, tint, contrast, saturation, toning (the gold in
   Tri-X Gold), grain, vignette. Hold **B** to see the "before" image.
 - **Save as my look** keeps your tweak for next time.
+- **Crop & straighten** (or press **C**): ratios (3:2, 4:5, 1:1, 16:9, 65:24, free, custom), overlays,
+  rotation slider, a level-line tool, 90° turns and flips. **Enter** done, **Esc** cancel, **R** reset.
+  Crops are stored in the library, never in your files, and every preview, thumbnail and export uses
+  them. **Copy ratio to ticked** gives other photos the same ratio. Works on RAF, DNG and JPG.
 - **This photo** or **Ticked (n)** exports full-resolution JPGs to `graded/` next to the DNGs,
   keeping camera, lens and date metadata. A `.recipe.json` next to each JPG records the
   exact settings.

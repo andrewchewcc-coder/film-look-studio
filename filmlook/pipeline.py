@@ -38,10 +38,16 @@ def _scurve(x, contrast, pivot):
 
 # ---------------------------------------------------------------- stage A
 
-def base(linear, gain, exposure=0.0):
+def base(linear, gain, exposure=0.0, display=False):
+    """`display=True` for already-finished images (JPG): no shoulder or contrast boost, so with
+    no exposure change the result is the original image."""
     x = linear * np.float32(gain * 2.0 ** exposure)
+    if display and exposure <= 0:
+        return srgb_encode(np.clip(x, 0, 1)).astype(np.float32)
     k = 0.7  # highlight shoulder: linear below k, smooth roll-off to 1.0 above
     x = np.where(x < k, x, k + (1 - k) * (1 - np.exp(-(x - k) / (1 - k))))
+    if display:
+        return srgb_encode(x).astype(np.float32)
     return _scurve(srgb_encode(x), 1.08, 0.45)
 
 
@@ -200,9 +206,9 @@ def finish(d, recipe, y0=0, full_size=None):
 
 # ---------------------------------------------------------------- full render
 
-def render(linear, recipe, gain, y0=0, full_size=None, match_src=None, look_fn=None):
+def render(linear, recipe, gain, y0=0, full_size=None, match_src=None, look_fn=None, display=False):
     """Full render. `look_fn` can replace stage B (e.g. a baked LUT for fast exports)."""
-    neutral = base(linear, gain, recipe.get("exposure", 0.0))
+    neutral = base(linear, gain, recipe.get("exposure", 0.0), display)
     graded = look_fn(neutral) if look_fn else look(neutral, recipe, match_src)
     graded = finish(graded, recipe, y0, full_size)
     s = recipe.get("strength", 1.0)
@@ -211,11 +217,11 @@ def render(linear, recipe, gain, y0=0, full_size=None, match_src=None, look_fn=N
     return np.clip(neutral + s * (graded - neutral), 0, 1)
 
 
-def match_source_stats(linear_sample, recipe, gain):
+def match_source_stats(linear_sample, recipe, gain, display=False):
     """Image statistics the reference match should map from (computed on a small sample)."""
     if not (recipe.get("match") and recipe["match"].get("amount", 0) > 0):
         return None
-    return lab_stats(look_lab(base(linear_sample, gain, recipe.get("exposure", 0.0)), recipe))
+    return lab_stats(look_lab(base(linear_sample, gain, recipe.get("exposure", 0.0), display), recipe))
 
 
 def reference_stats(display):

@@ -57,6 +57,19 @@ def _run(root_ids):
         c.close()
 
 
+def refresh_later(path):
+    """Rebuild a photo's library thumbnail after a crop edit, in the background."""
+    def go():
+        c = db.connect()
+        try:
+            index.refresh_photo_file(c, path)
+        except Exception:
+            traceback.print_exc()
+        finally:
+            c.close()
+    threading.Thread(target=go, daemon=True).start()
+
+
 def warm_model():
     """Load the image-text model in the background so the first search is quick."""
     def go():

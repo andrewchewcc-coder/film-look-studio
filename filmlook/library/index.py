@@ -16,28 +16,39 @@ EMBED_BATCH = 8   # photos per GPU batch (x VIEWS images each)
 
 
 def _missing_thumbs(con):
-    return con.execute("""SELECT p.id, f.id AS file_id, f.drive_id, f.rel_path, f.kind, f.quick_hash, p.thumb
-                          FROM photos p JOIN files f ON f.id = p.primary_file_id""").fetchall()
+    return con.execute("""SELECT p.id, f.id AS file_id, f.drive_id, f.rel_path, f.kind, f.quick_hash, p.thumb,
+                          ed.geometry FROM photos p JOIN files f ON f.id = p.primary_file_id
+                          LEFT JOIN edits ed ON ed.drive_id = f.drive_id AND ed.rel_path = f.rel_path""").fetchall()
 
 
-def build_thumbnails(con, progress=None, should_stop=lambda: False, workers=4):
+def _edit(row):
+    import json
+    from .. import geometry
+    return geometry.normalise(json.loads(row["geometry"])) if row["geometry"] else None
+
+
+def build_thumbnails(con, progress=None, should_stop=lambda: False, workers=4, only=None):
     mounts = drives.online_mounts(con)
     todo, offline = [], 0
+    from .. import geometry
     for r in _missing_thumbs(con):
-        want = thumbs.name_for(r["file_id"], r["quick_hash"])
+        if only is not None and r["id"] != only:
+            continue
+        g = _edit(r)
+        want = thumbs.name_for(r["file_id"], r["quick_hash"], geometry.key(g) if g else "")
         if r["thumb"] == want and thumbs.path(want).exists():
             continue
         if r["drive_id"] not in mounts:
             offline += 1
             continue
-        todo.append((r["id"], Path(mounts[r["drive_id"]]) / r["rel_path"], r["kind"], want))
+        todo.append((r["id"], Path(mounts[r["drive_id"]]) / r["rel_path"], r["kind"], want, g))
 
     done = failed = 0
 
     def work(item):
-        pid, src, kind, want = item
+        pid, src, kind, want, g = item
         try:
-            return pid, thumbs.make(src, kind, want)
+            return pid, thumbs.make(src, kind, want, g)
         except Exception:
             return pid, None
 
@@ -56,7 +67,7 @@ def build_thumbnails(con, progress=None, should_stop=lambda: False, workers=4):
                 progress({"phase": "thumbnails", "done": done + failed, "todo": len(todo)})
 
     keep = {r[0] for r in con.execute("SELECT thumb FROM photos WHERE thumb IS NOT NULL")}
-    removed = thumbs.remove_stale(keep) if not should_stop() else 0
+    removed = thumbs.remove_stale(keep) if not should_stop() and only is None else 0
     return {"thumbs_made": done, "thumbs_failed": failed, "thumbs_offline": offline, "thumbs_removed": removed}
 
 
@@ -164,6 +175,23 @@ def update_bursts(con):
     con.executemany("UPDATE quality SET burst_id=? WHERE photo_id=?", [(b, pid) for pid, b in bursts.items()])
     con.commit()
     return bursts
+
+
+def refresh_photo_file(con, path):
+    """After a crop/straighten edit in Grade: rebuild that photo's library thumbnail and search
+    data right away (no-op if the file isn't in the library)."""
+    from . import drives
+    try:
+        uuid, _, _, rel = drives.locate(path)
+    except (OSError, ValueError):
+        return False
+    row = con.execute("""SELECT p.id FROM photos p JOIN files f ON f.id = p.primary_file_id
+                         JOIN drives d ON d.id = f.drive_id WHERE d.uuid = ? AND f.rel_path = ?""", (uuid, rel)).fetchone()
+    if not row:
+        return False
+    build_thumbnails(con, only=row[0])
+    build_embeddings(con)
+    return True
 
 
 def build(con, progress=None, should_stop=lambda: False):

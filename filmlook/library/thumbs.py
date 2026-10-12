@@ -13,9 +13,9 @@ EDGE = 512
 RAW_FLIP = {3: Image.Transpose.ROTATE_180, 5: Image.Transpose.ROTATE_90, 6: Image.Transpose.ROTATE_270}
 
 
-def name_for(file_id, quick_hash):
-    """Thumbnail file name; changes when the source file changes."""
-    return f"{file_id}_{(quick_hash or 'x')[:8]}.jpg"
+def name_for(file_id, quick_hash, edit_key=""):
+    """Thumbnail file name; changes when the source file or its crop/straighten edit changes."""
+    return f"{file_id}_{(quick_hash or 'x')[:8]}{'_' + edit_key if edit_key else ''}.jpg"
 
 
 def _open_jpeg(data_or_path):
@@ -57,14 +57,20 @@ def _is_mono(im):
     return sum(spread) / len(spread) < 4
 
 
-def make(path, kind, out_name):
-    """Write THUMB_DIR/out_name for the photo file at path. Returns the name."""
+def make(path, kind, out_name, geom=None):
+    """Write THUMB_DIR/out_name for the photo file at path, with its crop/straighten edit.
+    Returns the name."""
     THUMB_DIR.mkdir(parents=True, exist_ok=True)
     if kind == "raw":
         im = _from_raw(path)
     else:
         im = ImageOps.exif_transpose(_open_jpeg(str(path)))
     im = im.convert("RGB")
+    if geom is not None:
+        import numpy as np
+        from .. import geometry
+        if not geometry.is_identity(geom):
+            im = Image.fromarray(geometry.apply(np.asarray(im, np.float32), geom).clip(0, 255).astype("uint8"))
     im.thumbnail((EDGE, EDGE), Image.LANCZOS)
     tmp = THUMB_DIR / (out_name + ".tmp")
     im.save(tmp, "JPEG", quality=82, optimize=True)

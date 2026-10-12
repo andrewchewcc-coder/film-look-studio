@@ -128,6 +128,17 @@ CREATE TABLE IF NOT EXISTS picks (
     decided_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Crop / straighten edits (non-destructive), keyed by the source file so they work for any
+-- folder opened in Grade, in the library or not. `geometry` is filmlook.geometry's JSON.
+CREATE TABLE IF NOT EXISTS edits (
+    id         INTEGER PRIMARY KEY,
+    drive_id   INTEGER NOT NULL REFERENCES drives(id),
+    rel_path   TEXT NOT NULL,
+    geometry   TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (drive_id, rel_path)
+);
+
 CREATE TABLE IF NOT EXISTS embeddings (
     photo_id INTEGER PRIMARY KEY REFERENCES photos(id),
     model    TEXT NOT NULL,

@@ -10,7 +10,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
 
-from . import engine, lut, pipeline, raw, recipes, reference
+from . import edits, engine, geometry, lut, pipeline, raw, recipes, reference
 
 STATIC = Path(__file__).parent / "static"
 app = FastAPI(title="Film Look Studio")
@@ -22,7 +22,7 @@ _thumbs = {}
 def _photos():
     folder = state["folder"]
     try:
-        return raw.list_raws(folder) if folder else []
+        return raw.list_images(folder) if folder else []
     except OSError:  # folder's drive was unplugged
         return []
 
@@ -79,14 +79,75 @@ def set_folder(body: FolderIn):
 @app.get("/api/thumb")
 def thumb(name: str):
     p = _photo(name)
-    if p not in _thumbs:
-        _thumbs[p] = engine.jpeg_bytes(engine.render_preview(p, recipes.load_look(None), edge=360), 80)
-    return Response(_thumbs[p], media_type="image/jpeg")
+    g = edits.get(p)
+    k = (p, geometry.key(g))
+    if k not in _thumbs:
+        _thumbs[k] = engine.jpeg_bytes(engine.render_preview(p, recipes.load_look(None), edge=360, geom=g), 80)
+    return Response(_thumbs[k], media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/render")
-def render(name: str, look: str = "neutral", adjust: str = "{}", edge: int = 1400):
-    return _jpeg(engine.render_preview(_photo(name), _recipe(look, adjust), edge=min(edge, engine.PREVIEW_EDGE)))
+def render(name: str, look: str = "neutral", adjust: str = "{}", edge: int = 1400, crop: str = "saved",
+           turn: str = ""):
+    """crop=saved applies the stored crop/straighten; crop=none shows the whole frame (before
+    view); crop=turn applies only flips / 90-degree turns (given in `turn` as JSON, else the
+    stored ones) — the crop screen draws rotation and the crop box itself."""
+    p = _photo(name)
+    if crop == "saved":
+        g = edits.get(p)
+    elif crop == "turn":
+        t = json.loads(turn) if turn else edits.get(p)
+        g = {"rot90": t.get("rot90", 0), "flip_h": t.get("flip_h", False), "flip_v": t.get("flip_v", False)}
+    else:
+        g = None
+    return _jpeg(engine.render_preview(p, _recipe(look, adjust), edge=min(edge, engine.PREVIEW_EDGE), geom=g))
+
+
+class CopyRatioIn(BaseModel):
+    source: str
+    names: list[str]
+
+
+@app.post("/api/edit/copy-ratio")
+def copy_ratio(body: CopyRatioIn):
+    """Give each named photo the source photo's crop ratio (largest centred crop)."""
+    src = _photo(body.source)
+    g = edits.get(src)
+    if not g["crop"]:
+        raise HTTPException(400, "Crop this photo first, then copy its ratio.")
+    w, h = raw.full_size(src)
+    ow, oh = geometry.output_size(w, h, g)
+    done = []
+    for name in body.names:
+        if name == body.source:
+            continue
+        p = _photo(name)
+        pw, ph = raw.full_size(p)
+        edits.put(p, geometry.with_ratio(edits.get(p), pw, ph, ow / oh, g["aspect"]))
+        _lib().refresh_later(p)
+        done.append(name)
+    return {"updated": done, "ratio": f"{g['aspect']}" if g["aspect"] not in ("free", "original") else f"{ow}:{oh}"}
+
+
+@app.get("/api/edit")
+def get_edit(name: str):
+    p = _photo(name)
+    w, h = raw.full_size(p)
+    return {"geometry": edits.get(p), "full_size": [w, h]}
+
+
+class EditIn(BaseModel):
+    name: str
+    geometry: dict | None = None
+
+
+@app.post("/api/edit")
+def put_edit(body: EditIn):
+    p = _photo(body.name)
+    g = edits.put(p, body.geometry)
+    _lib().refresh_later(p)            # library thumbnail + search data follow the crop
+    w, h = raw.full_size(p)
+    return {"geometry": g, "full_size": [w, h], "output_size": geometry.output_size(w, h, g)}
 
 
 class ExportIn(BaseModel):
@@ -108,7 +169,7 @@ def export(body: ExportIn):
         try:
             for p in files:
                 job["current"] = p.name
-                job["outputs"].append(str(engine.export(p, recipe, quality=body.quality)))
+                job["outputs"].append(str(engine.export(p, recipe, quality=body.quality, geom=edits.get(p))))
                 job["done"] += 1
         except Exception as e:  # report to the UI instead of dying silently
             job["error"] = str(e)
@@ -163,8 +224,9 @@ def get_lut(look: str = "neutral", adjust: str = "{}", name: str = ""):
     recipe = _recipe(look, adjust)
     match_src = None
     if recipe.get("match") and name:
-        lin, gain = engine.preview_linear(_photo(name))
-        match_src = pipeline.match_source_stats(lin, recipe, gain)
+        p = _photo(name)
+        lin, gain = engine.preview_linear(p)
+        match_src = pipeline.match_source_stats(lin, recipe, gain, raw.is_display_referred(p))
     fname = f"{recipes.slug(recipe.get('name', 'look'))}.cube"
     out = Path(tempfile.gettempdir()) / fname
     lut.write_cube(recipe, out, match_src=match_src)
@@ -273,8 +335,8 @@ def library_open(photo_id: int):
     if not p["online"]:
         raise HTTPException(409, f"Drive offline: plug in “{p['drive']}” to open this photo.")
     src = Path(p["path"])
-    if not raw.is_raw(src):
-        raise HTTPException(415, "This photo has no RAW file, so it can't be graded here.")
+    if not (raw.is_raw(src) or raw.is_jpeg(src)):
+        raise HTTPException(415, "This kind of file can't be graded here.")
     set_folder(FolderIn(folder=str(src.parent)))
     return {**get_state(), "select": src.name}
 

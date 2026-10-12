@@ -11,10 +11,11 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageCms, ImageDraw, ImageFont
 
-from . import lut, pipeline, raw
+from . import geometry, lut, pipeline, raw
 
 CACHE_DIR = Path.home() / ".cache" / "filmlook"
 PREVIEW_EDGE = 1600
+DETAIL_EDGE = 3600       # larger cached decode, used when a tight crop needs more pixels
 STRIP_ROWS = 256
 WORKERS = max(1, min(4, (os.cpu_count() or 2) - 1))
 
@@ -22,28 +23,36 @@ _SRGB_ICC = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
 _mem_cache = {}
 
 
-def _key(path):
+def _key(path, edge=PREVIEW_EDGE):
     p = Path(path).resolve()
     st = p.stat()
-    return hashlib.sha1(f"{p}|{st.st_size}|{st.st_mtime_ns}|{PREVIEW_EDGE}".encode()).hexdigest()[:16]
+    return hashlib.sha1(f"{p}|{st.st_size}|{st.st_mtime_ns}|{edge}".encode()).hexdigest()[:16]
 
 
-def preview_linear(path):
-    """Linear preview (long edge PREVIEW_EDGE) and the metered gain, cached in memory and on disk."""
-    key = _key(path)
-    if key in _mem_cache:
-        return _mem_cache[key]
+def preview_linear(path, edge=PREVIEW_EDGE):
+    """Linear preview (long edge `edge`) and the metered gain, cached in memory and on disk.
+    The gain always comes from the standard preview so every size meters the same."""
+    key = _key(path, edge)
+    mkey = key + ("@big" if edge != PREVIEW_EDGE else "")
+    if mkey in _mem_cache:
+        return _mem_cache[mkey]
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     npy, meta = CACHE_DIR / f"{key}.npy", CACHE_DIR / f"{key}.json"
     if npy.exists() and meta.exists():
         lin = np.load(npy)
         gain = json.loads(meta.read_text())["gain"]
     else:
-        lin = raw.decode(path, max_edge=PREVIEW_EDGE)
-        gain = raw.meter(lin)
+        lin = raw.decode(path, max_edge=edge)
+        if edge == PREVIEW_EDGE:
+            gain = 1.0 if raw.is_display_referred(path) else raw.meter(lin)
+        else:
+            gain = preview_linear(path)[1]
         np.save(npy, lin)
         meta.write_text(json.dumps({"gain": gain, "source": str(path)}))
-    _mem_cache[key] = (lin, gain)
+    if edge != PREVIEW_EDGE and len([k for k in _mem_cache if k.endswith("@big")]) >= 2:
+        for k in [k for k in _mem_cache if k.endswith("@big")][:1]:   # keep memory in check
+            _mem_cache.pop(k)
+    _mem_cache[mkey] = (lin, gain)
     return lin, gain
 
 
@@ -51,13 +60,22 @@ def to_image(display):
     return Image.fromarray((np.clip(display, 0, 1) * 255 + 0.5).astype(np.uint8))
 
 
-def render_preview(path, recipe, edge=None):
+def render_preview(path, recipe, edge=None, geom=None):
+    """Preview with the look and (optionally) a crop/straighten edit applied.
+
+    Metering uses the whole uncropped frame, like the export, so a crop never changes exposure.
+    """
     lin, gain = preview_linear(path)
+    if geom is not None and not geometry.is_identity(geom):
+        g = geometry.normalise(geom)
+        if g["crop"] and edge and edge / max(g["crop"][2], g["crop"][3]) > max(lin.shape[:2]) * 1.05:
+            lin, gain = preview_linear(path, DETAIL_EDGE)   # tight crop: start from more pixels
+        lin = geometry.apply(lin, g)
     if edge and edge < max(lin.shape[:2]):
         h, w = lin.shape[:2]
         s = edge / max(h, w)
-        lin = raw.resize_float(lin, (round(w * s), round(h * s)), Image.BILINEAR)
-    return to_image(pipeline.render(lin, recipe, gain))
+        lin = raw.resize_float(lin, (max(1, round(w * s)), max(1, round(h * s))), Image.BILINEAR)
+    return to_image(pipeline.render(lin, recipe, gain, display=raw.is_display_referred(path)))
 
 
 def jpeg_bytes(img, quality=88):
@@ -117,14 +135,18 @@ def copy_metadata(src, dst):
     return True
 
 
-def export(src, recipe, out_dir=None, quality=95, look_name=None, progress=None):
-    """Render the full-resolution RAW in strips and write a JPEG (plus a recipe sidecar)."""
+def export(src, recipe, out_dir=None, quality=95, look_name=None, progress=None, geom=None):
+    """Render the full-resolution photo (RAW or JPG) with its crop/straighten edit in strips and
+    write a JPEG (plus a recipe sidecar recording the look and the edit)."""
     src = Path(src)
     look_name = look_name or recipe.get("name", "graded")
+    display = raw.is_display_referred(src)
     _, gain = preview_linear(src)  # same metering as the preview
     rgb16 = raw.decode(src)
+    if geom is not None and not geometry.is_identity(geom):
+        rgb16 = geometry.apply(rgb16, geom)
     h, w = rgb16.shape[:2]
-    match_src = pipeline.match_source_stats(raw.to_float(rgb16[::8, ::8]), recipe, gain)
+    match_src = pipeline.match_source_stats(raw.to_float(rgb16[::8, ::8]), recipe, gain, display)
     # The per-pixel look stage is baked into a fine 3D LUT: same result, many times faster.
     table = lut.bake(recipe, size=65, match_src=match_src, blend=False)
     out = np.empty((h, w, 3), dtype=np.uint8)
@@ -134,7 +156,7 @@ def export(src, recipe, out_dir=None, quality=95, look_name=None, progress=None)
     def strip(y0):
         y1 = min(h, y0 + STRIP_ROWS)
         d = pipeline.render(raw.to_float(rgb16[y0:y1]), recipe, gain, y0=y0, full_size=(h, w),
-                            look_fn=lambda img: lut.apply(img, table))
+                            look_fn=lambda img: lut.apply(img, table), display=display)
         out[y0:y1] = (d * 255 + 0.5).astype(np.uint8)
         done[0] += 1
         if progress:
@@ -147,5 +169,6 @@ def export(src, recipe, out_dir=None, quality=95, look_name=None, progress=None)
     dst.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(out).save(dst, "JPEG", quality=quality, subsampling=0, icc_profile=_SRGB_ICC)
     copy_metadata(src, dst)
-    dst.with_suffix(".recipe.json").write_text(json.dumps(recipe, indent=2) + "\n")
+    side = {**recipe, "geometry": geometry.normalise(geom)} if geom is not None else recipe
+    dst.with_suffix(".recipe.json").write_text(json.dumps(side, indent=2) + "\n")
     return dst

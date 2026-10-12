@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import engine, lut, raw, recipes, reference
+from . import edits, engine, lut, raw, recipes, reference
 
 WORK_DIR = Path(".filmlook")
 
@@ -14,13 +14,13 @@ def _targets(paths):
     for p in paths:
         p = Path(p).expanduser()
         if p.is_dir():
-            out.extend(raw.list_raws(p))
+            out.extend(raw.list_images(p))
         elif p.exists():
             out.append(p)
         else:
             sys.exit(f"not found: {p}")
     if not out:
-        sys.exit("no RAW files found")
+        sys.exit("no photos found")
     return out
 
 
@@ -63,7 +63,7 @@ def cmd_preview(args):
     label = recipes.slug(args.name or recipe.get("name", "look"))
     for src in _targets(args.paths):
         dst = out_dir / f"{src.stem}_{label}.jpg"
-        dst.write_bytes(engine.jpeg_bytes(engine.render_preview(src, recipe, edge=args.edge)))
+        dst.write_bytes(engine.jpeg_bytes(engine.render_preview(src, recipe, edge=args.edge, geom=edits.get(src))))
         print(dst)
 
 
@@ -73,7 +73,7 @@ def cmd_export(args):
     for i, src in enumerate(files, 1):
         print(f"[{i}/{len(files)}] {src.name} ...", end="", flush=True)
         dst = engine.export(src, recipe, out_dir=args.out, quality=args.quality,
-                            look_name=args.name or recipe.get("name"))
+                            look_name=args.name or recipe.get("name"), geom=edits.get(src))
         print(f" {dst}")
 
 
