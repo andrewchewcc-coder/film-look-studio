@@ -255,3 +255,14 @@ def test_second_look_period_and_on_this_day(tmp_path, monkeypatch):
     assert d["results"] and all(r["time"][5:10] == "10-05" for r in d["results"])
     near = secondlook.suggestions(con, "this_day", today=date(2026, 10, 25), limit=100)
     assert "showing" in near["note"] or not near["results"]
+
+
+def test_folders_ending_in_a_space_open(tmp_path):
+    from fastapi.testclient import TestClient
+    from filmlook import server
+    shoot = tmp_path / "2026 03 20 Fire Dragon Festival "
+    shoot.mkdir()
+    from PIL import Image
+    Image.new("RGB", (40, 30), (90, 60, 30)).save(shoot / "a.jpg")
+    r = TestClient(server.app).post("/api/folder", json={"folder": str(shoot)})
+    assert r.status_code == 200 and r.json()["photos"] == ["a.jpg"]

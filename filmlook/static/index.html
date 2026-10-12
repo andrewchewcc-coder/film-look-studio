@@ -14,6 +14,10 @@
   header { display: flex; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
   header h1 { font-size: 15px; font-weight: 600; margin: 0 12px 0 0; white-space: nowrap; }
   header input { flex: 1; min-width: 0; }
+  #folderBar { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+  #folderBar button { white-space: nowrap; flex: 0 0 auto; }
+  #folderName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+  #folderName b { color: var(--text); font-weight: 600; }
   input[type=text] { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 7px 10px; border-radius: 6px; font: inherit; }
   button { background: #2a2a2a; color: var(--text); border: 1px solid #383838; padding: 7px 12px; border-radius: 6px; font: inherit; cursor: pointer; }
   button:hover { border-color: #555; }
@@ -196,8 +200,7 @@
   <h1>Film Look Studio</h1>
   <div class="tabs"><button id="tabLib">Library</button><button id="tabSecond">Second look</button><button id="tabGrade">Grade</button></div>
   <input type="text" id="libq" placeholder="Search in plain words, e.g. rain at night, lone figure in red, reflections in glass" spellcheck="false">
-  <input type="text" id="folder" placeholder="Paste a folder path, e.g. /Users/andrew/Pictures/2026-10 Street walk" spellcheck="false">
-  <button id="open" class="primary">Open folder</button>
+  <div id="folderBar"><span id="folderName" title="">No folder open</span><button id="open" class="primary">Choose folder…</button></div>
 </header>
 <section id="libView" hidden>
   <div id="libSide">
@@ -265,7 +268,7 @@
   <section id="film"><div class="hint">Tick photos to batch-export.</div><div id="thumbs"></div></section>
   <section id="center">
     <div id="stage">
-      <div id="empty">Open a folder of photos (RAW or JPG) to start.<br><br>Tip: in Finder, right-click the folder while holding ⌥ Option → “Copy … as Pathname”, then paste it above.</div>
+      <div id="empty">Open a folder of photos (RAW or JPG) to start.<br><br>Click <b>Choose folder…</b> at the top right, or click any photo in the Library.</div>
       <img id="big" alt="" hidden>
       <div id="badge" hidden></div>
       <div id="busy"></div>
@@ -387,7 +390,12 @@ function syncSliders() { for (const [key] of SLIDERS) { $("s_" + key).value = S.
 
 async function loadState(st) {
   S.photos = st.photos; S.looks = st.looks;
-  if (st.folder) $("folder").value = st.folder;
+  if (st.folder) {
+    S.folder = st.folder;
+    const parts = st.folder.split("/").filter(Boolean);
+    $("folderName").innerHTML = `${esc(parts.slice(-2, -1).join(""))} › <b>${esc(parts[parts.length - 1] || st.folder)}</b>`;
+    $("folderName").title = st.folder;
+  }
   $("thumbs").innerHTML = "";
   S.ticked.clear(); updateTicked();
   for (const name of S.photos) {
@@ -477,11 +485,12 @@ async function exportNames(names) {
   } catch (e) { status(e.message, true); }
 }
 
-$("open").onclick = async () => {
-  try { loadState(await (await api("/api/folder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folder: $("folder").value }) })).json()); }
+$("open").onclick = () => openPicker("grade");
+async function openGradeFolder(folder) {
+  try { loadState(await (await api("/api/folder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folder }) })).json()); }
   catch (e) { alert(e.message); }
 };
-$("folder").addEventListener("keydown", e => { if (e.key === "Enter") $("open").click(); });
+
 $("reset").onclick = () => { S.adjust = defaults(); syncSliders(); renderBig(); };
 $("exportone").onclick = () => S.current && exportNames([S.current]);
 $("exportsel").onclick = () => exportNames([...S.ticked]);
@@ -524,7 +533,7 @@ const esc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<":
 function setTab(tab) {
   const lib = tab === "lib", second = tab === "second", grade = tab === "grade";
   $("libView").hidden = !lib; $("secondView").hidden = !second; $("gradeView").hidden = !grade;
-  $("libq").hidden = !lib; $("folder").hidden = !grade; $("open").hidden = !grade;
+  $("libq").hidden = !lib; $("folderBar").hidden = !grade;
   $("tabLib").classList.toggle("on", lib); $("tabSecond").classList.toggle("on", second);
   $("tabGrade").classList.toggle("on", grade);
   if (lib && !$("grid").children.length) runSearch();
@@ -601,19 +610,32 @@ async function pollJob() {
 $("scanBtn").onclick = async () => { showJob(await (await api("/api/library/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).json()); };
 $("pauseBtn").onclick = async () => { $("scanStatus").textContent = "Pausing after the current step…"; await api("/api/library/pause", { method: "POST" }); };
 // Folder picker: choose a drive, click into folders, filter by typing, add.
-const PK = { path: null, dirs: [], canAdd: false };
+const PK = { path: null, dirs: [], canAdd: false, mode: "library" };
+async function openPicker(mode) {
+  PK.mode = mode;
+  $("picker").querySelector("h3").textContent = mode === "grade" ? "Open a folder in Grade" : "Choose a photo folder";
+  $("pkAdd").textContent = mode === "grade" ? "Open this folder" : "Add this folder";
+  $("picker").hidden = false;
+  try {                                    // the drive / place menu
+    const b = await (await api("/api/library/browse")).json();
+    $("pkPlace").innerHTML = `<option value="">Choose a drive or place…</option>` +
+      b.places.map(p => `<option value="${esc(p.path)}">${esc(p.name)}</option>`).join("");
+  } catch (e) { $("pkWhy").textContent = e.message; }
+  // Grade starts beside the open folder, so neighbouring shoots are one click away.
+  const start = mode === "grade" && S.folder ? S.folder.replace(/\/[^/]+\/?$/, "") : null;
+  pkGo(start || null);
+}
 async function pkGo(path) {
   try {
     const b = await (await api("/api/library/browse?" + q({ path: path || "" }))).json();
-    if (!path) {
-      $("pkPlace").innerHTML = `<option value="">Choose a drive or place…</option>` +
-        b.places.map(p => `<option value="${esc(p.path)}">${esc(p.name)}</option>`).join("");
-    }
     PK.path = b.path; PK.dirs = b.dirs; PK.canAdd = !!b.can_add; PK.parent = b.parent;
-    $("pkPath").textContent = b.path ? "Folder: " + b.path : "Pick a drive above, then click into a folder.";
+    const where = b.path ? "Folder: " + b.path : "Pick a drive above, then click into a folder.";
+    $("pkPath").textContent = b.path && PK.mode === "grade" ? `${where} — ${b.photos ? b.photos + " photo" + (b.photos === 1 ? "" : "s") : "no photos"} here` : where;
     $("pkUp").disabled = !b.parent;
     $("pkWhy").textContent = b.path && !b.can_add ? b.why_not : "";
-    $("pkAdd").disabled = !PK.canAdd;
+    $("pkAdd").disabled = !PK.canAdd || (PK.mode === "grade" && !b.photos);
+    const sel = [...$("pkPlace").options].find(o => o.value && b.path && (b.path + "/").startsWith(o.value + "/"));
+    $("pkPlace").value = sel ? sel.value : "";
     $("pkFilter").value = ""; pkList();
   } catch (e) { $("pkWhy").textContent = e.message; }
 }
@@ -627,12 +649,13 @@ function pkList() {
     $("pkList").appendChild(el);
   }
 }
-$("addRoot").onclick = () => { $("picker").hidden = false; pkGo(null); };
+$("addRoot").onclick = () => openPicker("library");
 $("pkPlace").onchange = () => $("pkPlace").value && pkGo($("pkPlace").value);
 $("pkUp").onclick = () => PK.parent && pkGo(PK.parent);
 $("pkFilter").addEventListener("input", pkList);
 $("pkCancel").onclick = () => { $("picker").hidden = true; };
 $("pkAdd").onclick = async () => {
+  if (PK.mode === "grade") { $("picker").hidden = true; return openGradeFolder(PK.path); }
   try {
     await api("/api/library/roots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: PK.path }) });
     $("picker").hidden = true; await loadLib();
@@ -1184,7 +1207,8 @@ document.addEventListener("keydown", (e) => {
 buildSliders();
 api("/api/state").then(r => r.json()).then(st => {
   loadState(st);
-  loadLib().then(lib => setTab(st.folder || !lib.roots.length ? "grade" : "lib"));
+  if (st.folder) setTab("grade");          // don't wait for the library to load
+  loadLib().then(lib => { if (!st.folder) setTab(lib.roots.length ? "lib" : "grade"); });
 });
 </script>
 </body>

@@ -125,6 +125,11 @@ def browse(path=None):
         raise ValueError(f"not a folder: {p}")
     out["path"] = str(p)
     out["parent"] = str(p.parent) if p.parent != p and str(p.parent) not in ("/Volumes", "/") else None
+    try:                                   # photos directly in this folder (for "open in Grade")
+        from .. import raw
+        out["photos"] = len(raw.list_images(p))
+    except OSError:
+        out["photos"] = 0
     try:
         out["dirs"] = sorted(({"name": e.name, "path": e.path} for e in os.scandir(p)
                               if e.is_dir(follow_symlinks=False) and not e.name.startswith(".")

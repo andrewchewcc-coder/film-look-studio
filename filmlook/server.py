@@ -67,9 +67,16 @@ class FolderIn(BaseModel):
     folder: str
 
 
+def _exact_or_trimmed(text):
+    """Folder names can end in a space ("2026 03 20 Fire Dragon Festival "): use the path as
+    given if it exists, and only fall back to trimming spaces/quotes (pasted paths)."""
+    exact = Path(text).expanduser()
+    return exact if exact.exists() else Path(text.strip().strip("'\"")).expanduser()
+
+
 @app.post("/api/folder")
 def set_folder(body: FolderIn):
-    folder = Path(body.folder.strip().strip("'\"")).expanduser()
+    folder = _exact_or_trimmed(body.folder)
     if not folder.is_dir():
         raise HTTPException(400, f"not a folder: {folder}")
     state["folder"] = folder.resolve()
@@ -257,7 +264,7 @@ class RootIn(BaseModel):
 def library_add_root(body: RootIn):
     from .library import scan
     try:
-        scan.add_root(_lib().con(), body.path.strip().strip("'\""))
+        scan.add_root(_lib().con(), str(_exact_or_trimmed(body.path)))
     except (ValueError, OSError) as e:
         raise HTTPException(400, str(e))
     return library_state()
