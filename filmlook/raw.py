@@ -5,7 +5,7 @@ import numpy as np
 import rawpy
 from PIL import Image
 
-from . import dng
+from . import dng, fuji
 from .color import LUMA
 
 RAW_EXTENSIONS = {".dng", ".raf", ".nef", ".cr3", ".cr2", ".arw", ".rw2", ".orf"}
@@ -35,11 +35,12 @@ def decode(path, max_edge=None):
     Uses the camera's as-shot white balance and no auto-brightening; exposure
     is handled by `meter` so previews and full-size exports match. DNG lens
     corrections and the default crop are applied before rotating to the
-    camera's orientation.
+    camera's orientation. Fuji RAFs get Fuji's crop and lens corrections the same way.
     """
     with rawpy.imread(str(path)) as raw:
         flip = raw.sizes.flip
         active_w = raw.sizes.width
+        margins = (raw.sizes.left_margin, raw.sizes.top_margin)
         rgb = raw.postprocess(
             use_camera_wb=True,
             no_auto_bright=True,
@@ -56,8 +57,11 @@ def decode(path, max_edge=None):
         s = max_edge / max(h, w)
         if s < 1:
             rgb = np.clip(resize_float(rgb, (round(w * s), round(h * s))), 0, 1)
-    if Path(path).suffix.lower() == ".dng":
+    suffix = Path(path).suffix.lower()
+    if suffix == ".dng":
         rgb = dng.apply(rgb, dng.read_info(path), scale=rgb.shape[1] / active_w)
+    elif suffix == ".raf":
+        rgb = fuji.apply(rgb, fuji.read_info(path), scale=rgb.shape[1] / active_w, margins=margins)
     if flip == 3:
         rgb = rgb[::-1, ::-1]
     elif flip == 5:

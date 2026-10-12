@@ -172,3 +172,34 @@ def test_gold_toned_reference_is_mono_and_warm(tmp_path, user_dir):
 def test_real_colour_photo_is_not_mono():
     rng = np.random.default_rng(1)
     assert not reference.looks_monochrome(rng.uniform(0, 1, (60, 60, 3)).astype(np.float32))
+
+
+def test_fuji_tables_parse_and_fill_frame():
+    from filmlook import fuji
+    tags = {
+        "RawImageCropTopLeft": "21 12", "RawImageCroppedSize": "7728x5152",
+        "GeometricDistortionParams": "515.9 0.3535 0.5 0.6127 0.7070 0.7908 0.8662 0.9352 1 1.0606 "
+                                     "-1.06 -2.29 -3.54 -4.75 -5.91 -6.97 -7.82 -8.30 -8.78",
+        "VignettingParams": "515.9 0.3535 0.5 0.6127 0.7070 0.7908 0.8662 0.9352 1 1.0606 "
+                            "96.5 93.7 91.0 88.4 85.3 80.2 74.5 67.5 67.5",
+    }
+    info = fuji.parse(tags)
+    assert info.crop_origin == (21, 12) and info.crop_size == (7728, 5152)
+    assert info.knots[0] == 0 and info.distortion[0] == 0 and info.vignetting[0] == 100
+    s = fuji.fill_scale(info, 7728, 5152)
+    assert 1.02 < s < 1.04          # barrel correction: enlarge slightly to fill, like Fuji's JPEG
+    # A corrected image keeps its size, has no empty edges, and corners get brighter.
+    img = np.full((52, 78, 3), 0.25, np.float32)
+    out = fuji.apply(img.copy(), fuji.FujiInfo(knots=info.knots, distortion=info.distortion,
+                                               vignetting=info.vignetting))
+    assert out.shape == img.shape and out.min() > 0
+    assert out[0, 0, 0] > out[26, 39, 0] * 1.3
+
+
+def test_fuji_crop_respects_libraw_margins_and_scale():
+    from filmlook import fuji
+    img = np.arange(200 * 300 * 3, dtype=np.float32).reshape(200, 300, 3)
+    info = fuji.FujiInfo(crop_origin=(20, 12), crop_size=(200, 100))
+    out = fuji.apply(img, info, scale=0.5, margins=(0, 6))
+    assert out.shape == (50, 100, 3)
+    assert out[0, 0, 0] == img[3, 10, 0]   # ((12-6)*0.5, 20*0.5)
