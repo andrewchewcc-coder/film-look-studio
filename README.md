@@ -34,6 +34,13 @@ live in `~/Library/Application Support/Film Look Studio/`, and your photo folder
 Unplugged drives stay searchable from their thumbnails. The first scan downloads the local
 search model once (~1.5 GB).
 
+### Second look (rediscover photos you never graded)
+In the **Second look** tab: *Overlooked gems* (best ungraded photos across the library), *On this
+day* (this date in past years) and *Rediscover a period* (a year, dates or a trip). Blurry frames are
+skipped and each burst shows only its best frame. Each photo says why it was picked. **Keep** adds it
+to your shortlist, **Dismiss** hides it, **Open** grades it; your choices are remembered and teach the
+scoring your taste.
+
 ### Browser app (sliders)
 ```bash
 ./studio serve ~/Pictures/2026-10-street-walk

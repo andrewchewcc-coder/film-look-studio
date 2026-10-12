@@ -105,6 +105,29 @@ CREATE TABLE IF NOT EXISTS sidecars (
     UNIQUE (drive_id, rel_path)
 );
 
+-- Second-look finder: technical check from the embedded preview, and burst groups.
+CREATE TABLE IF NOT EXISTS quality (
+    photo_id    INTEGER PRIMARY KEY REFERENCES photos(id),
+    source      TEXT NOT NULL,          -- primary file's quick hash it was measured from
+    sharpness   REAL,                   -- 0 blurred .. ~1 crisp, in the sharpest area
+    motion      REAL,                   -- direction of remaining detail (motion blur)
+    mean_lum    REAL,
+    dark_frac   REAL,
+    bright_frac REAL,
+    verdict     TEXT,                   -- ok / blurry / motion / too_dark / too_bright
+    burst_id    INTEGER,                -- photos sharing a burst share this id
+    measured_at TEXT
+);
+CREATE INDEX IF NOT EXISTS quality_burst ON quality(burst_id);
+
+-- Your keep / dismiss decisions (later steps, e.g. culling, learn from these).
+CREATE TABLE IF NOT EXISTS picks (
+    photo_id   INTEGER PRIMARY KEY REFERENCES photos(id),
+    decision   TEXT NOT NULL,           -- keep / dismiss
+    source     TEXT,                    -- where it was decided, e.g. second-look
+    decided_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS embeddings (
     photo_id INTEGER PRIMARY KEY REFERENCES photos(id),
     model    TEXT NOT NULL,

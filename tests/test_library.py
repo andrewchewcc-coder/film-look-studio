@@ -160,3 +160,98 @@ def test_blocked_folders_and_remove_root(tmp_path, monkeypatch):
     assert scan.remove_root(con, root_id) == 1
     assert scan.summary(con)["photos"] == 0 and not scan.list_roots(con)
     assert (d / "X.dng").exists()          # the photo itself is untouched
+
+
+def test_quality_sharp_vs_blurred_and_verdicts():
+    import numpy as np
+    from PIL import Image, ImageFilter
+    from filmlook.library import quality
+    rng = np.random.default_rng(1)
+    sharp = Image.fromarray((rng.random((600, 900)) * 255).astype("uint8")).filter(ImageFilter.GaussianBlur(0.4))
+    blurred = sharp.filter(ImageFilter.GaussianBlur(4))
+    s, b = quality.measure_image(sharp), quality.measure_image(blurred)
+    assert s["sharpness"] > 0.5 > b["sharpness"]
+    assert quality.verdict(b, cutoff=0.43) in ("blurry", "motion")
+    assert quality.verdict(s, cutoff=0.43) == "ok"
+    dark = quality.measure_image(Image.new("L", (400, 300), 2))
+    assert quality.verdict(dark) == "too_dark"
+    cut = quality.blur_cutoffs([("cam", 0.7 + 0.01 * (i % 5)) for i in range(40)] + [("rare", 0.2)])
+    assert 0.6 < cut["cam"] < 0.7 and "rare" not in cut and cut[None] == quality.BLUR_FALLBACK
+
+
+def test_bursts_need_close_time_same_folder_and_similar_look():
+    import numpy as np
+    from datetime import datetime, timedelta
+    from filmlook.library import quality
+    t0 = datetime(2025, 1, 1, 12, 0, 0)
+    a, b = np.array([1.0, 0, 0]), np.array([0, 1.0, 0])
+    photos = [(1, 10, t0, a), (2, 10, t0 + timedelta(seconds=1), a), (3, 10, t0 + timedelta(seconds=2), b),
+              (4, 10, t0 + timedelta(seconds=30), b), (5, 11, t0 + timedelta(seconds=1), a)]
+    g = quality.group_bursts(photos)
+    assert g[1] == g[2] == 1          # same scene, 1 s apart
+    assert g[3] == 3                  # different look
+    assert g[4] == 4                  # too long after
+    assert g[5] == 5                  # other folder
+
+
+def _fake_library(tmp_path, monkeypatch, n=40):
+    """A library of n photos in 4 folders with random embeddings and quality rows."""
+    import numpy as np
+    from filmlook.library import vision
+    rng = np.random.default_rng(0)
+    dim = 16
+    monkeypatch.setattr(vision, "embed_text", lambda texts: (lambda a: a / np.linalg.norm(a, axis=1, keepdims=True))(
+        np.random.default_rng(len(texts)).normal(size=(len(texts), dim)).astype(np.float32)))
+    con = db.connect(tmp_path / "lib.db")
+    con.execute("INSERT INTO drives (id, uuid, name, mount) VALUES (1, 'U', 'Test', '/nonexistent')")
+    for f in range(4):
+        con.execute("INSERT INTO folders (id, drive_id, rel_path, category) VALUES (?, 1, ?, 'street')", (f + 1, f"shoot{f}"))
+    for i in range(1, n + 1):
+        fid = (i - 1) % 4 + 1
+        con.execute("INSERT INTO files (id, drive_id, folder_id, rel_path, kind, size, mtime) VALUES (?,1,?,?, 'raw', 1, 0)",
+                    (i, fid, f"shoot{fid - 1}/{i}.dng"))
+        con.execute("""INSERT INTO photos (id, primary_file_id, folder_id, capture_time, graded, thumb, rating)
+                       VALUES (?,?,?,?,?,?,?)""", (i, i, fid, f"2025-10-{(i % 20) + 1:02d}T12:00:{i % 60:02d}",
+                                                    int(i % 5 == 0), f"{i}.jpg", 3 if i % 7 == 0 else 0))
+        v = rng.normal(size=(vision.VIEWS, dim)).astype(np.float32)
+        v /= np.linalg.norm(v, axis=1, keepdims=True)
+        con.execute("INSERT INTO embeddings VALUES (?,?,?,?)", (i, vision.MODEL_ID, f"{i}.jpg", v.astype(np.float16).tobytes()))
+        con.execute("""INSERT INTO quality (photo_id, source, sharpness, motion, mean_lum, dark_frac, bright_frac,
+                       verdict, burst_id) VALUES (?, 'x', 0.7, 0.1, 0.4, 0.0, 0.0, ?, ?)""",
+                    (i, "blurry" if i == 3 else "ok", 2 if i in (2, 6) else i))
+    con.commit()
+    return con
+
+
+def test_second_look_candidates_and_decisions_persist(tmp_path, monkeypatch):
+    from filmlook.library import secondlook
+    con = _fake_library(tmp_path, monkeypatch)
+    res = secondlook.suggestions(con, "gems", limit=100)
+    ids = {r["id"] for r in res["results"]}
+    assert not ids & {5, 10, 15, 20}           # graded photos never suggested
+    assert 3 not in ids                         # failed the technical check
+    assert len(ids & {2, 6}) == 1               # one frame per burst
+    assert res["total"] == len(ids)
+    first = res["results"][0]["id"]
+    secondlook.decide(con, first, "dismiss")
+    secondlook.decide(con, res["results"][1]["id"], "keep")
+    con.close()
+    con2 = db.connect(tmp_path / "lib.db")      # "restart"
+    again = {r["id"] for r in secondlook.suggestions(con2, "gems", limit=100)["results"]}
+    assert first not in again
+    short = secondlook.suggestions(con2, "shortlist")["results"]
+    assert [r["id"] for r in short] == [res["results"][1]["id"]] and short[0]["decision"] == "keep"
+    secondlook.decide(con2, first, None)        # undo
+    assert first in {r["id"] for r in secondlook.suggestions(con2, "gems", limit=100)["results"]}
+
+
+def test_second_look_period_and_on_this_day(tmp_path, monkeypatch):
+    from datetime import date
+    from filmlook.library import secondlook
+    con = _fake_library(tmp_path, monkeypatch)
+    p = secondlook.suggestions(con, "period", folder_id=2, limit=100)["results"]
+    assert p and all(r["folder"] == "shoot1" for r in p)
+    d = secondlook.suggestions(con, "this_day", today=date(2026, 10, 5), limit=100)
+    assert d["results"] and all(r["time"][5:10] == "10-05" for r in d["results"])
+    near = secondlook.suggestions(con, "this_day", today=date(2026, 10, 25), limit=100)
+    assert "showing" in near["note"] or not near["results"]

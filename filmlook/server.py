@@ -4,7 +4,7 @@ import tempfile
 import threading
 import uuid
 import webbrowser
-from pathlib import Path
+from pathlib import Path, PurePath
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
@@ -297,6 +297,46 @@ def library_set_folder(folder_id: int, body: CategoryIn):
     except ValueError as e:
         raise HTTPException(400, str(e))
     return {"ok": True}
+
+
+# --- Second look: overlooked photos ------------------------------------------------------
+
+@app.get("/api/second/state")
+def second_state():
+    from .library import secondlook
+    c = _lib().con()
+    folders = [{"id": r["id"], "name": PurePath(r["rel_path"]).name} for r in c.execute(
+        """SELECT DISTINCT fo.id, fo.rel_path FROM folders fo JOIN photos p ON p.folder_id = fo.id
+           WHERE p.graded = 0 ORDER BY fo.rel_path DESC""")]
+    years = [r[0] for r in c.execute("""SELECT DISTINCT substr(capture_time, 1, 4) FROM photos
+                                         WHERE capture_time IS NOT NULL ORDER BY 1 DESC""")]
+    return {"counts": secondlook.counts(c), "folders": folders, "years": years,
+            "measured": c.execute("SELECT COUNT(*) FROM quality").fetchone()[0]}
+
+
+@app.get("/api/second/list")
+def second_list(view: str = "gems", cats: str = "street,travel", year: str = "", date_from: str = "",
+                date_to: str = "", folder_id: int = 0, offset: int = 0, limit: int = 20):
+    from .library import secondlook
+    if view not in ("gems", "this_day", "period", "shortlist"):
+        raise HTTPException(400, "unknown view")
+    return secondlook.suggestions(_lib().con(), view, categories=[c for c in cats.split(",") if c] or None,
+                                  year=year or None, date_from=date_from or None, date_to=date_to or None,
+                                  folder_id=folder_id or None, offset=offset, limit=min(limit, 100))
+
+
+class DecideIn(BaseModel):
+    decision: str | None = None
+
+
+@app.post("/api/second/decide/{photo_id}")
+def second_decide(photo_id: int, body: DecideIn):
+    from .library import secondlook
+    try:
+        secondlook.decide(_lib().con(), photo_id, body.decision)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True, "counts": secondlook.counts(_lib().con())}
 
 
 def run(folder=None, port=8765, open_browser=True):

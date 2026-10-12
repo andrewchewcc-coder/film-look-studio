@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from . import drives, thumbs, vision
+from . import drives, quality, thumbs, vision
 
 BATCH = 32
 EMBED_BATCH = 8   # photos per GPU batch (x VIEWS images each)
@@ -99,8 +99,77 @@ def reclassify(con):
     return len(rows)
 
 
+def build_quality(con, progress=None, should_stop=lambda: False, workers=4):
+    """Measure focus / blur / exposure for photos not yet measured (needs the drive)."""
+    mounts = drives.online_mounts(con)
+    rows = con.execute("""SELECT p.id, f.drive_id, f.rel_path, f.kind, f.quick_hash FROM photos p
+                          JOIN files f ON f.id = p.primary_file_id
+                          LEFT JOIN quality q ON q.photo_id = p.id
+                          WHERE q.photo_id IS NULL OR q.source != f.quick_hash""").fetchall()
+    todo = [r for r in rows if r["drive_id"] in mounts]
+
+    def work(r):
+        try:
+            return r, quality.measure(Path(mounts[r["drive_id"]]) / r["rel_path"], r["kind"])
+        except Exception:
+            return r, None
+
+    done = 0
+    with ThreadPoolExecutor(workers) as pool:
+        for i in range(0, len(todo), BATCH):
+            if should_stop():
+                break
+            for r, m in pool.map(work, todo[i:i + BATCH]):
+                if m is None:
+                    continue
+                con.execute("""INSERT OR REPLACE INTO quality (photo_id, source, sharpness, motion, mean_lum,
+                               dark_frac, bright_frac, verdict, burst_id, measured_at)
+                               VALUES (?,?,?,?,?,?,?,NULL,NULL,datetime('now'))""",
+                            (r["id"], r["quick_hash"], m["sharpness"], m["motion"], m["mean_lum"],
+                             m["dark_frac"], m["bright_frac"]))
+                done += 1
+            con.commit()
+            if progress:
+                progress({"phase": "checking", "done": done, "todo": len(todo)})
+    if not should_stop():
+        update_verdicts(con)
+        update_bursts(con)
+    return {"measured": done, "unmeasured_offline": len(rows) - len(todo)}
+
+
+def update_verdicts(con):
+    """Blur is judged per camera, so verdicts are refreshed across the library."""
+    rows = con.execute("""SELECT q.photo_id, COALESCE(p.camera, '?') AS camera, q.sharpness, q.motion,
+                          q.mean_lum, q.dark_frac, q.bright_frac FROM quality q JOIN photos p ON p.id = q.photo_id""").fetchall()
+    cut = quality.blur_cutoffs([(r["camera"], r["sharpness"]) for r in rows])
+    con.executemany("UPDATE quality SET verdict=? WHERE photo_id=?",
+                    [(quality.verdict(dict(r), cut.get(r["camera"], cut[None])), r["photo_id"]) for r in rows])
+    con.commit()
+
+
+def update_bursts(con):
+    from datetime import datetime
+    vecs = {r[0]: np.frombuffer(r[1], dtype=np.float16).astype(np.float32).reshape(vision.VIEWS, -1)[0]
+            for r in con.execute("SELECT photo_id, vector FROM embeddings WHERE model=?", (vision.MODEL_ID,))}
+    photos = []
+    for r in con.execute("SELECT p.id, p.folder_id, p.capture_time FROM photos p JOIN quality q ON q.photo_id = p.id"):
+        if r["id"] not in vecs:
+            continue
+        try:
+            t = datetime.fromisoformat(r["capture_time"]) if r["capture_time"] else None
+        except ValueError:
+            t = None
+        photos.append((r["id"], r["folder_id"], t, vecs[r["id"]]))
+    bursts = quality.group_bursts(photos)
+    con.executemany("UPDATE quality SET burst_id=? WHERE photo_id=?", [(b, pid) for pid, b in bursts.items()])
+    con.commit()
+    return bursts
+
+
 def build(con, progress=None, should_stop=lambda: False):
     out = build_thumbnails(con, progress, should_stop)
     if not should_stop():
         out.update(build_embeddings(con, progress, should_stop))
+    if not should_stop():
+        out.update(build_quality(con, progress, should_stop))
     return out

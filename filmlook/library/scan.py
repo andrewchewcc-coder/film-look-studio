@@ -34,6 +34,14 @@ class Stopped(Exception):
     pass
 
 
+def forget_photo(con, pid, keep_decision=False):
+    """Delete a photo record and everything hanging off it (never the photo's files)."""
+    for table in ("embeddings", "quality") + (() if keep_decision else ("picks",)):
+        con.execute(f"DELETE FROM {table} WHERE photo_id=?", (pid,))
+    con.execute("UPDATE files SET photo_id=NULL WHERE photo_id=?", (pid,))
+    con.execute("DELETE FROM photos WHERE id=?", (pid,))
+
+
 def now():
     return datetime.now().isoformat(timespec="seconds")
 
@@ -81,9 +89,8 @@ def remove_root(con, root_id):
     for f in folders:
         pids = [x[0] for x in con.execute("SELECT id FROM photos WHERE folder_id=?", (f["id"],))]
         for pid in pids:
-            con.execute("DELETE FROM embeddings WHERE photo_id=?", (pid,))
+            forget_photo(con, pid)
         con.execute("UPDATE files SET photo_id=NULL WHERE folder_id=?", (f["id"],))
-        con.execute("DELETE FROM photos WHERE folder_id=?", (f["id"],))
         con.execute("DELETE FROM files WHERE folder_id=?", (f["id"],))
         con.execute("DELETE FROM sidecars WHERE folder_id=?", (f["id"],))
         con.execute("DELETE FROM folders WHERE id=?", (f["id"],))
@@ -306,9 +313,7 @@ def repair_shoot(con, drive_id, shoot_rel):
     for pid in stale:
         if con.execute("SELECT 1 FROM files WHERE photo_id=? AND missing=1 AND role='original'", (pid,)).fetchone():
             continue  # original vanished from an online drive: keep the record (and its thumbnail)
-        con.execute("UPDATE files SET photo_id=NULL WHERE photo_id=?", (pid,))
-        con.execute("DELETE FROM embeddings WHERE photo_id=?", (pid,))
-        con.execute("DELETE FROM photos WHERE id=?", (pid,))
+        forget_photo(con, pid)
 
 
 def link_duplicates(con, mounts):
@@ -337,8 +342,8 @@ def link_duplicates(con, mounts):
                 con.execute("UPDATE files SET photo_id=?, role='duplicate' WHERE photo_id=? AND id=?",
                             (keeper["photo_id"], old, r["id"]))
                 con.execute("UPDATE files SET photo_id=? WHERE photo_id=?", (keeper["photo_id"], old))
-                con.execute("DELETE FROM embeddings WHERE photo_id=?", (old,))
-                con.execute("DELETE FROM photos WHERE id=?", (old,))
+                con.execute("UPDATE OR IGNORE picks SET photo_id=? WHERE photo_id=?", (keeper["photo_id"], old))
+                forget_photo(con, old)
                 merged += 1
     con.commit()
     return merged

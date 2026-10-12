@@ -24,7 +24,10 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   `drives.py` (drives by volume UUID; offline = not mounted), `scan.py` (incremental, stoppable),
   `pairing.py` (RAW + copies + exported JPGs = one photo), `sidecars.py` (ON1/XMP, read only),
   `thumbs.py` (embedded RAW previews), `vision.py` (SigLIP 2 on MPS, categories),
-  `index.py`, `search.py`, `service.py` (background scan job for the app).
+  `index.py`, `search.py`, `service.py` (background scan job for the app),
+  `quality.py` (focus/motion/exposure from embedded previews, burst groups),
+  `secondlook.py` (second-look finder: cross-fitted taste model + zero-shot appeal; keep/dismiss in `picks`).
+- PyTorch model calls must go through `vision` (one at a time: concurrent MPS use segfaults).
 - Library CLI: `./studio library add|scan|status|search|folders`.
 
 ## Checks

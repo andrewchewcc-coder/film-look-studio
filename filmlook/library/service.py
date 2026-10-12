@@ -66,6 +66,8 @@ def warm_model():
                 vision.load()
                 search.query_vector("warm up")   # first GPU run is the slow one
                 search._matrix(con())            # load the photo index into memory
+                from . import secondlook
+                secondlook._scores(con())        # second-look scores ready before the first visit
         except Exception:
             pass
     threading.Thread(target=go, daemon=True).start()

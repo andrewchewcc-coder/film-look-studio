@@ -53,6 +53,9 @@ CATEGORIES = list(CATEGORY_PROMPTS)
 
 _lock = threading.Lock()
 _model = None
+# One model call at a time: PyTorch on the GPU crashes (segfault) if two threads run it
+# at once, e.g. a scan embedding photos while a search embeds its words.
+_infer = threading.Lock()
 
 
 def device():
@@ -93,9 +96,9 @@ def embed_images(images):
     """List of PIL images -> (N, D) float32, L2-normalised."""
     import torch
     model, preprocess, _ = load()
-    batch = torch.stack([preprocess(im.convert("RGB")) for im in images]).to(device())
-    with torch.inference_mode():
-        return _normalise(model.encode_image(batch))
+    batch = torch.stack([preprocess(im.convert("RGB")) for im in images])
+    with _infer, torch.inference_mode():
+        return _normalise(model.encode_image(batch.to(device())))
 
 
 def views(im):
@@ -117,7 +120,7 @@ def embed_photos(images):
 def embed_text(texts):
     import torch
     model, _, tokenizer = load()
-    with torch.inference_mode():
+    with _infer, torch.inference_mode():
         return _normalise(model.encode_text(tokenizer(texts).to(device())))
 
 
