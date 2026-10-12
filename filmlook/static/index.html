@@ -54,15 +54,127 @@
   #status.err { color: var(--danger); }
   .small { font-size: 12px; color: var(--muted); }
   input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
+
+  /* --- tabs + library --- */
+  .tabs { display: flex; gap: 2px; background: #0f0f0f; border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+  .tabs button { border: 0; background: transparent; padding: 5px 14px; color: var(--muted); }
+  .tabs button.on { background: #2a2a2a; color: var(--text); }
+  [hidden] { display: none !important; }
+  #libView { display: grid; grid-template-columns: 250px 1fr; height: calc(100vh - 53px); }
+  #libSide { border-right: 1px solid var(--line); overflow-y: auto; padding: 14px; }
+  #libSide h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
+  #libSide h2:first-child { margin-top: 0; }
+  #libSide label.chk { display: flex; align-items: center; gap: 7px; margin: 5px 0; cursor: pointer; }
+  #libSide label.chk input { accent-color: var(--accent); width: 15px; height: 15px; }
+  #libSide label.chk small { color: var(--muted); margin-left: auto; }
+  #libSide select, #libSide input[type=date], #libSide input[type=text] { width: 100%; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; }
+  #libSide .field { margin: 8px 0; }
+  #libSide .field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  .dates { display: flex; flex-direction: column; gap: 6px; }
+  .root { font-size: 12px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; margin: 6px 0; word-break: break-word; }
+  .root b { font-weight: 600; }
+  .pill { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 9px; margin-right: 4px; vertical-align: 1px; }
+  .pill.on { background: #1f3a26; color: #8fd19e; }
+  .pill.off { background: #3a2a1f; color: #e3a36f; }
+  .bar { height: 5px; background: #2a2a2a; border-radius: 3px; overflow: hidden; margin: 6px 0; }
+  .bar div { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+  #libMain { overflow-y: auto; padding: 12px 16px 30px; min-width: 0; }
+  #libInfo { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; color: var(--muted); font-size: 13px; }
+  #libInfo b { color: var(--text); }
+  #libInfo .chip { background: #2a2a2a; border: 1px solid #383838; border-radius: 12px; padding: 2px 9px; color: var(--text); font-size: 12px; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+  .cell { position: relative; aspect-ratio: 1; background: #1b1b1b; border-radius: 4px; overflow: hidden; cursor: pointer; border: 2px solid transparent; }
+  .cell:hover { border-color: #555; }
+  .cell img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .cell.offline img { opacity: .55; }
+  .cell .tags { position: absolute; left: 5px; bottom: 5px; display: flex; gap: 4px; flex-wrap: wrap; }
+  .cell .tags span { background: #000c; font-size: 10px; padding: 1px 6px; border-radius: 3px; }
+  .cell .tags .g { color: var(--accent); }
+  .cell .tags .o { color: #e3a36f; }
+  #more { display: block; margin: 16px auto; }
+  .divider { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin: 14px 0 4px; }
+  .divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+  #libEmpty { color: var(--muted); text-align: center; margin-top: 80px; }
+  table.folders { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.folders th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  table.folders td { padding: 6px 8px; border-bottom: 1px solid #222; vertical-align: middle; }
+  table.folders td.counts { color: var(--muted); font-size: 12px; }
+  table.folders a { color: var(--text); text-decoration: underline dotted; cursor: pointer; }
+  table.folders select { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 4px 6px; border-radius: 5px; font: inherit; }
+  #picker { position: fixed; inset: 0; background: #000d; display: flex; align-items: center; justify-content: center; z-index: 11; padding: 16px; }
+  #picker .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; width: 100%; max-width: 560px; }
+  #picker h3 { margin: 0 0 12px; font-size: 16px; }
+  #picker .prow { display: flex; gap: 8px; margin: 8px 0; }
+  #picker .prow.end { justify-content: flex-end; }
+  #picker select { flex: 1; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 7px 8px; border-radius: 6px; font: inherit; }
+  #picker input { width: 100%; margin: 8px 0; }
+  #pkPath { word-break: break-all; }
+  #pkList { height: 45vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; }
+  #pkList div { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #222; }
+  #pkList div:hover { background: #262626; }
+  #pkList div::before { content: "📁 "; }
+  #pkList .none { color: var(--muted); cursor: default; }
+  #pkList .none::before { content: ""; }
+  #pkWhy { color: #e3a36f; min-height: 16px; margin-top: 6px; }
+  .root button { float: right; padding: 1px 7px; font-size: 11px; margin-left: 6px; }
+  #lightbox { position: fixed; inset: 0; background: #000d; display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+  #lightbox .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; max-width: 760px; width: 100%; }
+  #lightbox img { width: 100%; max-height: 60vh; object-fit: contain; background: #111; display: block; }
+  #lightbox .msg { margin: 10px 0 4px; color: #e3a36f; }
+  #lightbox .meta { color: var(--muted); font-size: 12px; }
+  @media (max-width: 800px) {
+    #libView { grid-template-columns: 1fr; height: auto; }
+    #libSide { border-right: 0; border-bottom: 1px solid var(--line); }
+    header { flex-wrap: wrap; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  }
 </style>
 </head>
 <body>
 <header>
   <h1>Film Look Studio</h1>
+  <div class="tabs"><button id="tabLib">Library</button><button id="tabGrade">Grade</button></div>
+  <input type="text" id="libq" placeholder="Search in plain words, e.g. rain at night, lone figure in red, reflections in glass" spellcheck="false">
   <input type="text" id="folder" placeholder="Paste a folder path, e.g. /Users/andrew/Pictures/2026-10 Street walk" spellcheck="false">
   <button id="open" class="primary">Open folder</button>
 </header>
-<main>
+<section id="libView" hidden>
+  <div id="libSide">
+    <h2>Category</h2>
+    <div id="cats"></div>
+    <h2>Filter</h2>
+    <div class="field"><span>Year</span><select id="fYear"><option value="">All years</option></select></div>
+    <div class="field"><span>Date range</span><div class="dates"><input type="date" id="fFrom" title="From"><input type="date" id="fTo" title="To"></div></div>
+    <div class="field"><span>Camera</span><select id="fCamera"><option value="">All cameras</option></select></div>
+    <div class="field"><span>Graded</span><select id="fGraded"><option value="">Graded or not</option><option value="1">Graded (exported)</option><option value="0">Not graded yet</option></select></div>
+    <div class="row"><button id="fClear">Clear filters</button><button id="showFolders">Folders…</button></div>
+
+    <h2>Library folders</h2>
+    <div id="roots"></div>
+    <div class="row"><button id="addRoot">Add folder…</button></div>
+    <div class="row"><button id="scanBtn" class="primary">Scan for new photos</button><button id="pauseBtn" hidden>Pause</button></div>
+    <div class="bar"><div id="scanBar"></div></div>
+    <div id="scanStatus" class="small"></div>
+  </div>
+  <div id="libMain">
+    <div id="libInfo"></div>
+    <div id="grid" class="grid"></div>
+    <button id="more" hidden>Show more</button>
+    <div id="libEmpty" hidden></div>
+    <div id="folderView" hidden></div>
+  </div>
+</section>
+<div id="picker" hidden><div class="box">
+  <h3>Choose a photo folder</h3>
+  <div class="prow"><select id="pkPlace"></select><button id="pkUp" title="Go up one folder">↑ Up</button></div>
+  <div id="pkPath" class="small"></div>
+  <input type="text" id="pkFilter" placeholder="Type to find a folder, e.g. 2026" spellcheck="false">
+  <div id="pkList"></div>
+  <div id="pkWhy" class="small"></div>
+  <div class="prow end"><button id="pkCancel">Cancel</button><button id="pkAdd" class="primary">Add this folder</button></div>
+</div></div>
+<div id="lightbox" hidden><div class="box"><img id="lbImg" alt=""><div class="msg" id="lbMsg"></div><div class="meta" id="lbMeta"></div><div class="row" style="justify-content:flex-end"><button id="lbClose" style="flex:0">Close</button></div></div></div>
+<main id="gradeView">
   <section id="film"><div class="hint">Tick photos to batch-export.</div><div id="thumbs"></div></section>
   <section id="center">
     <div id="stage">
@@ -260,8 +372,237 @@ let bDown = false;
 document.addEventListener("keydown", e => { if (e.key === "b" && !bDown && e.target.tagName !== "INPUT") { bDown = true; renderBig(true); } });
 document.addEventListener("keyup", e => { if (e.key === "b" && bDown) { bDown = false; renderBig(); } });
 
+
+// --- Library -------------------------------------------------------------------------
+const CATS = ["street", "travel", "portrait", "misc"];
+const L = { cats: new Set(["street", "travel"]), offset: 0, total: 0, folder: null, folderName: "", seq: 0, polling: false };
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function setTab(tab) {
+  const lib = tab === "lib";
+  $("libView").hidden = !lib; $("gradeView").hidden = lib;
+  $("libq").hidden = !lib; $("folder").hidden = lib; $("open").hidden = lib;
+  $("tabLib").classList.toggle("on", lib); $("tabGrade").classList.toggle("on", !lib);
+  if (lib && !$("grid").children.length) runSearch();
+}
+$("tabLib").onclick = () => setTab("lib");
+$("tabGrade").onclick = () => setTab("grade");
+
+function buildCats() {
+  $("cats").innerHTML = "";
+  for (const c of CATS) {
+    const l = document.createElement("label"); l.className = "chk";
+    l.innerHTML = `<input type="checkbox" ${L.cats.has(c) ? "checked" : ""}> ${c[0].toUpperCase() + c.slice(1)}`;
+    l.querySelector("input").onchange = (e) => { e.target.checked ? L.cats.add(c) : L.cats.delete(c); runSearch(); };
+    $("cats").appendChild(l);
+  }
+}
+
+function fillSelect(sel, values, keep) {
+  const cur = sel.value; const first = sel.options[0].outerHTML;
+  sel.innerHTML = first + values.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  sel.value = keep ? cur : "";
+}
+
+async function loadLib() {
+  const st = await (await api("/api/library/state")).json();
+  fillSelect($("fYear"), st.facets.years, true);
+  fillSelect($("fCamera"), st.facets.cameras, true);
+  $("roots").innerHTML = st.roots.length ? st.roots.map(r =>
+    `<div class="root"><button data-id="${r.id}" data-name="${esc(r.rel_path)}" title="Take this folder out of the library">Remove</button><span class="pill ${r.online ? "on" : "off"}">${r.online ? "online" : "drive offline"}</span><b>${esc(r.drive)}</b><br>${esc(r.rel_path)}</div>`).join("")
+    : `<div class="small">No folders yet. Add one below, then Scan.</div>`;
+  $("roots").querySelectorAll("button").forEach(b => b.onclick = async () => {
+    if (!confirm(`Remove “${b.dataset.name}” from the library?\n\nYour photos are not touched — only the library's index and thumbnails for this folder are cleared.`)) return;
+    try { await api("/api/library/roots/" + b.dataset.id, { method: "DELETE" }); await loadLib(); runSearch(); }
+    catch (e) { alert(e.message); }
+  });
+  $("roots").insertAdjacentHTML("beforeend", `<div class="small">${st.summary.photos.toLocaleString()} photos · ${st.summary.graded.toLocaleString()} graded</div>`);
+  showJob(st.job);
+  return st;
+}
+
+function showJob(j) {
+  const run = j.running;
+  $("scanBtn").hidden = run; $("pauseBtn").hidden = !run;
+  $("scanBtn").textContent = j.phase === "paused" ? "Resume scan" : "Scan for new photos";
+  const names = { starting: "Starting", listing: "Listing files", reading: "Reading photos", duplicates: "Checking duplicates",
+                  thumbnails: "Making thumbnails", understanding: "Understanding photos", done: "Up to date", paused: "Paused — safe to resume any time",
+                  error: "Stopped with an error", idle: "" };
+  const pct = j.todo ? Math.round(100 * j.done / j.todo) : (j.phase === "done" ? 100 : 0);
+  $("scanBar").style.width = (run || j.phase === "done" ? pct : 0) + "%";
+  let msg = names[j.phase] ?? j.phase;
+  if (run && j.todo) msg += ` · ${j.done.toLocaleString()} / ${j.todo.toLocaleString()}`;
+  if (j.phase === "done" && j.stats) {
+    const s = j.stats, n = (s.new || 0) + (s.changed || 0);
+    msg += n ? ` · ${n} new or changed file(s)` : " · nothing new";
+    if (s.offline_roots && s.offline_roots.length) msg += ` · skipped (drive offline): ${s.offline_roots.join(", ")}`;
+  }
+  if (j.error) msg += ` · ${j.error}`;
+  $("scanStatus").textContent = msg;
+  if (run && !L.polling) pollJob();
+}
+async function pollJob() {
+  L.polling = true;
+  try {
+    while (true) {
+      const st = await (await api("/api/library/state")).json();
+      showJob(st.job);
+      if (!st.job.running) { await loadLib(); runSearch(); break; }
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  } finally { L.polling = false; }
+}
+$("scanBtn").onclick = async () => { showJob(await (await api("/api/library/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).json()); };
+$("pauseBtn").onclick = async () => { $("scanStatus").textContent = "Pausing after the current step…"; await api("/api/library/pause", { method: "POST" }); };
+// Folder picker: choose a drive, click into folders, filter by typing, add.
+const PK = { path: null, dirs: [], canAdd: false };
+async function pkGo(path) {
+  try {
+    const b = await (await api("/api/library/browse?" + q({ path: path || "" }))).json();
+    if (!path) {
+      $("pkPlace").innerHTML = `<option value="">Choose a drive or place…</option>` +
+        b.places.map(p => `<option value="${esc(p.path)}">${esc(p.name)}</option>`).join("");
+    }
+    PK.path = b.path; PK.dirs = b.dirs; PK.canAdd = !!b.can_add; PK.parent = b.parent;
+    $("pkPath").textContent = b.path ? "Folder: " + b.path : "Pick a drive above, then click into a folder.";
+    $("pkUp").disabled = !b.parent;
+    $("pkWhy").textContent = b.path && !b.can_add ? b.why_not : "";
+    $("pkAdd").disabled = !PK.canAdd;
+    $("pkFilter").value = ""; pkList();
+  } catch (e) { $("pkWhy").textContent = e.message; }
+}
+function pkList() {
+  const f = $("pkFilter").value.trim().toLowerCase();
+  const dirs = PK.dirs.filter(d => !f || d.name.toLowerCase().includes(f));
+  $("pkList").innerHTML = dirs.length ? "" : `<div class="none">${PK.path ? (f ? "No folder matches." : "No folders inside — you can add this one.") : ""}</div>`;
+  for (const d of dirs) {
+    const el = document.createElement("div"); el.textContent = d.name;
+    el.onclick = () => pkGo(d.path);
+    $("pkList").appendChild(el);
+  }
+}
+$("addRoot").onclick = () => { $("picker").hidden = false; pkGo(null); };
+$("pkPlace").onchange = () => $("pkPlace").value && pkGo($("pkPlace").value);
+$("pkUp").onclick = () => PK.parent && pkGo(PK.parent);
+$("pkFilter").addEventListener("input", pkList);
+$("pkCancel").onclick = () => { $("picker").hidden = true; };
+$("pkAdd").onclick = async () => {
+  try {
+    await api("/api/library/roots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: PK.path }) });
+    $("picker").hidden = true; await loadLib();
+    $("scanStatus").textContent = "Folder added. Click “Scan for new photos” to index it.";
+  } catch (e) { $("pkWhy").textContent = e.message; }
+};
+
+function params(offset) {
+  const p = { q: $("libq").value.trim(), cats: [...L.cats].join(","), year: $("fYear").value, date_from: $("fFrom").value,
+              date_to: $("fTo").value, camera: $("fCamera").value, graded: $("fGraded").value, offset, limit: 120 };
+  if (L.folder) { p.folder_id = L.folder; p.cats = ""; }
+  return p;
+}
+async function runSearch(more = false) {
+  $("folderView").hidden = true; $("grid").hidden = false;
+  const seq = ++L.seq;
+  if (!more) L.offset = 0;
+  const p = params(L.offset);
+  if (!more) $("libInfo").innerHTML = p.q ? "Searching…" : "Loading…";
+  const slow = setTimeout(() => { if (seq === L.seq) $("libInfo").textContent =
+    "Loading the search model — the first search after opening the app takes about 15 seconds…"; }, 2500);
+  const ctrl = new AbortController(), limit = setTimeout(() => ctrl.abort(), 90000);
+  let res;
+  try { res = await (await api("/api/library/search?" + q(p), { signal: ctrl.signal })).json(); }
+  catch (e) {
+    if (seq === L.seq) $("libInfo").textContent = e.name === "AbortError"
+      ? "Search is taking too long. Close the app window and open it again from the Desktop icon." : "Search failed: " + e.message;
+    return;
+  } finally { clearTimeout(slow); clearTimeout(limit); }
+  if (seq !== L.seq) return;
+  if (!more) { $("grid").innerHTML = ""; L.divided = false; }
+  for (const r of res.results) {
+    if (p.q && r.strong === false && !L.divided) {
+      L.divided = true;
+      const d = document.createElement("div"); d.className = "divider";
+      d.textContent = res.strong ? `Weaker matches — these may not show “${p.q}”` : `No clear matches for “${p.q}” — closest photos`;
+      $("grid").appendChild(d);
+    }
+    $("grid").appendChild(cell(r));
+  }
+  L.total = res.total; L.offset += res.results.length;
+  $("more").hidden = L.offset >= L.total;
+  const what = p.q ? `<b>${res.strong.toLocaleString()}</b> clear matches for <b>“${esc(p.q)}”</b>, best first` : "newest first";
+  const scope = L.folder ? ` in <span class="chip" id="clearFolder" title="Show all folders">${esc(L.folderName)} ✕</span>` :
+    (L.cats.size ? ` · ${[...L.cats].join(" + ")}` : " · all categories");
+  $("libInfo").innerHTML = p.q ? `<span>${what}${scope}</span>` : `<span><b>${L.total.toLocaleString()}</b> photos</span><span>${what}${scope}</span>`;
+  const cf = $("clearFolder"); if (cf) cf.onclick = () => { L.folder = null; runSearch(); };
+  $("libEmpty").hidden = L.total > 0;
+  $("libEmpty").textContent = L.total ? "" : "No photos match. Try other words, or tick more categories.";
+}
+$("more").onclick = () => runSearch(true);
+
+function describe(r) {
+  const bits = [r.time ? r.time.slice(0, 16).replace("T", " ") : "", r.camera, r.lens,
+    r.focal_length ? Math.round(r.focal_length) + "mm" : "", r.aperture ? "f/" + r.aperture : "",
+    r.shutter ? (r.shutter < 1 ? "1/" + Math.round(1 / r.shutter) : r.shutter + "s") : "", r.iso ? "ISO " + r.iso : ""];
+  return bits.filter(Boolean).join(" · ");
+}
+function cell(r) {
+  const d = document.createElement("div"); d.className = "cell" + (r.online ? "" : " offline");
+  const tags = [];
+  if (r.graded) tags.push(`<span class="g">Graded</span>`);
+  if (r.rating > 0) tags.push(`<span>${"★".repeat(r.rating)}</span>`);
+  if (!r.online) tags.push(`<span class="o">Drive offline</span>`);
+  d.innerHTML = `<img loading="lazy" src="/api/library/thumb/${r.id}" alt=""><div class="tags">${tags.join("")}</div>`;
+  d.title = `${r.name}\n${r.folder}\n${describe(r)}\n${r.category}`;
+  d.onclick = () => openPhoto(r);
+  return d;
+}
+async function openPhoto(r) {
+  try {
+    const st = await (await api("/api/library/open/" + r.id, { method: "POST" })).json();
+    S.current = st.select; setTab("grade"); loadState(st);
+  } catch (e) {
+    $("lbImg").src = "/api/library/thumb/" + r.id;
+    $("lbMsg").textContent = e.message;
+    $("lbMeta").textContent = `${r.name} — ${r.folder} (${r.drive})\n${describe(r)}`;
+    $("lightbox").hidden = false;
+  }
+}
+$("lbClose").onclick = () => { $("lightbox").hidden = true; };
+$("lightbox").onclick = (e) => { if (e.target.id === "lightbox") $("lightbox").hidden = true; };
+
+let typeTimer = null;
+$("libq").addEventListener("input", () => { clearTimeout(typeTimer); typeTimer = setTimeout(() => runSearch(), 400); });
+$("libq").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(typeTimer); runSearch(); } });
+["fYear", "fFrom", "fTo", "fCamera", "fGraded"].forEach(id => $(id).addEventListener("change", () => runSearch()));
+$("fClear").onclick = () => {
+  ["fYear", "fFrom", "fTo", "fCamera", "fGraded"].forEach(id => $(id).value = "");
+  L.cats = new Set(["street", "travel"]); L.folder = null; $("libq").value = ""; buildCats(); runSearch();
+};
+
+$("showFolders").onclick = async () => {
+  const rows = await (await api("/api/library/folders")).json();
+  $("grid").hidden = true; $("more").hidden = true; $("libEmpty").hidden = true;
+  $("libInfo").innerHTML = `<span><b>${rows.length}</b> folders</span><span>Set a category for a whole shoot. “Auto” uses the image model per photo.</span>`;
+  const opts = (sel) => [`<option value="">Auto</option>`, ...CATS.map(c => `<option value="${c}" ${sel === c ? "selected" : ""}>${c}</option>`)].join("");
+  $("folderView").innerHTML = `<table class="folders"><tr><th>Folder</th><th>Photos</th><th>Model's view</th><th>Category</th></tr>` +
+    rows.map(f => `<tr><td><a data-id="${f.id}" data-name="${esc(f.folder)}">${esc(f.folder)}</a><div class="small">${esc(f.drive)}</div></td><td>${f.photos}</td>
+      <td class="counts">${Object.entries(f.counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)} ${v}`).join(" · ")}</td>
+      <td><select data-id="${f.id}">${opts(f.override)}</select>${f.override ? "" : ` <span class="small">→ mostly ${esc(f.suggested || "?")}</span>`}</td></tr>`).join("") + "</table>";
+  $("folderView").hidden = false;
+  $("folderView").querySelectorAll("select").forEach(s => s.onchange = async () => {
+    await api("/api/library/folders/" + s.dataset.id, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: s.value || null }) });
+    $("showFolders").click();
+  });
+  $("folderView").querySelectorAll("a").forEach(a => a.onclick = () => { L.folder = +a.dataset.id; L.folderName = a.dataset.name; runSearch(); });
+};
+
+buildCats();
+
 buildSliders();
-api("/api/state").then(r => r.json()).then(loadState);
+api("/api/state").then(r => r.json()).then(st => {
+  loadState(st);
+  loadLib().then(lib => setTab(st.folder || !lib.roots.length ? "grade" : "lib"));
+});
 </script>
 </body>
 </html>

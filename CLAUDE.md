@@ -17,7 +17,15 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
 - `filmlook/engine.py` – cached previews, contact sheets, strip-based full-res export with EXIF copy.
 - `filmlook/lut.py` – bake a look to a 3D LUT (.cube export; also speeds up exports).
 - `filmlook/reference.py` – make a look from a reference image (OKLab statistics transfer).
-- `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only).
+- `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only): Library and Grade tabs.
+- `filmlook/library/` – searchable archive. Database + thumbnails live in
+  `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos).
+  `db.py` schema (photos ← files, sidecars, embeddings; later features attach to `photos.id`),
+  `drives.py` (drives by volume UUID; offline = not mounted), `scan.py` (incremental, stoppable),
+  `pairing.py` (RAW + copies + exported JPGs = one photo), `sidecars.py` (ON1/XMP, read only),
+  `thumbs.py` (embedded RAW previews), `vision.py` (SigLIP 2 on MPS, categories),
+  `index.py`, `search.py`, `service.py` (background scan job for the app).
+- Library CLI: `./studio library add|scan|status|search|folders`.
 
 ## Checks
 

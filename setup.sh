@@ -13,7 +13,7 @@ brew list exiftool >/dev/null 2>&1 || brew install exiftool
 PY="$(brew --prefix python@3.12)/bin/python3.12"
 [ -d .venv ] || "$PY" -m venv .venv
 .venv/bin/pip install --upgrade pip -q
-.venv/bin/pip install -e ".[dev]" -q
+.venv/bin/pip install -e ".[dev,search]" -q
 
 echo
 echo "Done. Start the app with:   ./studio serve ~/Pictures/your-folder"

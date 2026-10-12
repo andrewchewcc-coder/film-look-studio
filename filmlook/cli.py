@@ -105,6 +105,75 @@ def cmd_lut(args):
     print(lut.write_cube(recipe, out, size=args.size, match_src=match_src))
 
 
+def cmd_library(args):
+    from .library import LIBRARY_DIR, db, scan
+    con = db.connect()
+    if args.action == "add":
+        for p in args.paths:
+            scan.add_root(con, p)
+            print(f"added {Path(p).expanduser()}")
+    elif args.action == "scan":
+        last = [0]
+
+        def progress(s):
+            if s.get("phase") == "reading" and s.get("todo"):
+                pct = 100 * s.get("done", 0) // max(s["todo"], 1)
+                if pct != last[0]:
+                    last[0] = pct
+                    print(f"\r  {pct:3d}%  {s.get('current', '')[-60:]:<60}", end="", flush=True)
+            elif s.get("phase") in ("listing", "duplicates"):
+                print(f"\n  {s['phase']} {s.get('current', '')}", flush=True)
+        def progress2(s):
+            if s.get("todo"):
+                print(f"\r  {s['phase']}: {s['done']}/{s['todo']}   ", end="", flush=True)
+        stats = scan.scan(con, progress=progress)
+        print()
+        if not stats["stopped"]:
+            from .library import index
+            try:
+                stats.update(index.build(con, progress=progress2))
+            except KeyboardInterrupt:
+                stats["stopped"] = True
+            print()
+        if stats["stopped"]:
+            print(f"stopped safely ({stats.get('error', 'interrupted')}); run scan again to continue")
+        print(json.dumps({k: v for k, v in stats.items() if k != "stopped"}, indent=2))
+    elif args.action == "search":
+        from .library import search, thumbs
+        from PIL import Image, ImageDraw
+        text = " ".join(args.paths)
+        cats = None if args.all else search.DEFAULT_CATEGORIES
+        res = search.search(con, text, limit=args.n, categories=cats)
+        for i, r in enumerate(res["results"], 1):
+            print(f"{i:3d}. {r['score'] or '':<7} {r['category']:<9} {r['folder'][:30]:<30} {r['name']}")
+        tiles = [r for r in res["results"] if r["thumb"]]
+        if tiles:
+            cols, edge = 6, 300
+            sheet = Image.new("RGB", (cols * edge, -(-len(tiles) // cols) * edge), (24, 24, 24))
+            for i, r in enumerate(tiles):
+                im = Image.open(thumbs.path(r["thumb"])); im.thumbnail((edge - 8, edge - 8))
+                x, y = (i % cols) * edge, (i // cols) * edge
+                sheet.paste(im, (x + (edge - im.width) // 2, y + (edge - im.height) // 2))
+                ImageDraw.Draw(sheet).text((x + 6, y + 4), str(i + 1), fill=(255, 220, 0))
+            out = WORK_DIR / "search" / f"{recipes.slug(text) or 'all'}.jpg"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            sheet.save(out, quality=85)
+            print(out)
+        return
+    elif args.action == "folders":
+        from .library import search
+        for f in search.folder_categories(con):
+            counts = " ".join(f"{k}:{v}" for k, v in sorted(f["counts"].items(), key=lambda kv: -kv[1]))
+            print(f"{f['folder'][:38]:<38} {f['override'] or f['suggested'] or '?':<9}"
+                  f"{'(set)' if f['override'] else '     '} {counts}")
+        return
+    if args.action in ("status", "scan", "add"):
+        print(f"library: {LIBRARY_DIR}")
+        for r in scan.list_roots(con):
+            print(f"  {'online ' if r['online'] else 'OFFLINE'}  {r['drive']}: {r['rel_path']}")
+        print(json.dumps(scan.summary(con), indent=2))
+
+
 def cmd_serve(args):
     from . import server
     server.run(args.folder, port=args.port, open_browser=not args.no_browser)
@@ -156,6 +225,13 @@ def main(argv=None):
     look_opts(p); p.add_argument("--out"); p.add_argument("--size", type=int, default=33)
     p.add_argument("--photo", help="photo to base a reference match on (match looks only)")
     p.set_defaults(fn=cmd_lut)
+
+    p = sub.add_parser("library", help="searchable archive: add folders, scan, status")
+    p.add_argument("action", choices=["add", "scan", "status", "search", "folders"])
+    p.add_argument("paths", nargs="*", help="folders to add (for `add`), or search words (for `search`)")
+    p.add_argument("-n", type=int, default=24, help="results to show (search)")
+    p.add_argument("--all", action="store_true", help="search every category, not just street + travel")
+    p.set_defaults(fn=cmd_library)
 
     p = sub.add_parser("serve", help="open the browser app")
     p.add_argument("folder", nargs="?"); p.add_argument("--port", type=int, default=8765)

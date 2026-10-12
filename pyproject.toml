@@ -14,6 +14,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "httpx>=0.27"]
+# Library search: local image-text model on the M1 GPU
+search = ["torch>=2.2", "open_clip_torch>=2.24", "transformers>=4.40", "sentencepiece>=0.2"]
 
 [project.scripts]
 filmlook = "filmlook.cli:main"

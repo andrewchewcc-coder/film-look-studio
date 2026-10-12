@@ -22,6 +22,18 @@ a small JSON recipe you can tweak and save as your own.
 
 ## Use it
 
+### Library (search all your photos)
+```bash
+./studio serve
+```
+Open the **Library** tab, add your photo folders (e.g. `/Volumes/Extreme SSD/2025 Photography`) and
+click **Scan**. Then search in plain words ("rain at night", "lone figure in red"), filter by year,
+dates, camera, category and graded / not graded, and click a photo to grade it. RAW files and
+their exported JPGs count as one photo. Everything stays on your Mac; the database and thumbnails
+live in `~/Library/Application Support/Film Look Studio/`, and your photo folders are only read.
+Unplugged drives stay searchable from their thumbnails. The first scan downloads the local
+search model once (~1.5 GB).
+
 ### Browser app (sliders)
 ```bash
 ./studio serve ~/Pictures/2026-10-street-walk

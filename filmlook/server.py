@@ -21,7 +21,10 @@ _thumbs = {}
 
 def _photos():
     folder = state["folder"]
-    return raw.list_raws(folder) if folder else []
+    try:
+        return raw.list_raws(folder) if folder else []
+    except OSError:  # folder's drive was unplugged
+        return []
 
 
 def _photo(name):
@@ -168,8 +171,137 @@ def get_lut(look: str = "neutral", adjust: str = "{}", name: str = ""):
     return FileResponse(out, filename=fname, media_type="text/plain")
 
 
+# --- Library: searchable archive ----------------------------------------------------
+
+def _lib():
+    from .library import service
+    return service
+
+
+@app.get("/api/library/state")
+def library_state():
+    from .library import scan, search
+    lib = _lib()
+    c = lib.con()
+    return {"roots": scan.list_roots(c), "summary": scan.summary(c), "facets": search.facets(c),
+            "job": lib.job}
+
+
+class RootIn(BaseModel):
+    path: str
+
+
+@app.post("/api/library/roots")
+def library_add_root(body: RootIn):
+    from .library import scan
+    try:
+        scan.add_root(_lib().con(), body.path.strip().strip("'\""))
+    except (ValueError, OSError) as e:
+        raise HTTPException(400, str(e))
+    return library_state()
+
+
+@app.delete("/api/library/roots/{root_id}")
+def library_remove_root(root_id: int):
+    from .library import scan
+    if _lib().job["running"]:
+        raise HTTPException(409, "Wait for the scan to finish (or pause it) first.")
+    scan.remove_root(_lib().con(), root_id)
+    return library_state()
+
+
+@app.get("/api/library/browse")
+def library_browse(path: str = ""):
+    from .library import scan
+    try:
+        return scan.browse(path or None)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class ScanIn(BaseModel):
+    root_ids: list[int] | None = None
+
+
+@app.post("/api/library/scan")
+def library_scan(body: ScanIn = ScanIn()):
+    return _lib().start_scan(body.root_ids)
+
+
+@app.post("/api/library/pause")
+def library_pause():
+    return _lib().pause()
+
+
+@app.get("/api/library/search")
+def library_search(q: str = "", cats: str = "street,travel", year: str = "", date_from: str = "",
+                   date_to: str = "", camera: str = "", graded: str = "", folder_id: int = 0,
+                   offset: int = 0, limit: int = 200):
+    from .library import search
+    return search.search(_lib().con(), q, limit=min(limit, 500), offset=offset,
+                         categories=[c for c in cats.split(",") if c] or None, year=year or None,
+                         date_from=date_from or None, date_to=date_to or None, camera=camera or None,
+                         graded=None if graded == "" else graded == "1", folder_id=folder_id or None)
+
+
+@app.get("/api/library/thumb/{photo_id}")
+def library_thumb(photo_id: int):
+    from .library import thumbs
+    row = _lib().con().execute("SELECT thumb FROM photos WHERE id=?", (photo_id,)).fetchone()
+    p = thumbs.path(row["thumb"]) if row and row["thumb"] else None
+    if not p or not p.exists():
+        raise HTTPException(404, "no thumbnail yet")
+    return FileResponse(p, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+
+
+@app.get("/api/library/photo/{photo_id}")
+def library_photo(photo_id: int):
+    from .library import search
+    p = search.photo(_lib().con(), photo_id)
+    if not p:
+        raise HTTPException(404, "unknown photo")
+    return p
+
+
+@app.post("/api/library/open/{photo_id}")
+def library_open(photo_id: int):
+    """Open a library photo in the grading view (its folder, with it selected)."""
+    from .library import search
+    p = search.photo(_lib().con(), photo_id)
+    if not p:
+        raise HTTPException(404, "unknown photo")
+    if not p["online"]:
+        raise HTTPException(409, f"Drive offline: plug in “{p['drive']}” to open this photo.")
+    src = Path(p["path"])
+    if not raw.is_raw(src):
+        raise HTTPException(415, "This photo has no RAW file, so it can't be graded here.")
+    set_folder(FolderIn(folder=str(src.parent)))
+    return {**get_state(), "select": src.name}
+
+
+@app.get("/api/library/folders")
+def library_folders():
+    from .library import search
+    return search.folder_categories(_lib().con())
+
+
+class CategoryIn(BaseModel):
+    category: str | None = None
+
+
+@app.post("/api/library/folders/{folder_id}")
+def library_set_folder(folder_id: int, body: CategoryIn):
+    from .library import search
+    try:
+        search.set_folder_category(_lib().con(), folder_id, body.category)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
+
+
 def run(folder=None, port=8765, open_browser=True):
     import uvicorn
+    _lib().warm_model()
     if folder:
         set_folder(FolderIn(folder=folder))
     url = f"http://127.0.0.1:{port}"
