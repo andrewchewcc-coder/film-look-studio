@@ -8,7 +8,7 @@ from pathlib import Path, PurePath
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
-from PIL import Image
+from PIL import Image, ImageOps
 from pydantic import BaseModel
 
 from . import edits, engine, geometry, lut, pipeline, raw, recipes, reference
@@ -408,6 +408,76 @@ def library_set_folder(folder_id: int, body: CategoryIn):
     return {"ok": True}
 
 
+# --- Browse: a shoot like a Finder window ---------------------------------------------------
+
+@app.get("/api/browse/shoots")
+def browse_shoots():
+    from .library import browse
+    return browse.shoots(_lib().con())
+
+
+@app.get("/api/browse/photos/{folder_id}")
+def browse_photos(folder_id: int, filter: str = "all"):
+    from .library import browse
+    return browse.photos(_lib().con(), folder_id, filter)
+
+
+@app.get("/api/browse/thumb/{photo_id}")
+def browse_thumb(photo_id: int):
+    """The graded version's thumbnail when there is one (made once, then cached), else the RAW's."""
+    from .library import essay
+    kind, path, key = essay.display_source(_lib().con(), photo_id)
+    if kind == "graded":
+        name = essay._essay_thumb(photo_id, kind, path, key)
+        if name:
+            return FileResponse(essay.ESSAY_THUMBS / name, media_type="image/jpeg",
+                                headers={"Cache-Control": "max-age=86400"})
+    return library_thumb(photo_id)
+
+
+@app.get("/api/browse/graded/{photo_id}")
+def browse_graded(photo_id: int):
+    """The newest graded version, large (cached on the internal disk)."""
+    from .library import essay
+    kind, path, key = essay.display_source(_lib().con(), photo_id)
+    if kind != "graded":
+        raise HTTPException(404, "not graded")
+    d = _view_file(photo_id).parent / "graded"
+    d.mkdir(exist_ok=True)
+    import hashlib
+    dst = d / f"{photo_id}_{hashlib.sha1(key.encode()).hexdigest()[:10]}.jpg"
+    if not dst.exists():
+        if path is None or not Path(path).exists():
+            return browse_thumb(photo_id)          # drive offline: the small copy
+        im = Image.open(path)
+        im.draft("RGB", (5000, 5000))
+        im = ImageOps.exif_transpose(im).convert("RGB")
+        im.thumbnail((2400, 2400), Image.LANCZOS)
+        tmp = dst.with_name(f"{dst.stem}.{uuid.uuid4().hex[:6]}.tmp")
+        im.save(tmp, "JPEG", quality=88)
+        tmp.replace(dst)
+    return FileResponse(dst, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+
+
+class IdsIn(BaseModel):
+    photo_ids: list[int]
+
+
+@app.post("/api/browse/reveal")
+def browse_reveal(body: IdsIn):
+    """Open Finder with these photos' files selected (you delete them there; the app never does)."""
+    from .library import browse
+    paths, offline, exports = browse.reveal_files(_lib().con(), body.photo_ids)
+    ok = browse.show_in_finder(paths)
+    return {"files": len(paths), "selected": ok, "offline": offline, "exports_left": exports}
+
+
+@app.post("/api/browse/forget_deleted/{folder_id}")
+def browse_forget_deleted(folder_id: int):
+    from .library import browse
+    return {"removed": browse.forget_deleted(_lib().con(), folder_id)}
+
+
 # --- Second look: overlooked photos ------------------------------------------------------
 
 @app.get("/api/second/state")
@@ -756,6 +826,296 @@ def cull_zoom(photo_id: int, w: int = 1200, h: int = 800, full: int = 0):
     return Response(engine.jpeg_bytes(crop, 90), media_type="image/jpeg",
                     headers={"X-Zoom": note, "X-Can-Full": "1" if (kind == "raw" and not full and im.width < fw * 0.95) else "0",
                              "Cache-Control": "no-store"})
+
+
+# --- Essays ---------------------------------------------------------------------------------
+
+def _essay():
+    from .library import essay
+    return essay
+
+
+def _essay_row(eid):
+    r = _lib().con().execute("SELECT * FROM essays WHERE id=?", (eid,)).fetchone()
+    if not r:
+        raise HTTPException(404, "unknown essay")
+    return r
+
+
+@app.get("/api/essays")
+def essays_list():
+    c = _lib().con()
+    rows = c.execute("""SELECT e.id, e.name, e.target, e.updated_at, COUNT(i.photo_id) AS n FROM essays e
+                        LEFT JOIN essay_items i ON i.essay_id = e.id GROUP BY e.id ORDER BY e.updated_at DESC""")
+    return [{"id": r["id"], "name": r["name"], "target": r["target"], "count": r["n"], "updated": r["updated_at"]} for r in rows]
+
+
+class EssayNewIn(BaseModel):
+    name: str
+    source: dict
+    target: int = 20
+    look: str = "leica-m9"
+
+
+@app.post("/api/essays")
+def essays_new(body: EssayNewIn):
+    try:
+        eid = _essay().create(_lib().con(), body.name.strip() or "Untitled essay", body.source, body.target, body.look)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"id": eid}
+
+
+@app.get("/api/essays/{eid}")
+def essay_get(eid: int):
+    from .library import drives
+    c, es = _lib().con(), _essay()
+    e = _essay_row(eid)
+    its = es.items(c, eid)
+    ids = [i["photo_id"] for i in its]
+    feats = es.ensure_features(c, ids)
+    mounts = drives.online_mounts(c)
+    info = {r["id"]: r for r in c.execute(f"""SELECT p.id, p.capture_time, f.rel_path, f.drive_id, f.missing FROM photos p
+                                             JOIN files f ON f.id = p.primary_file_id
+                                             WHERE p.id IN ({','.join('?' * len(ids)) or 'NULL'})""", ids)}
+    photos = []
+    for it in its:
+        pid, r = it["photo_id"], info.get(it["photo_id"])
+        fv = feats.get(pid, {})
+        photos.append({"id": pid, "locked": bool(it["locked"]), "title": it["title"] or "",
+                       "name": PurePath(r["rel_path"]).stem if r else str(pid), "time": r["capture_time"] if r else None,
+                       "image": fv.get("image", "raw"), "online": bool(r and r["drive_id"] in mounts and not r["missing"]),
+                       "scale": (fv.get("pace") or {}).get("scale")})
+    versions = [{"id": v["id"], "name": v["name"], "created": v["created_at"]}
+                for v in c.execute("SELECT id, name, created_at FROM essay_versions WHERE essay_id=? ORDER BY id DESC", (eid,))]
+    return {"id": eid, "name": e["name"], "target": e["target"], "look": e["look"],
+            "source": json.loads(e["source"] or "{}"), "photos": photos, "versions": versions}
+
+
+class EssayPatchIn(BaseModel):
+    name: str | None = None
+    target: int | None = None
+    look: str | None = None
+
+
+@app.patch("/api/essays/{eid}")
+def essay_patch(eid: int, body: EssayPatchIn):
+    c = _lib().con()
+    _essay_row(eid)
+    for k in ("name", "target", "look"):
+        v = getattr(body, k)
+        if v is not None:
+            c.execute(f"UPDATE essays SET {k}=?, updated_at=datetime('now') WHERE id=?", (v, eid))
+    c.commit()
+    return {"ok": True}
+
+
+@app.delete("/api/essays/{eid}")
+def essay_delete(eid: int):
+    _essay().delete(_lib().con(), eid)
+    return essays_list()
+
+
+class OrderIn(BaseModel):
+    order: list[int]
+    locked: dict[str, bool] = {}
+    titles: dict[str, str] = {}
+
+
+@app.post("/api/essays/{eid}/order")
+def essay_order(eid: int, body: OrderIn):
+    _essay_row(eid)
+    _essay().set_order(_lib().con(), eid, body.order, locked={int(k): v for k, v in body.locked.items()},
+                       titles={int(k): v for k, v in body.titles.items()})
+    return {"ok": True}
+
+
+class AddIn(BaseModel):
+    photo_ids: list[int] = []
+    source: dict | None = None
+
+
+@app.post("/api/essays/{eid}/add")
+def essay_add(eid: int, body: AddIn):
+    c, es = _lib().con(), _essay()
+    _essay_row(eid)
+    ids = list(body.photo_ids)
+    if body.source:
+        try:
+            ids += es.source_photo_ids(c, body.source)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    before = len(es.items(c, eid))
+    es.add(c, eid, ids)
+    return {"added": len(es.items(c, eid)) - before}
+
+
+@app.get("/api/essays/{eid}/transitions")
+def essay_transitions(eid: int, order: str):
+    ids = [int(x) for x in order.split(",") if x]
+    return _essay().transitions_for(_lib().con(), ids)
+
+
+class SuggestIn(BaseModel):
+    style: str = "flow"
+    arc: str = "day_to_night"
+
+
+@app.post("/api/essays/{eid}/suggest")
+def essay_suggest(eid: int, body: SuggestIn):
+    """A suggested order (not applied: the page applies it, so Undo works)."""
+    _essay_row(eid)
+    if body.style not in ("flow", "time", "mood"):
+        raise HTTPException(400, "unknown style")
+    return _essay().sequence(_lib().con(), eid, body.style, body.arc)
+
+
+@app.get("/api/essays/{eid}/pairs")
+def essay_pairs(eid: int, limit: int = 30):
+    _essay_row(eid)
+    return _essay().pairs(_lib().con(), eid, limit=limit)
+
+
+class PairMarkIn(BaseModel):
+    a: int
+    b: int
+    verdict: str | None = None
+    rhyme: str | None = None
+
+
+@app.post("/api/pairs/mark")
+def pair_mark(body: PairMarkIn):
+    try:
+        _essay().mark_pair(_lib().con(), body.a, body.b, body.verdict, body.rhyme)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
+
+
+@app.get("/api/essays/{eid}/leaveout")
+def essay_leaveout(eid: int, target: int):
+    c, es = _lib().con(), _essay()
+    _essay_row(eid)
+    return es.leave_out(c, [i["photo_id"] for i in es.items(c, eid)], target)
+
+
+@app.get("/api/essays/{eid}/fill")
+def essay_fill(eid: int, position: int):
+    _essay_row(eid)
+    return _essay().fill_gap(_lib().con(), eid, position)
+
+
+class VersionIn(BaseModel):
+    name: str
+
+
+@app.post("/api/essays/{eid}/versions")
+def essay_version_save(eid: int, body: VersionIn):
+    _essay_row(eid)
+    return {"id": _essay().save_version(_lib().con(), eid, body.name.strip() or "Version")}
+
+
+@app.post("/api/essays/{eid}/versions/{vid}/restore")
+def essay_version_restore(eid: int, vid: int):
+    try:
+        _essay().restore_version(_lib().con(), eid, vid)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    return {"ok": True}
+
+
+@app.delete("/api/essays/{eid}/versions/{vid}")
+def essay_version_delete(eid: int, vid: int):
+    c = _lib().con()
+    c.execute("DELETE FROM essay_versions WHERE id=? AND essay_id=?", (vid, eid))
+    c.commit()
+    return {"ok": True}
+
+
+class EssayExportIn(BaseModel):
+    size: str = "web"
+    pdf: bool = True
+
+
+@app.post("/api/essays/{eid}/export")
+def essay_export(eid: int, body: EssayExportIn):
+    """Numbered JPGs in order (background job; waits for offline drives) + optional contact sheet."""
+    from .library import essay_out
+    _essay_row(eid)
+    job_id = uuid.uuid4().hex[:8]
+    job = jobs[job_id] = {"total": 0, "done": 0, "current": "", "waiting": [], "outputs": [],
+                          "folder": None, "pdf": None, "error": None, "finished": False, "cancel": False}
+
+    def work():
+        try:
+            c = _lib().con()
+            folder = essay_out.run_export(c, eid, body.size, job=job, cancelled=lambda: job["cancel"])
+            if folder and body.pdf and not job["cancel"]:
+                job["current"] = "contact sheet"
+                job["pdf"] = str(essay_out.contact_sheet(c, eid, dst=folder / "00_contact-sheet.pdf"))
+        except Exception as e:  # report to the page instead of dying silently
+            job["error"] = str(e)
+        job["current"] = ""
+        job["finished"] = True
+
+    threading.Thread(target=work, daemon=True).start()
+    return {"job": job_id}
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+def job_cancel(job_id: str):
+    if job_id not in jobs:
+        raise HTTPException(404, "unknown job")
+    jobs[job_id]["cancel"] = True
+    return {"ok": True}
+
+
+@app.get("/api/essays/{eid}/plan")
+def essay_plan(eid: int):
+    """What an export would use for each photo, and which drives it needs."""
+    from .library import essay_out
+    _essay_row(eid)
+    return essay_out.plan(_lib().con(), eid)
+
+
+@app.post("/api/essays/{eid}/pdf")
+def essay_pdf(eid: int):
+    """The contact sheet on its own (works with the drives unplugged: it uses thumbnails)."""
+    from .library import essay_out
+    _essay_row(eid)
+    path = essay_out.contact_sheet(_lib().con(), eid)
+    _reveal(path, open_file=True)
+    return {"path": str(path)}
+
+
+def _reveal(path, open_file=False):
+    """Open (or show in Finder) something the app wrote under ~/Pictures/Film Look Studio Essays."""
+    import subprocess
+    from .library import essay_out
+    p = Path(path).resolve()
+    if essay_out.OUT_DIR.resolve() not in p.parents:
+        raise HTTPException(400, "can only show the app's own essay exports")
+    subprocess.run(["open", str(p)] if open_file else ["open", "-R", str(p)], check=False)
+
+
+class RevealIn(BaseModel):
+    path: str
+
+
+@app.post("/api/essays/reveal")
+def essay_reveal(body: RevealIn):
+    _reveal(body.path)
+    return {"ok": True}
+
+
+@app.get("/api/essays/thumb/{photo_id}")
+def essay_thumb(photo_id: int):
+    """The essay's view of a photo (graded JPG if any, else RAW preview with crop)."""
+    es = _essay()
+    r = _lib().con().execute("SELECT thumb FROM essay_features WHERE photo_id=?", (photo_id,)).fetchone()
+    if r and r[0] and (es.ESSAY_THUMBS / r[0]).exists():
+        return FileResponse(es.ESSAY_THUMBS / r[0], media_type="image/jpeg", headers={"Cache-Control": "max-age=3600"})
+    return library_thumb(photo_id)
 
 
 def run(folder=None, port=8765, open_browser=True):

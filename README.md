@@ -51,6 +51,23 @@ After each cull the suggestions re-learn from what you picked, and the agreement
 it matched you. Picks, rejects and stars are the same everywhere: change them in Cull, in the Library
 (hover a photo: ✓ ✕ ↺ ★, or P / X / U / 1–5) or with Keep in Second look. Rejects are only a flag.
 
+### Browse (a shoot like a Finder window)
+The **Browse** tab shows every photo of a shoot in shooting order, with your picks, rejects, stars and
+which are graded. Filter (Picked / Rejected / Not marked / Graded / Not graded), view large with ← →,
+press **G** to flip between the graded version and the original or **S** for side by side.
+To delete photos: select them and click **Show in Finder** — Finder opens with the originals and their
+ON1 sidecars selected, and you delete them there (⌘⌫). The app itself never deletes anything; click
+**Refresh** afterwards and it offers to remove them from the library.
+
+### Essays (sequence a photo essay, zine or exhibition)
+In the **Essays** tab start an essay from a search, your picks or stars, the Second look shortlist, a
+shoot or a date range, with a target length. See it as a strip (with the reason for each transition),
+a contact sheet (add titles) or two-page spreads; drag to reorder, lock photos, and ask for an order
+(Visual flow, Time & place, Day → night, Calm → intense). The panel suggests pairs that rhyme, photos to
+fill a gap and which to leave out. Undo with ⌘Z and save versions. **Contact sheet PDF** and **Export…**
+save to Pictures › Film Look Studio Essays as 01_title.jpg…: graded photos keep their grade, the others
+get the essay's look and their crop. Drives can be unplugged while you arrange; export waits for them.
+
 ### Browser app (sliders)
 ```bash
 ./studio serve ~/Pictures/2026-10-street-walk

@@ -180,6 +180,19 @@ def export(src, recipe, out_dir=None, quality=95, look_name=None, progress=None,
     write a JPEG (plus a recipe sidecar recording the look and the edit)."""
     src = Path(src)
     look_name = look_name or recipe.get("name", "graded")
+    out = render_full(src, recipe, geom=geom, progress=progress)
+    dst = output_path(src, look_name, out_dir)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(out).save(dst, "JPEG", quality=quality, subsampling=0, icc_profile=_SRGB_ICC)
+    copy_metadata(src, dst)
+    side = {**recipe, "geometry": geometry.normalise(geom)} if geom is not None else recipe
+    dst.with_suffix(".recipe.json").write_text(json.dumps(side, indent=2) + "\n")
+    return dst
+
+
+def render_full(src, recipe, geom=None, progress=None):
+    """The full-resolution graded photo (uint8 RGB array) with its crop/straighten edit."""
+    src = Path(src)
     display = raw.is_display_referred(src)
     _, gain = preview_linear(src)  # same metering as the preview
     rgb16 = raw.decode(src)
@@ -204,11 +217,4 @@ def export(src, recipe, out_dir=None, quality=95, look_name=None, progress=None,
 
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         list(pool.map(strip, starts))
-    del rgb16
-    dst = output_path(src, look_name, out_dir)
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(out).save(dst, "JPEG", quality=quality, subsampling=0, icc_profile=_SRGB_ICC)
-    copy_metadata(src, dst)
-    side = {**recipe, "geometry": geometry.normalise(geom)} if geom is not None else recipe
-    dst.with_suffix(".recipe.json").write_text(json.dumps(side, indent=2) + "\n")
-    return dst
+    return out

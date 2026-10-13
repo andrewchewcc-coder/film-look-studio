@@ -4,7 +4,8 @@ Exports are matched to a RAW in the same shoot folder (or its graded/ subfolder)
 file name first: `25-02-12-09-32-26-IG.jpg` and `..._fire-dragon-chrome.jpg` both
 belong to `25-02-12-09-32-26.RAF`. A JPG whose name doesn't match falls back to an
 exact capture-time match with exactly one RAW. Anything left over (phone photos)
-is a photo of its own.
+is a photo of its own. When the names match, a capture time shifted by whole hours also
+counts as the same moment: an export (e.g. for Instagram) can carry another time zone.
 """
 import re
 from datetime import datetime
@@ -13,6 +14,7 @@ from pathlib import PurePath
 SEPARATORS = " -_(.~"
 COPY_RE = re.compile(r"^(?P<base>.+?)(?: copy(?: \d+)?| \(\d+\))$")
 MAX_TIME_DIFF = 2.0  # seconds
+MAX_ZONE_SHIFT = 14  # hours: the widest time-zone difference
 
 
 def _stem(f):
@@ -26,9 +28,15 @@ def _time(f):
         return None
 
 
-def _times_agree(a, b):
+def _times_agree(a, b, zone_shift=False):
+    """Same moment (within 2 s) — or, with zone_shift, the same moment in another time zone."""
     ta, tb = _time(a), _time(b)
-    return ta is None or tb is None or abs((ta - tb).total_seconds()) <= MAX_TIME_DIFF
+    if ta is None or tb is None:
+        return True
+    d = abs((ta - tb).total_seconds())
+    if zone_shift and d <= MAX_ZONE_SHIFT * 3600:
+        d = min(d % 1800, 1800 - d % 1800)     # zones are whole or half hours apart
+    return d <= MAX_TIME_DIFF
 
 
 def _name_parent(stem, candidates):
@@ -68,7 +76,7 @@ def group(files):
     leftovers = []
     for f in others:
         parent = _name_parent(_stem(f), raws)
-        if parent and _times_agree(f, raws[parent]):
+        if parent and _times_agree(f, raws[parent], zone_shift=True):
             groups[owner[parent]].append((f["id"], "export"))
             continue
         t = _time(f)
@@ -84,7 +92,7 @@ def group(files):
         if f["kind"] != "jpg":
             continue  # an unmatched .onphoto has no original to hang on
         parent = _name_parent(_stem(f), standalone)
-        if parent and _times_agree(f, standalone[parent]):
+        if parent and _times_agree(f, standalone[parent], zone_shift=True):
             groups[standalone[parent]["id"]].append((f["id"], "export"))
         else:
             standalone[_stem(f)] = f

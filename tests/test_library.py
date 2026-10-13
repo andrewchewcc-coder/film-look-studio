@@ -1,4 +1,5 @@
 import json
+from pathlib import PurePath
 
 import pytest
 
@@ -324,3 +325,45 @@ def test_marks_are_shared_by_cull_library_and_second_look(tmp_path, monkeypatch)
     assert marks.get(con, 11) == {"flag": None, "rating": 4}
     marks.set_mark(con, 11, rating=0)
     assert marks.get(con, 11)["rating"] is None
+
+
+def test_pairing_accepts_time_zone_shifted_exports():
+    from filmlook.library import pairing
+    files = [
+        {"id": 1, "rel_path": "s/25-10-28-00-40-49-076.DNG", "kind": "raw", "capture_time": "2025-10-28T00:40:49.118"},
+        {"id": 2, "rel_path": "s/25-10-28-00-40-49-076-IG.jpg", "kind": "jpg", "capture_time": "2025-10-28T08:40:49"},
+        {"id": 3, "rel_path": "s/25-10-28-00-50-00-077.DNG", "kind": "raw", "capture_time": "2025-10-28T00:50:00"},
+        {"id": 4, "rel_path": "s/25-10-28-00-50-00-077-IG.jpg", "kind": "jpg", "capture_time": "2025-10-28T03:07:41"},
+    ]
+    groups = dict(pairing.group(files))
+    assert (2, "export") in groups[1]                    # 8 hours apart: same moment, other zone
+    assert 4 in groups and (4, "export") not in groups[3]  # 2h17m apart: not the same photo
+
+
+def test_browse_reveal_and_forget_deleted(tmp_path, monkeypatch):
+    from filmlook.library import browse
+    photos = tmp_path / "photos" / "2025 01 01 Test"
+    photos.mkdir(parents=True)
+    (photos / "A.dng").write_bytes(b"raw-a" * 1000)
+    (photos / "A-IG.jpg").write_bytes(b"jpg-a" * 1000)
+    (photos / "B.dng").write_bytes(b"raw-b" * 1000)
+    (photos / "A.on1").write_text(json.dumps({"photos": {"g": {"name": "A.dng", "metadata": {"Rating": 4}}}}))
+    monkeypatch.setattr(scan, "read_exif", lambda paths: {})
+    monkeypatch.setattr(scan.drives, "_volume_info", lambda mount: ("TEST-UUID", "Test"))
+    con = db.connect(tmp_path / "lib.db")
+    scan.add_root(con, tmp_path / "photos")
+    scan.scan(con)
+    folder = browse.shoots(con)[0]
+    assert (folder["photos"], folder["graded"]) == (2, 1)
+    items = {p["name"]: p for p in browse.photos(con, folder["id"])}
+    paths, offline, exports = browse.reveal_files(con, [items["A.dng"]["id"]])
+    assert sorted(PurePath(p).name for p in paths) == ["A.dng", "A.on1"]   # the graded JPG is left out
+    assert (offline, exports) == ([], 1)
+    assert not any(p["deleted"] for p in items.values())
+
+    (photos / "B.dng").unlink()                     # deleted by you in Finder
+    scan.scan(con)
+    assert [p["name"] for p in browse.photos(con, folder["id"]) if p["deleted"]] == ["B.dng"]
+    assert browse.forget_deleted(con, folder["id"]) == 1
+    assert [p["name"] for p in browse.photos(con, folder["id"])] == ["A.dng"]
+    assert (photos / "A.dng").exists() and (photos / "A-IG.jpg").exists()

@@ -27,7 +27,7 @@
      scrolls inside its own panels; the photo always shrinks to fit (portrait or landscape). */
   body { display: flex; flex-direction: column; height: 100vh; }
   header { flex: 0 0 auto; }
-  main, #libView, #secondView, #cullView { flex: 1 1 auto; min-height: 0; }
+  main, #libView, #secondView, #cullView, #essayView, #browseView { flex: 1 1 auto; min-height: 0; }
   main { display: grid; grid-template-columns: 210px 1fr 290px; grid-template-rows: minmax(0, 1fr); }
   #center { min-height: 0; overflow: hidden; }
   #film { border-right: 1px solid var(--line); overflow-y: auto; padding: 10px; }
@@ -241,6 +241,106 @@
   .cuTile.cur { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
   .cuTile b { position: absolute; right: 2px; bottom: 2px; font-size: 10px; background: #000b; padding: 0 4px; border-radius: 2px; font-weight: 500; }
   .cuTile i { position: absolute; left: 2px; top: 2px; font-size: 9px; background: #3a2a1f; color: #e3a36f; padding: 0 3px; border-radius: 2px; font-style: normal; }
+  #browseView { color-scheme: dark; display: grid; grid-template-columns: 250px 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
+  #brSide { border-right: 1px solid var(--line); overflow-y: auto; padding: 12px; }
+  #brFind { width: 100%; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; margin-bottom: 8px; }
+  .brShoot { padding: 6px 8px; border-radius: 6px; cursor: pointer; color: var(--text); font-size: 13px; }
+  .brShoot:hover { background: #1c1c1c; } .brShoot.on { background: #2a2a2a; }
+  .brShoot small { display: block; color: var(--muted); font-size: 11px; }
+  .brYear { font-size: 11px; letter-spacing: .08em; color: var(--muted); margin: 12px 0 4px; font-weight: 600; }
+  #brMain { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  #brTop { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  #brTop button { padding: 5px 9px; font-size: 13px; }
+  #brNote { padding: 5px 14px; min-height: 16px; }
+  #brNote button { padding: 2px 8px; font-size: 12px; margin-left: 6px; }
+  #brGrid { flex: 1; overflow-y: auto; padding: 8px 14px 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--brs, 200px), 1fr)); gap: 10px; align-content: start; }
+  .brCell { background: #161616; border: 2px solid transparent; border-radius: 6px; padding: 5px; cursor: default; user-select: none; position: relative; }
+  .brCell.sel { border-color: var(--accent); background: #1f1c14; }
+  .brCell .im { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
+  .brCell img { max-width: 100%; max-height: 100%; display: block; }
+  .brCell.rej img { opacity: .35; }
+  .brCell .nm { font-size: 11px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+  .brCell .bd { position: absolute; left: 9px; top: 9px; display: flex; gap: 3px; flex-wrap: wrap; }
+  .brCell .bd span { font-size: 10px; padding: 0 5px; border-radius: 3px; background: #000b; }
+  .bdPick { color: #6fd28a; } .bdRej { color: #ff7b7b; } .bdStar { color: var(--accent); } .bdGr { color: #9ec5ff; } .bdOff { color: #aaa; } .bdDel { color: #ff7b7b; }
+  #brViewer { position: absolute; inset: 0; background: #0b0b0b; display: flex; flex-direction: column; z-index: 5; }
+  #brViewer[hidden] { display: none; }
+  #brVTop { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  #brVTop button { padding: 4px 10px; font-size: 13px; }
+  #brVInfo { flex: 1; min-width: 200px; }
+  #brVTop .hint { font-size: 11px; color: var(--muted); }
+  #brVImgs { flex: 1; min-height: 0; display: flex; gap: 8px; padding: 10px; }
+  #brVImgs figure { flex: 1; margin: 0; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  #brVImgs img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
+  #brVImgs figcaption { text-align: center; font-size: 12px; color: var(--muted); padding-top: 4px; }
+  #essayView { color-scheme: dark; display: grid; grid-template-columns: 270px 1fr; grid-template-rows: minmax(0, 1fr); }
+  #esSide { border-right: 1px solid var(--line); overflow-y: auto; padding: 14px; }
+  #esSide h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
+  #esSide h2:first-child { margin-top: 0; }
+  #esSide .field { margin: 7px 0; }
+  #esSide .field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  #esSide select, #esSide input[type=text], #esSide input[type=date] { width: 100%; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; }
+  #esSide .dates { display: flex; gap: 6px; }
+  #esSide label.chk { display: flex; gap: 7px; align-items: center; font-size: 13px; }
+  .esItem { padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; margin: 5px 0; cursor: pointer; color: var(--text); }
+  .esItem.on { border-color: var(--accent); }
+  .esItem small { display: block; color: var(--muted); }
+  #esMain { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  #esEmpty { color: var(--muted); margin: 60px auto; }
+  #esWork { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  #esTop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  #esTop button { padding: 5px 9px; font-size: 13px; }
+  #esTitle { width: 200px; font-weight: 600; background: transparent; border: 1px solid transparent; color: var(--text); padding: 5px 6px; border-radius: 5px; font: inherit; }
+  #esTitle:hover, #esTitle:focus { border-color: var(--line); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; background: transparent; color: var(--muted); }
+  .seg button.on { background: #2a2a2a; color: var(--text); }
+  #esVersions { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 5px; border-radius: 6px; max-width: 170px; }
+  #esNote { padding: 6px 14px; min-height: 18px; }
+  #esBoard { flex: 1; min-height: 0; overflow: auto; padding: 10px 14px; }
+  .esStrip { display: flex; align-items: flex-start; gap: 0; height: 100%; }
+  .esCard { flex: 0 0 auto; position: relative; background: #181818; border: 2px solid transparent; border-radius: 5px; padding: 4px; cursor: grab; }
+  .esCard.locked { border-color: #6b5a2a; cursor: default; }
+  .esCard.drop { border-color: var(--accent); }
+  .esCard img { display: block; height: 220px; max-width: 340px; object-fit: contain; }
+  .esContact .esCard img { height: 150px; max-width: 220px; }
+  .esCard .num { position: absolute; left: 8px; top: 8px; background: #000c; font-size: 12px; padding: 1px 7px; border-radius: 3px; }
+  .esCard .tools { position: absolute; right: 8px; top: 8px; display: flex; gap: 4px; }
+  .esCard .tools button { padding: 1px 6px; font-size: 12px; background: #000b; border-color: #555; }
+  .esCard .tools .lk.on { background: #6b5a2a; color: #fff; }
+  .esCard .cap { font-size: 11px; color: var(--muted); padding: 3px 2px 0; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .esCard input.ttl { width: 100%; margin-top: 3px; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); font-size: 12px; padding: 3px 5px; border-radius: 4px; }
+  .esCard .gr { position: absolute; left: 8px; bottom: 26px; font-size: 10px; background: #000b; color: var(--accent); padding: 0 5px; border-radius: 3px; }
+  .esGap { flex: 0 0 96px; align-self: center; text-align: center; font-size: 11px; color: var(--muted); padding: 0 4px; }
+  .esGap .why { display: block; min-height: 30px; }
+  .esGap.warn .why { color: #e3a36f; }
+  .esGap button { margin-top: 4px; padding: 0 8px; font-size: 13px; }
+  .esGap.sel button { background: var(--accent); color: var(--accent-ink); }
+  .esContact { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .esSpreads { display: flex; flex-direction: column; gap: 18px; align-items: center; }
+  .esSpread { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; background: #0d0d0d; padding: 10px; border-radius: 4px; width: min(900px, 100%); }
+  .esPage { aspect-ratio: 3 / 2.1; background: #f1efe9; display: flex; align-items: center; justify-content: center; position: relative; }
+  .esPage.blank { background: #2a2826; }
+  .esPage img { max-width: 86%; max-height: 82%; object-fit: contain; box-shadow: 0 1px 4px #0005; }
+  .esPage .pn { position: absolute; bottom: 5px; font-size: 10px; color: #777; }
+  .esPage.left .pn { left: 8px; } .esPage.right .pn { right: 8px; }
+  .esSpreadWhy { grid-column: 1 / -1; text-align: center; font-size: 11px; color: var(--muted); padding-top: 4px; }
+  #esPanel { border-top: 1px solid var(--line); height: 210px; display: flex; flex-direction: column; flex: 0 0 auto; }
+  #esPanelTabs { margin: 8px 14px; align-self: flex-start; }
+  #esPanelBody { flex: 1; overflow-x: auto; overflow-y: hidden; padding: 0 14px 10px; display: flex; gap: 12px; align-items: flex-start; }
+  .esPair, .esCand { flex: 0 0 auto; background: #181818; border-radius: 5px; padding: 6px; }
+  .esPair .imgs { display: flex; gap: 3px; }
+  .esPair img, .esCand img { height: 96px; display: block; }
+  .esPair .why, .esCand .why { max-width: 260px; margin: 4px 0; color: var(--text); font-size: 12px; white-space: normal; }
+  .esPair .acts, .esCand .acts { display: flex; gap: 5px; }
+  .esPair .acts button, .esCand .acts button { padding: 2px 8px; font-size: 12px; }
+  .esPair.good { outline: 2px solid #2e9c4f; }
+  .esExp { display: flex; flex-direction: column; gap: 7px; max-width: 640px; color: var(--text); font-size: 13px; }
+  .esExp .esRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .esExp select { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 5px; border-radius: 6px; }
+  .esExp .warn { color: #e3a36f; }
+  .esExp progress { width: 320px; }
+  @media (max-width: 800px) { #essayView { grid-template-columns: 1fr; } }
   #picker { position: fixed; inset: 0; background: #000d; display: flex; align-items: center; justify-content: center; z-index: 11; padding: 16px; }
   #picker .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; width: 100%; max-width: 560px; }
   #picker h3 { margin: 0 0 12px; font-size: 16px; }
@@ -274,7 +374,7 @@
 <body>
 <header>
   <h1>Film Look Studio</h1>
-  <div class="tabs"><button id="tabLib">Library</button><button id="tabSecond">Second look</button><button id="tabCull">Cull</button><button id="tabGrade">Grade</button></div>
+  <div class="tabs"><button id="tabLib">Library</button><button id="tabBrowse">Browse</button><button id="tabSecond">Second look</button><button id="tabCull">Cull</button><button id="tabEssay">Essays</button><button id="tabGrade">Grade</button></div>
   <input type="text" id="libq" placeholder="Search in plain words, e.g. rain at night, lone figure in red, reflections in glass" spellcheck="false">
   <div id="folderBar"><span id="folderName" title="">No folder open</span><button id="open" class="primary">Choose folder…</button></div>
 </header>
@@ -382,6 +482,81 @@
     <div id="cuPane"><img id="cuZoomImg" alt="" draggable="false"></div>
     <div id="cuNav" title="Click to jump there"><img id="cuNavImg" alt="" draggable="false"><div id="cuNavBox"></div></div>
     <div id="cuZoomNote"></div>
+  </div>
+</section>
+<section id="browseView" hidden>
+  <div id="brSide">
+    <input type="text" id="brFind" placeholder="Find a shoot…" spellcheck="false">
+    <div id="brShoots" class="small">Loading…</div>
+  </div>
+  <div id="brMain">
+    <div id="brTop">
+      <b id="brName">Choose a shoot</b><span id="brCount" class="small"></span>
+      <span class="seg" id="brFilter"><button data-f="all" class="on">All</button><button data-f="pick">Picked</button><button data-f="reject">Rejected</button><button data-f="unmarked">Not marked</button><button data-f="graded">Graded</button><button data-f="ungraded">Not graded</button></span>
+      <span class="seg" id="brShow" title="For graded photos, show the graded version or the original"><button data-v="graded" class="on">Graded versions</button><button data-v="original">Originals</button></span>
+      <input type="range" id="brSize" min="120" max="420" value="200" title="Thumbnail size">
+      <button id="brAll">Select all</button>
+      <button id="brFinder" class="primary" disabled>Show in Finder</button>
+      <button id="brRescan" title="Look for changes on the drive (e.g. after deleting in Finder)">Refresh</button>
+    </div>
+    <div id="brNote" class="small"></div>
+    <div id="brGrid"></div>
+  </div>
+  <div id="brViewer" hidden>
+    <div id="brVTop"><span id="brVName"></span><span id="brVInfo" class="small"></span>
+      <span class="hint">← → next · G graded/original · S side by side · P X U · 0–5 stars · F Finder · Esc close</span>
+      <button id="brVGrade">Open in Grade</button><button id="brVClose">✕</button></div>
+    <div id="brVImgs"></div>
+  </div>
+</section>
+<section id="essayView" hidden>
+  <div id="esSide">
+    <h2>Essays</h2>
+    <div id="esList" class="small">None yet.</div>
+    <h2>Start a new essay</h2>
+    <div class="field"><span>Name</span><input type="text" id="esName" placeholder="e.g. Lisbon streets"></div>
+    <div class="field"><span>Start from</span><select id="esSrc">
+      <option value="search">A search</option><option value="picks">My picks</option><option value="stars">My stars</option>
+      <option value="shortlist">Second look shortlist</option><option value="folder">A shoot / trip</option><option value="dates">A date range</option></select></div>
+    <div class="field" data-src="search"><input type="text" id="esQ" placeholder="Words, e.g. rain at night"></div>
+    <div class="field" data-src="search"><select id="esQFolder"><option value="">…in any shoot</option></select></div>
+    <div class="field" data-src="stars" hidden><select id="esStars"><option value="3">★★★ 3 or more</option><option value="4">★★★★ 4 or more</option><option value="5">★★★★★ 5</option><option value="1">★ 1 or more</option></select></div>
+    <div class="field" data-src="folder" hidden><select id="esFolder"></select></div>
+    <div class="field" data-src="folder" hidden><label class="chk"><input type="checkbox" id="esPickedOnly"> Only my picks from it</label></div>
+    <div class="field dates" data-src="dates" hidden><input type="date" id="esFrom"><input type="date" id="esTo"></div>
+    <div class="field"><span>Target length</span><select id="esTarget"><option>12</option><option selected>20</option><option>30</option><option>40</option></select></div>
+    <div class="field"><span>Look for photos not graded yet</span><select id="esLook"></select></div>
+    <div class="row"><button id="esCreate" class="primary">Create essay</button></div>
+    <div class="row"><button id="esAddSrc" hidden>Add these photos to the open essay</button></div>
+    <div id="esMsg" class="small"></div>
+  </div>
+  <div id="esMain">
+    <div id="esEmpty">Choose an essay on the left, or start a new one.</div>
+    <div id="esWork" hidden>
+      <div id="esTop">
+        <input type="text" id="esTitle" title="Essay name">
+        <span id="esCount" class="small"></span>
+        <button id="esTrim" title="Suggest which photos to leave out to reach the target">Trim to target…</button>
+        <span class="small">Suggest order:</span>
+        <button class="esSug" data-style="flow" title="Each photo leads into the next; varied pace">Visual flow</button>
+        <button class="esSug" data-style="time" title="Chronological, grouped by place">Time &amp; place</button>
+        <button class="esSug" data-style="mood" data-arc="day_to_night">Day → night</button>
+        <button class="esSug" data-style="mood" data-arc="calm_to_intense">Calm → intense</button>
+        <span class="seg"><button data-view="strip" class="on">Strip</button><button data-view="contact">Contact sheet</button><button data-view="spreads">Spreads</button></span>
+        <button id="esUndo" title="Undo (⌘Z)">Undo</button>
+        <select id="esVersions" title="Saved versions"></select>
+        <button id="esSaveV">Save version</button>
+        <button id="esPdf" title="A PDF contact sheet with order numbers and titles (works with drives unplugged)">Contact sheet PDF</button>
+        <button id="esExport" class="primary" title="Save the photos in order as 01_title.jpg">Export…</button>
+        <button id="esDelete" title="Delete this essay (your photos are not touched)">Delete</button>
+      </div>
+      <div id="esNote" class="small"></div>
+      <div id="esBoard"></div>
+      <div id="esPanel">
+        <div class="seg" id="esPanelTabs"><button data-p="pairs" class="on">Pairs</button><button data-p="fill">Fill the gap</button><button data-p="trim">Trim</button><button data-p="export">Export</button></div>
+        <div id="esPanelBody" class="small"></div>
+      </div>
+    </div>
   </div>
 </section>
 <div id="picker" hidden><div class="box">
@@ -679,8 +854,13 @@ const L = { cats: new Set(["street", "travel"]), offset: 0, total: 0, folder: nu
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function setTab(tab) {
-  const lib = tab === "lib", second = tab === "second", grade = tab === "grade", cullT = tab === "cull";
+  const lib = tab === "lib", second = tab === "second", grade = tab === "grade", cullT = tab === "cull", essT = tab === "essay";
   $("libView").hidden = !lib; $("secondView").hidden = !second; $("gradeView").hidden = !grade; $("cullView").hidden = !cullT;
+  $("essayView").hidden = !essT; $("tabEssay").classList.toggle("on", essT);
+  if (essT) esOpen();
+  const brT = tab === "browse";
+  $("browseView").hidden = !brT; $("tabBrowse").classList.toggle("on", brT);
+  if (brT) brOpen();
   $("libq").hidden = !lib; $("folderBar").hidden = !grade;
   $("tabLib").classList.toggle("on", lib); $("tabSecond").classList.toggle("on", second);
   $("tabGrade").classList.toggle("on", grade); $("tabCull").classList.toggle("on", cullT);
@@ -689,6 +869,8 @@ function setTab(tab) {
   if (cullT) { if (!CU.sid) cuOpenStart(); else if (!$("cuRun").hidden) cuRefreshMarks(); }
 }
 $("tabCull").onclick = () => setTab("cull");
+$("tabEssay").onclick = () => setTab("essay");
+$("tabBrowse").onclick = () => setTab("browse");
 $("tabLib").onclick = () => setTab("lib");
 $("tabSecond").onclick = () => setTab("second");
 $("tabGrade").onclick = () => setTab("grade");
@@ -1802,6 +1984,541 @@ document.addEventListener("keydown", (e) => {
   else if (k === "-" || k === "_") { e.preventDefault(); zoomTo(GZ.scale / 1.4, ...p); }
   else if (k === "0") { e.preventDefault(); zoomFit(); }
   else if (k === "z" || k === "Z") { e.preventDefault(); if (GZ.fit) zoomTo(1, ...p); else zoomFit(); }
+});
+
+// --- Essays -----------------------------------------------------------------------------------
+const ES = { id: null, photos: [], trans: [], view: "strip", undo: [], panel: "pairs", gap: null, setup: false };
+const esJSON = (body) => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+async function esOpen() {
+  if (!ES.setup) {
+    ES.setup = true;
+    try {
+      const st = await (await api("/api/cull/state")).json();
+      const opts = st.shoots.map(f => `<option value="${f.id}">${esc(f.name)} (${f.photos})</option>`).join("");
+      $("esFolder").innerHTML = opts; $("esQFolder").innerHTML = `<option value="">…in any shoot</option>` + opts;
+    } catch (e) {}
+    const looks = [{ id: "neutral", name: "Neutral (no look)" }, ...(S.looks || [])];
+    $("esLook").innerHTML = looks.map(l => `<option value="${l.id}" ${l.id === "leica-m9" ? "selected" : ""}>${esc(l.name)}</option>`).join("");
+  }
+  esList();
+}
+async function esList() {
+  const rows = await (await api("/api/essays")).json();
+  $("esList").innerHTML = rows.length ? "" : "None yet.";
+  for (const r of rows) {
+    const d = document.createElement("div"); d.className = "esItem" + (r.id === ES.id ? " on" : "");
+    d.innerHTML = `${esc(r.name)}<small>${r.count} photos · target ${r.target || "–"} · ${esc((r.updated || "").slice(0, 16))}</small>`;
+    d.onclick = () => esLoad(r.id);
+    $("esList").appendChild(d);
+  }
+}
+function esSource() {
+  const t = $("esSrc").value, src = { type: t };
+  if (t === "search") { src.q = $("esQ").value.trim(); src.folder_id = +$("esQFolder").value || null; src.categories = null; src.limit = 80; src.min = 30; }
+  if (t === "stars") src.min = +$("esStars").value;
+  if (t === "folder") { src.folder_id = +$("esFolder").value; src.picked_only = $("esPickedOnly").checked; }
+  if (t === "dates") { src.date_from = $("esFrom").value; src.date_to = $("esTo").value; }
+  return src;
+}
+$("esSrc").onchange = () => document.querySelectorAll("#esSide [data-src]").forEach(el => el.hidden = el.dataset.src !== $("esSrc").value);
+$("esCreate").onclick = async () => {
+  const src = esSource();
+  if (src.type === "search" && !src.q) return $("esMsg").textContent = "Type some words to search for.";
+  $("esMsg").textContent = "Gathering photos and looking at each one… (the first time takes a little while)";
+  try {
+    const r = await (await api("/api/essays", esJSON({ name: $("esName").value || (src.q ? `“${src.q}”` : "Untitled essay"),
+      source: src, target: +$("esTarget").value, look: $("esLook").value }))).json();
+    $("esMsg").textContent = ""; await esLoad(r.id);
+  } catch (e) { $("esMsg").textContent = e.message; }
+};
+$("esAddSrc").onclick = async () => {
+  if (!ES.id) return;
+  esPushUndo();
+  try {
+    const r = await (await api(`/api/essays/${ES.id}/add`, esJSON({ source: esSource() }))).json();
+    $("esMsg").textContent = `Added ${r.added} photo(s).`; await esLoad(ES.id, true);
+  } catch (e) { $("esMsg").textContent = e.message; }
+};
+async function esLoad(id, keepUndo = false) {
+  $("esNote").textContent = "Loading…";
+  const e = await (await api("/api/essays/" + id)).json();
+  if (!keepUndo && ES.id !== id) ES.undo = [];
+  Object.assign(ES, { id, name: e.name, target: e.target, look: e.look, photos: e.photos, versions: e.versions, gap: null });
+  $("esEmpty").hidden = true; $("esWork").hidden = false; $("esAddSrc").hidden = false;
+  $("esTitle").value = e.name;
+  $("esVersions").innerHTML = `<option value="">Versions (${e.versions.length})</option>` +
+    e.versions.map(v => `<option value="${v.id}">${esc(v.name)} · ${esc(v.created.slice(5, 16))}</option>`).join("");
+  $("esNote").textContent = "";
+  esList(); esRender(); esTransitions(); esPanel(ES.panel);
+}
+function esCount() {
+  const n = ES.photos.length, t = ES.target;
+  $("esCount").textContent = `${n} photo${n === 1 ? "" : "s"}` + (t ? ` · target ${t}` + (n > t ? ` (${n - t} over)` : "") : "");
+  $("esTrim").disabled = !t || n <= t;
+}
+function esSnapshot() { return JSON.stringify(ES.photos.map(p => ({ id: p.id, locked: p.locked, title: p.title }))); }
+function esPushUndo() { ES.undo.push({ snap: esSnapshot(), photos: JSON.parse(JSON.stringify(ES.photos)) }); if (ES.undo.length > 50) ES.undo.shift(); }
+let esSaveTimer = null;
+function esSave() {
+  clearTimeout(esSaveTimer);
+  esSaveTimer = setTimeout(async () => {
+    const locked = {}, titles = {};
+    ES.photos.forEach(p => { locked[p.id] = p.locked; titles[p.id] = p.title || ""; });
+    try { await api(`/api/essays/${ES.id}/order`, esJSON({ order: ES.photos.map(p => p.id), locked, titles })); esList(); }
+    catch (e) { $("esNote").textContent = "Couldn't save: " + e.message; }
+  }, 250);
+  esTransitions();
+}
+async function esTransitions() {
+  if (ES.photos.length < 2) { ES.trans = []; return esRender(); }
+  const order = ES.photos.map(p => p.id).join(",");
+  try {
+    const t = await (await api(`/api/essays/${ES.id}/transitions?` + q({ order }))).json();
+    if (order === ES.photos.map(p => p.id).join(",")) { ES.trans = t; esRender(); }
+  } catch (e) {}
+}
+function esReorder(from, to) {                 // move a photo; locked photos keep their places
+  const arr = ES.photos.slice(), moving = arr[from];
+  if (moving.locked) return;
+  arr.splice(from, 1); arr.splice(to, 0, moving);
+  const lockedAt = ES.photos.map((p, i) => p.locked ? i : -1).filter(i => i >= 0);
+  const free = arr.filter(p => !p.locked), out = [];
+  for (let i = 0; i < arr.length; i++) out.push(lockedAt.includes(i) ? ES.photos[i] : free.shift());
+  ES.photos = out;
+}
+function esCard(p, i, opts = {}) {
+  const d = document.createElement("div");
+  d.className = "esCard" + (p.locked ? " locked" : ""); d.draggable = !p.locked; d.dataset.i = i;
+  d.innerHTML = `<img src="/api/essays/thumb/${p.id}" alt="" draggable="false"><span class="num">${i + 1}</span>
+    <span class="tools"><button class="lk ${p.locked ? "on" : ""}" title="${p.locked ? "Unlock" : "Lock in place"}">${p.locked ? "🔒" : "🔓"}</button><button class="rm" title="Remove from the essay">✕</button></span>
+    ${p.image === "graded" ? `<span class="gr" title="Shown as your graded JPG">graded</span>` : ""}
+    ${opts.titles ? `<input class="ttl" placeholder="Title" value="${esc(p.title || "")}">` : `<div class="cap">${esc(p.title || p.name)}</div>`}`;
+  d.querySelector(".lk").onclick = (e) => { e.stopPropagation(); esPushUndo(); p.locked = !p.locked; esRender(); esSave(); };
+  d.querySelector(".rm").onclick = (e) => { e.stopPropagation(); esPushUndo(); ES.photos.splice(i, 1); esRender(); esSave(); };
+  const ttl = d.querySelector(".ttl");
+  if (ttl) ttl.onchange = () => { esPushUndo(); p.title = ttl.value; esSave(); };
+  d.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", String(i)); e.dataTransfer.effectAllowed = "move"; });
+  d.addEventListener("dragover", (e) => { e.preventDefault(); d.classList.add("drop"); });
+  d.addEventListener("dragleave", () => d.classList.remove("drop"));
+  d.addEventListener("drop", (e) => {
+    e.preventDefault(); d.classList.remove("drop");
+    const from = +e.dataTransfer.getData("text/plain");
+    if (Number.isNaN(from) || from === i) return;
+    esPushUndo(); esReorder(from, i); esRender(); esSave();
+  });
+  return d;
+}
+function esGap(pos) {
+  const g = document.createElement("div");
+  const t = pos > 0 && pos < ES.photos.length ? ES.trans[pos - 1] : null;
+  g.className = "esGap" + (ES.gap === pos ? " sel" : "") + (t && t.reason.startsWith("⚠") ? " warn" : "");
+  g.innerHTML = `<span class="why">${t ? esc(t.reason) : ""}</span><button title="Fill the gap: suggest photos that would fit here">+</button>`;
+  g.querySelector("button").onclick = () => { ES.gap = pos; esPanel("fill"); esRender(); };
+  return g;
+}
+function esRender() {
+  esCount();
+  const at = (id) => ES.photos.findIndex(p => p.id === +id) + 1;    // keep pair numbers in step with the order
+  document.querySelectorAll("#esPanelBody .pnum").forEach(el => {
+    const a = at(el.dataset.a), b = at(el.dataset.b);
+    el.textContent = a && b ? `#${a} + #${b}` : "(one was removed)";
+  });
+  const B = $("esBoard"); B.innerHTML = "";
+  document.querySelectorAll("#esTop .seg button").forEach(b => b.classList.toggle("on", b.dataset.view === ES.view));
+  if (ES.view === "strip") {
+    const row = document.createElement("div"); row.className = "esStrip";
+    row.appendChild(esGap(0));
+    ES.photos.forEach((p, i) => { row.appendChild(esCard(p, i)); row.appendChild(esGap(i + 1)); });
+    B.appendChild(row);
+  } else if (ES.view === "contact") {
+    const grid = document.createElement("div"); grid.className = "esContact";
+    ES.photos.forEach((p, i) => grid.appendChild(esCard(p, i, { titles: true })));
+    B.appendChild(grid);
+  } else {
+    // Spreads: page 1 alone on the right (like a printed zine), then facing pairs.
+    const wrap = document.createElement("div"); wrap.className = "esSpreads";
+    const pages = [null, ...ES.photos.map((p, i) => ({ p, i }))];
+    if (pages.length % 2) pages.push(null);
+    for (let k = 0; k < pages.length; k += 2) {
+      const sp = document.createElement("div"); sp.className = "esSpread";
+      [pages[k], pages[k + 1]].forEach((pg, side) => {
+        const page = document.createElement("div");
+        page.className = "esPage " + (side ? "right" : "left") + (pg ? "" : " blank");
+        if (pg) {
+          page.innerHTML = `<img src="/api/essays/thumb/${pg.p.id}" alt="" draggable="false"><span class="pn">${pg.i + 1}</span>`;
+          page.draggable = !pg.p.locked; page.dataset.i = pg.i;
+          page.addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", String(pg.i)));
+          page.addEventListener("dragover", (e) => e.preventDefault());
+          page.addEventListener("drop", (e) => { e.preventDefault(); const from = +e.dataTransfer.getData("text/plain");
+            if (!Number.isNaN(from) && from !== pg.i) { esPushUndo(); esReorder(from, pg.i); esRender(); esSave(); } });
+        }
+        sp.appendChild(page);
+      });
+      const a = pages[k], b = pages[k + 1];
+      if (a && b) { const t = ES.trans[a.i]; const w = document.createElement("div"); w.className = "esSpreadWhy"; w.textContent = t ? t.reason : ""; sp.appendChild(w); }
+      wrap.appendChild(sp);
+    }
+    B.appendChild(wrap);
+  }
+}
+document.querySelectorAll("#esTop .seg button").forEach(b => b.onclick = () => { ES.view = b.dataset.view; esRender(); });
+document.querySelectorAll(".esSug").forEach(b => b.onclick = async () => {
+  const label = b.textContent;
+  $("esNote").textContent = `Working out a “${label}” order…`;
+  try {
+    const r = await (await api(`/api/essays/${ES.id}/suggest`, esJSON({ style: b.dataset.style, arc: b.dataset.arc || "day_to_night" }))).json();
+    esPushUndo();
+    const byId = Object.fromEntries(ES.photos.map(p => [p.id, p]));
+    ES.photos = r.order.map(id => byId[id]).filter(Boolean);
+    ES.trans = r.transitions;
+    $("esNote").textContent = `“${label}” order applied (Undo to go back). Opener: ${r.opener}. Closer: ${r.closer}.`;
+    esRender(); esSave();
+  } catch (e) { $("esNote").textContent = e.message; }
+});
+$("esUndo").onclick = () => esUndo();
+function esUndo() {
+  const u = ES.undo.pop(); if (!u) return $("esNote").textContent = "Nothing to undo.";
+  ES.photos = u.photos; esRender(); esSave(); $("esNote").textContent = "Undone.";
+}
+document.addEventListener("keydown", (e) => {
+  if (!$("essayView").hidden && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !typing(e)) { e.preventDefault(); esUndo(); }
+});
+$("esTitle").onchange = async () => { await api("/api/essays/" + ES.id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: $("esTitle").value }) }); esList(); };
+$("esSaveV").onclick = async () => {
+  const name = prompt("Name this version:", `Version ${ES.versions.length + 1}`); if (!name) return;
+  await api(`/api/essays/${ES.id}/versions`, esJSON({ name })); esLoad(ES.id, true);
+  $("esNote").textContent = `Saved “${name}”.`;
+};
+$("esVersions").onchange = async () => {
+  const v = $("esVersions").value; if (!v) return;
+  if (!confirm("Switch to this saved version? (Undo brings you back.)")) { $("esVersions").value = ""; return; }
+  esPushUndo();
+  await api(`/api/essays/${ES.id}/versions/${v}/restore`, { method: "POST" }); esLoad(ES.id, true);
+};
+$("esDelete").onclick = async () => {
+  if (!confirm(`Delete the essay “${ES.name}”? Your photos are not touched.`)) return;
+  await api("/api/essays/" + ES.id, { method: "DELETE" });
+  ES.id = null; $("esWork").hidden = true; $("esEmpty").hidden = false; $("esAddSrc").hidden = true; esList();
+};
+$("esTrim").onclick = () => esPanel("trim");
+document.querySelectorAll("#esPanelTabs button").forEach(b => b.onclick = () => esPanel(b.dataset.p));
+async function esPanel(which) {
+  ES.panel = which;
+  document.querySelectorAll("#esPanelTabs button").forEach(b => b.classList.toggle("on", b.dataset.p === which));
+  // A fresh box per request: an older, slower request then writes into a box no longer shown.
+  const P = document.createElement("div"); P.style.display = "contents"; P.textContent = "Looking…";
+  $("esPanelBody").replaceChildren(P);
+  const thumb = (id) => `<img src="/api/essays/thumb/${id}" alt="">`;
+  const num = (id) => ES.photos.findIndex(p => p.id === id) + 1;
+  try {
+    if (which === "pairs") {
+      const ps = await (await api(`/api/essays/${ES.id}/pairs?limit=30`)).json();
+      P.innerHTML = ps.length ? "" : "No pairs yet — add more photos.";
+      for (const pr of ps) {
+        const d = document.createElement("div"); d.className = "esPair" + (pr.mark === "good" ? " good" : "");
+        d.innerHTML = `<div class="imgs">${thumb(pr.a)}${thumb(pr.b)}</div><div class="why"><span class="pnum" data-a="${pr.a}" data-b="${pr.b}">#${num(pr.a)} + #${num(pr.b)}</span> · ${esc(pr.reason)}</div>
+          <div class="acts"><button class="sbs" title="Move them next to each other (a spread in Spreads view)">Side by side</button><button class="ok" title="A good pair: remember it">✓ Save</button><button class="no" title="Not a good pair: don't suggest it again">✕ Bad</button></div>`;
+        d.querySelector(".ok").onclick = async () => { await api("/api/pairs/mark", esJSON({ a: pr.a, b: pr.b, verdict: pr.mark === "good" ? null : "good", rhyme: pr.rhyme })); pr.mark = pr.mark === "good" ? null : "good"; d.classList.toggle("good", pr.mark === "good"); };
+        d.querySelector(".no").onclick = async () => { await api("/api/pairs/mark", esJSON({ a: pr.a, b: pr.b, verdict: "bad", rhyme: pr.rhyme })); d.remove(); };
+        d.querySelector(".sbs").onclick = () => esSideBySide(pr.a, pr.b);
+        P.appendChild(d);
+      }
+    } else if (which === "fill") {
+      if (ES.gap == null) { P.textContent = "Click a + between photos in the Strip view to choose a spot."; return; }
+      const cs = await (await api(`/api/essays/${ES.id}/fill?` + q({ position: ES.gap }))).json();
+      P.innerHTML = cs.length ? "" : "No suggestions for this spot.";
+      for (const c of cs) {
+        const d = document.createElement("div"); d.className = "esCand";
+        d.innerHTML = `${thumb(c.photo_id)}<div class="why">${esc(c.reason)}</div><div class="acts"><button>Add here</button></div>`;
+        d.querySelector("button").onclick = async () => {
+          esPushUndo();
+          await api(`/api/essays/${ES.id}/add`, esJSON({ photo_ids: [c.photo_id] }));
+          const e = await (await api("/api/essays/" + ES.id)).json();
+          const added = e.photos.find(p => p.id === c.photo_id);
+          if (added) { ES.photos.splice(ES.gap, 0, added); ES.gap = null; esRender(); esSave(); esPanel("pairs"); }
+        };
+        P.appendChild(d);
+      }
+    } else if (which === "export") {
+      await esExportPanel(P);
+    } else {
+      if (!ES.target || ES.photos.length <= ES.target) { P.textContent = `Already at or under the target (${ES.target || "none"}).`; return; }
+      const lo = await (await api(`/api/essays/${ES.id}/leaveout?` + q({ target: ES.target }))).json();
+      P.innerHTML = "";
+      const all = document.createElement("div"); all.className = "esCand";
+      all.innerHTML = `<div class="why">To reach ${ES.target}, leave out these ${lo.length}.</div><div class="acts"><button class="primary">Remove all ${lo.length}</button></div>`;
+      all.querySelector("button").onclick = () => { esPushUndo(); const out = new Set(lo.map(x => x.photo_id)); ES.photos = ES.photos.filter(p => !out.has(p.id)); esRender(); esSave(); esPanel("trim"); };
+      P.appendChild(all);
+      for (const x of lo) {
+        const d = document.createElement("div"); d.className = "esCand";
+        d.innerHTML = `${thumb(x.photo_id)}<div class="why">#${num(x.photo_id)} — ${esc(x.reason)}${x.like ? ` (#${num(x.like)})` : ""}</div><div class="acts"><button>Remove</button></div>`;
+        d.querySelector("button").onclick = () => { esPushUndo(); ES.photos = ES.photos.filter(p => p.id !== x.photo_id); esRender(); esSave(); d.remove(); };
+        P.appendChild(d);
+      }
+    }
+  } catch (e) { P.textContent = e.message; }
+}
+// Export: numbered JPGs (graded photos keep their grade; others get the essay's look + crop).
+$("esExport").onclick = () => esPanel("export");
+$("esPdf").onclick = async () => {
+  $("esNote").textContent = "Making the contact sheet…";
+  try { const r = await (await api(`/api/essays/${ES.id}/pdf`, { method: "POST" })).json(); $("esNote").textContent = "Contact sheet saved and opened: " + r.path; }
+  catch (e) { $("esNote").textContent = e.message; }
+};
+async function esExportPanel(P) {
+  if (ES.job && ES.job.essay === ES.id) return esJobView(P);
+  const plan = await (await api(`/api/essays/${ES.id}/plan`)).json();
+  const graded = plan.filter(x => x.kind === "graded").length, raw = plan.length - graded;
+  const off = [...new Set(plan.filter(x => !x.online).map(x => x.drive || "a drive"))];
+  const looks = [{ id: "neutral", name: "Neutral (no look)" }, ...(S.looks || [])];
+  P.innerHTML = `<div class="esExp">
+    <div>${plan.length} photos, saved in order as <b>${esc(plan[0] ? plan[0].file : "01_title.jpg")}</b>, <b>${esc(plan[1] ? plan[1].file : "")}</b>… (titles from the Contact sheet view become the file names).</div>
+    <div>${graded} already graded keep their grade.${raw ? ` ${raw} not graded yet get this look plus their crop:
+      <select id="esExLook">${looks.map(l => `<option value="${l.id}" ${l.id === ES.look ? "selected" : ""}>${esc(l.name)}</option>`).join("")}</select>` : ""}</div>
+    <div class="esRow">Size: <select id="esExSize"><option value="small">Small – 1080 px (Instagram)</option><option value="web" selected>Web – 2048 px</option>
+      <option value="large">Large – 3000 px</option><option value="full">Full size (print)</option></select>
+      <label><input type="checkbox" id="esExPdf" checked> also a PDF contact sheet</label>
+      <button id="esExGo" class="primary">Export</button></div>
+    ${off.length ? `<div class="warn">Needs ${esc(off.join(", "))}, which isn't plugged in. You can start anyway: it will wait for the drive.</div>` : ""}
+    <div class="small">Goes to a new folder in Pictures › Film Look Studio Essays. Your originals are never changed.${raw ? " Ungraded photos take about 15 s each at full quality." : ""}</div>
+  </div>`;
+  const lk = $("esExLook");
+  if (lk) lk.onchange = async () => { ES.look = lk.value; await api("/api/essays/" + ES.id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ look: lk.value }) }); };
+  $("esExGo").onclick = async () => {
+    clearTimeout(esSaveTimer);         // make sure the latest order and titles are saved first
+    const locked = {}, titles = {};
+    ES.photos.forEach(p => { locked[p.id] = p.locked; titles[p.id] = p.title || ""; });
+    await api(`/api/essays/${ES.id}/order`, esJSON({ order: ES.photos.map(p => p.id), locked, titles }));
+    const r = await (await api(`/api/essays/${ES.id}/export`, esJSON({ size: $("esExSize").value, pdf: $("esExPdf").checked }))).json();
+    ES.job = { id: r.job, essay: ES.id }; esJobView(P);
+  };
+}
+async function esJobView(P) {
+  const job = ES.job; if (!job) return;
+  let j;
+  try { j = await (await api("/api/jobs/" + job.id)).json(); } catch (e) { ES.job = null; return; }
+  if (ES.panel !== "export" || ES.id !== job.essay) { if (!j.finished) setTimeout(() => esJobView(P), 1500); else ES.job = null; return; }
+  const reveal = (path) => api("/api/essays/reveal", esJSON({ path }));
+  let html;
+  if (j.error) html = `<div class="warn">Export stopped: ${esc(j.error)}</div>`;
+  else if (j.waiting && j.waiting.length) html = `<div class="warn">Waiting for ${esc(j.waiting.join(", "))} — plug it in and the export starts by itself.</div>`;
+  else if (!j.finished) html = `<div>Exporting ${j.done + (j.current && j.done < j.total ? 1 : 0)} of ${j.total}${j.current ? ": " + esc(j.current) : ""}</div><progress max="${j.total || 1}" value="${j.done}"></progress>`;
+  else html = `<div>Done: ${j.outputs.length} photos${j.pdf ? " and the contact sheet" : ""}${j.cancel ? " (cancelled part way)" : ""}.</div>`;
+  P.innerHTML = `<div class="esExp">${html}<div class="esRow">
+    ${!j.finished ? `<button id="esExStop">Cancel</button>` : `<button id="esExNew">Export again</button>`}
+    ${j.folder ? `<button id="esExShow">Show in Finder</button>` : ""}</div></div>`;
+  if ($("esExStop")) $("esExStop").onclick = () => api(`/api/jobs/${job.id}/cancel`, { method: "POST" });
+  if ($("esExNew")) $("esExNew").onclick = () => { ES.job = null; esPanel("export"); };
+  if ($("esExShow")) $("esExShow").onclick = () => reveal(j.pdf || (j.folder + "/" + (j.outputs[0] || "")));
+  if (!j.finished) setTimeout(() => esJobView(P), 1500);
+}
+
+function esSideBySide(a, b) {
+  const ia = ES.photos.findIndex(p => p.id === a), ib = ES.photos.findIndex(p => p.id === b);
+  if (ia < 0 || ib < 0) return;
+  if (ES.photos[ib].locked && ES.photos[ia].locked) return $("esNote").textContent = "Both photos are locked.";
+  esPushUndo();
+  // Facing pages: page 1 is alone on the right, so pages n and n+1 face each other when n is even.
+  // Try every place for the movable photo and keep the nearest one where the two face each other.
+  // Move the second photo, and if the page sides still don't line up, the first one too (nearest wins).
+  const start = ES.photos.slice(), n = start.length;
+  const facing = (arr) => {
+    const pa = arr.findIndex(p => p.id === a) + 1, pb = arr.findIndex(p => p.id === b) + 1;
+    return Math.abs(pa - pb) === 1 && Math.min(pa, pb) % 2 === 0;
+  };
+  const moved = (arr) => arr.reduce((c, p, i) => c + (start[i].id !== p.id), 0);
+  let best = null;
+  const tryOrder = (arr) => { if (facing(arr)) { const c = moved(arr); if (!best || c < best.cost) best = { cost: c, order: arr }; } };
+  const move = (arr, id, to) => { ES.photos = arr.slice(); const from = ES.photos.findIndex(p => p.id === id);
+    if (ES.photos[from].locked) return null; esReorder(from, to); return ES.photos.slice(); };
+  for (const first of [b, a]) {
+    const second = first === b ? a : b;
+    for (let t1 = 0; t1 < n; t1++) {
+      const one = move(start, first, t1); if (!one) break;
+      tryOrder(one);
+      for (const t2 of [t1 - 2, t1 - 1, t1 + 1, t1 + 2]) {
+        if (t2 < 0 || t2 >= n) continue;
+        const two = move(one, second, t2); if (!two) break;
+        tryOrder(two);
+      }
+    }
+  }
+  ES.photos = best ? best.order : start;
+  if (!best) { ES.undo.pop(); return $("esNote").textContent = "Couldn't put them on facing pages without moving a locked photo."; }
+  esRender(); esSave(); $("esNote").textContent = `#${ES.photos.findIndex(p => p.id === a) + 1} and #${ES.photos.findIndex(p => p.id === b) + 1} face each other on a spread.`;
+}
+
+// --- Browse: a shoot like a Finder window -----------------------------------------------------
+const BR = { shoots: [], folder: null, filter: "all", show: "graded", photos: [], sel: new Set(), last: null, view: null, side: false, orig: false };
+async function brOpen() {
+  BR.shoots = await (await api("/api/browse/shoots")).json();
+  brShoots();
+  if (BR.folder) brLoad(BR.folder.id, true);
+}
+function brShoots() {
+  const f = $("brFind").value.trim().toLowerCase();
+  const box = $("brShoots"); box.innerHTML = "";
+  let year = null;
+  for (const sh of BR.shoots.filter(x => !f || x.name.toLowerCase().includes(f))) {
+    if (sh.year !== year) { year = sh.year; const y = document.createElement("div"); y.className = "brYear"; y.textContent = year || "Undated"; box.appendChild(y); }
+    const d = document.createElement("div"); d.className = "brShoot" + (BR.folder && BR.folder.id === sh.id ? " on" : "");
+    d.innerHTML = `${esc(sh.name)}<small>${sh.photos} photos · ${sh.graded} graded${sh.picks ? ` · ${sh.picks} picked` : ""}${sh.rejects ? ` · ${sh.rejects} rejected` : ""}${sh.online ? "" : " · offline"}</small>`;
+    d.onclick = () => brLoad(sh.id);
+    box.appendChild(d);
+  }
+}
+$("brFind").addEventListener("input", brShoots);
+async function brLoad(id, keepSel = false) {
+  BR.folder = BR.shoots.find(x => x.id === id) || { id, name: "" };
+  if (!keepSel) BR.sel.clear();
+  $("brName").textContent = BR.folder.name; brShoots();
+  BR.photos = await (await api(`/api/browse/photos/${id}?` + q({ filter: BR.filter }))).json();
+  const ids = new Set(BR.photos.map(p => p.id)); BR.sel = new Set([...BR.sel].filter(i => ids.has(i)));
+  brGrid(); brNoteDeleted();
+}
+function brThumb(p) { return BR.show === "graded" && p.graded ? `/api/browse/thumb/${p.id}` : `/api/library/thumb/${p.id}`; }
+function brCell(p, i) {
+  const d = document.createElement("div");
+  d.className = "brCell" + (BR.sel.has(p.id) ? " sel" : "") + (p.mark === "reject" ? " rej" : ""); d.dataset.id = p.id;
+  const b = [];
+  if (p.mark === "pick") b.push(`<span class="bdPick">✓ picked</span>`);
+  if (p.mark === "reject") b.push(`<span class="bdRej">✕ rejected</span>`);
+  if (p.my_rating) b.push(`<span class="bdStar">${"★".repeat(p.my_rating)}</span>`);
+  if (p.graded) b.push(`<span class="bdGr">graded</span>`);
+  if (p.deleted) b.push(`<span class="bdDel">deleted from drive</span>`);
+  else if (!p.online) b.push(`<span class="bdOff">offline</span>`);
+  d.innerHTML = `<div class="im"><img loading="lazy" src="${brThumb(p)}" alt=""></div><div class="bd">${b.join("")}</div><div class="nm" title="${esc(p.name)}">${esc(p.name)}</div>`;
+  d.onclick = (e) => brSelect(i, e);
+  d.ondblclick = () => brView(i);
+  return d;
+}
+function brGrid() {
+  const g = $("brGrid"); g.innerHTML = "";
+  g.style.setProperty("--brs", $("brSize").value + "px");
+  BR.photos.forEach((p, i) => g.appendChild(brCell(p, i)));
+  brCount();
+}
+function brCount() {
+  const n = BR.photos.length, k = BR.sel.size;
+  $("brCount").textContent = `${n} photo${n === 1 ? "" : "s"}` + (k ? ` · ${k} selected` : "");
+  $("brFinder").disabled = !k;
+  $("brFinder").textContent = k ? `Show ${k} in Finder` : "Show in Finder";
+  document.querySelectorAll("#brFilter button").forEach(b => b.classList.toggle("on", b.dataset.f === BR.filter));
+  document.querySelectorAll("#brShow button").forEach(b => b.classList.toggle("on", b.dataset.v === BR.show));
+}
+function brRefreshCell(p) {
+  const i = BR.photos.indexOf(p), old = $("brGrid").querySelector(`.brCell[data-id="${p.id}"]`);
+  if (old && i >= 0) old.replaceWith(brCell(p, i));
+}
+function brSelect(i, e) {
+  const id = BR.photos[i].id;
+  if (e.shiftKey && BR.last != null) {
+    const [a, b] = [Math.min(BR.last, i), Math.max(BR.last, i)];
+    for (let k = a; k <= b; k++) BR.sel.add(BR.photos[k].id);
+  } else if (e.metaKey || e.ctrlKey) { BR.sel.has(id) ? BR.sel.delete(id) : BR.sel.add(id); BR.last = i; }
+  else { BR.sel = new Set([id]); BR.last = i; }
+  document.querySelectorAll("#brGrid .brCell").forEach(c => c.classList.toggle("sel", BR.sel.has(+c.dataset.id)));
+  brCount();
+}
+document.querySelectorAll("#brFilter button").forEach(b => b.onclick = () => { BR.filter = b.dataset.f; if (BR.folder) brLoad(BR.folder.id, true); });
+document.querySelectorAll("#brShow button").forEach(b => b.onclick = () => { BR.show = b.dataset.v; brGrid(); });
+$("brSize").oninput = () => $("brGrid").style.setProperty("--brs", $("brSize").value + "px");
+$("brAll").onclick = () => { BR.sel = new Set(BR.photos.map(p => p.id)); brGrid(); };
+$("brFinder").onclick = () => brFinder([...BR.sel]);
+async function brFinder(ids) {
+  if (!ids.length) return;
+  $("brNote").textContent = "Opening Finder…";
+  try {
+    const r = await (await api("/api/browse/reveal", esJSON({ photo_ids: ids }))).json();
+    let msg = r.files ? `Finder is showing ${r.files} file${r.files === 1 ? "" : "s"} (originals and their ON1 sidecars)` + (r.selected ? ", selected." : ".") +
+      " To delete them, press ⌘⌫ in Finder (they go to the Bin), then click Refresh here." : "No files to show — the drive may be unplugged.";
+    if (r.exports_left) msg += ` ${r.exports_left} graded version${r.exports_left === 1 ? " is" : "s are"} not selected, so they stay.`;
+    if (r.offline.length) msg += ` Not plugged in: ${r.offline.join(", ")}.`;
+    $("brNote").textContent = msg;
+  } catch (e) { $("brNote").textContent = e.message; }
+}
+$("brRescan").onclick = async () => {
+  if (!BR.folder) return;
+  $("brNote").textContent = "Looking for changes on the drive…";
+  try { await api("/api/library/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); } catch (e) {}
+  for (let k = 0; k < 600; k++) {
+    await new Promise(r => setTimeout(r, 1000));
+    const st = await (await api("/api/library/state")).json();
+    if (!st.job || !st.job.running) break;
+  }
+  BR.shoots = await (await api("/api/browse/shoots")).json();
+  await brLoad(BR.folder.id, true);
+  if (!BR.photos.some(p => p.deleted)) $("brNote").textContent = "Up to date.";
+};
+function brNoteDeleted() {
+  const gone = BR.photos.filter(p => p.deleted).length;
+  if (!gone) return;
+  $("brNote").innerHTML = `${gone} photo${gone === 1 ? " was" : "s were"} deleted from the drive.<button id="brForget">Remove ${gone === 1 ? "it" : "them"} from the library</button>`;
+  $("brForget").onclick = async () => {
+    const r = await (await api(`/api/browse/forget_deleted/${BR.folder.id}`, { method: "POST" })).json();
+    $("brNote").textContent = `Removed ${r.removed} from the library.`;
+    BR.shoots = await (await api("/api/browse/shoots")).json(); brLoad(BR.folder.id, true);
+  };
+}
+// Viewer
+function brView(i) {
+  BR.view = i; BR.orig = BR.show === "original"; $("brViewer").hidden = false; brViewRender();
+}
+function brViewRender() {
+  const p = BR.photos[BR.view]; if (!p) return;
+  const graded = `/api/browse/graded/${p.id}`, orig = `/api/cull/view/${p.id}`;
+  let figs;
+  if (p.graded && BR.side) figs = `<figure><img src="${orig}"><figcaption>Original</figcaption></figure><figure><img src="${graded}"><figcaption>Graded</figcaption></figure>`;
+  else figs = `<figure><img src="${p.graded && !BR.orig ? graded : orig}"><figcaption>${p.graded ? (BR.orig ? "Original (G for graded)" : "Graded (G for original)") : "Not graded yet"}</figcaption></figure>`;
+  $("brVImgs").innerHTML = figs;
+  $("brVName").textContent = `${BR.view + 1} / ${BR.photos.length}  ${p.name}`;
+  $("brVInfo").textContent = [p.mark === "pick" ? "✓ picked" : p.mark === "reject" ? "✕ rejected" : "", p.my_rating ? "★".repeat(p.my_rating) : "",
+    (p.time || "").replace("T", " ").slice(0, 16), p.camera || "", p.online ? "" : (p.deleted ? "deleted from drive" : "drive offline")].filter(Boolean).join(" · ");
+  const n = BR.photos[BR.view + 1]; if (n) { const im = new Image(); im.src = n.graded && !BR.orig ? `/api/browse/graded/${n.id}` : `/api/cull/view/${n.id}`; }
+}
+function brViewClose() { $("brViewer").hidden = true; const p = BR.photos[BR.view]; BR.view = null;
+  if (p) { BR.sel = new Set([p.id]); BR.last = BR.photos.indexOf(p); brGrid(); const c = $("brGrid").querySelector(`.brCell[data-id="${p.id}"]`); if (c) c.scrollIntoView({ block: "nearest" }); } }
+$("brVClose").onclick = brViewClose;
+$("brVGrade").onclick = () => { const p = BR.photos[BR.view]; if (p) { brViewClose(); openPhoto(p); } };
+async function brMark(ps, change) {
+  for (const p of ps) {
+    try {
+      const m = await (await api("/api/library/mark/" + p.id, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flag: "keep-as-is", rating: -1, ...change }) })).json();
+      p.mark = m.flag; p.my_rating = m.rating; brRefreshCell(p);
+    } catch (e) { $("brNote").textContent = "Couldn't save: " + e.message; }
+  }
+  if (BR.view != null) brViewRender();
+}
+document.addEventListener("keydown", (e) => {
+  if ($("browseView").hidden || typing(e)) return;
+  const k = e.key, inView = BR.view != null;
+  const targets = inView ? [BR.photos[BR.view]] : BR.photos.filter(p => BR.sel.has(p.id));
+  if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === "a" && !inView) { e.preventDefault(); $("brAll").click(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (inView) {
+    if (k === "Escape" || k === " ") { e.preventDefault(); return brViewClose(); }
+    if (k === "ArrowRight" && BR.view < BR.photos.length - 1) { BR.view++; return brViewRender(); }
+    if (k === "ArrowLeft" && BR.view > 0) { BR.view--; return brViewRender(); }
+    if (k === "g" || k === "G") { BR.orig = !BR.orig; BR.side = false; return brViewRender(); }
+    if (k === "s" || k === "S") { BR.side = !BR.side; return brViewRender(); }
+  } else {
+    if ((k === " " || k === "Enter") && targets.length) { e.preventDefault(); return brView(BR.photos.indexOf(targets[0])); }
+    if (k.startsWith("Arrow") && BR.photos.length) {
+      const cols = Math.max(1, Math.round($("brGrid").clientWidth / ($("brGrid").firstChild?.offsetWidth + 10 || 210)));
+      const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[k];
+      const i = Math.min(BR.photos.length - 1, Math.max(0, (BR.last ?? -1) + step));
+      e.preventDefault(); brSelect(i, { shiftKey: e.shiftKey });
+      const c = $("brGrid").children[i]; if (c) c.scrollIntoView({ block: "nearest" });
+      return;
+    }
+  }
+  if (!targets.length) return;
+  if (k === "f" || k === "F") return brFinder(targets.map(p => p.id));
+  if (k === "p" || k === "P") return brMark(targets, { flag: "pick" });
+  if (k === "x" || k === "X") return brMark(targets, { flag: "reject" });
+  if (k === "u" || k === "U") return brMark(targets, { flag: null });
+  if (/^[0-5]$/.test(k)) return brMark(targets, { rating: +k });
 });
 
 buildSliders();

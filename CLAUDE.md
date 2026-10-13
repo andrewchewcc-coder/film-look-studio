@@ -22,7 +22,7 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   never in the photo. Preview, thumbnails, export and the CLI all apply them.
 - JPGs open in Grade too: `raw.decode` handles them and `pipeline.base(display=True)` keeps a
   neutral JPG unchanged (no auto exposure / contrast).
-- `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only): Library, Second look, Cull and Grade tabs.
+- `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only): Library, Browse, Second look, Cull, Essays and Grade tabs.
 - `filmlook/library/` – searchable archive. Database + thumbnails live in
   `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos).
   `db.py` schema (photos ← files, sidecars, embeddings; later features attach to `photos.id`),
@@ -36,6 +36,17 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   `cull.py` (groups, within-group ranking + reasons, sessions, learning weights from picks),
   `marks.py` (THE place for pick / reject / stars: Cull, Second look "Keep" and the Library all
   use it, so they always agree; every change is logged in `cull_log`).
+  `browse.py` (Browse tab: a shoot like a Finder window; "Show in Finder" selects originals +
+  copies + sidecars via osascript so YOU delete in Finder — the app never deletes; after a rescan,
+  photos whose original is gone can be forgotten). `pairing.py` accepts whole-hour time-zone
+  shifts when names match (-IG exports); `scan.merge_into_owner` keeps marks/essay places on merge.
+  `essay.py` (photo essays: display image = newest graded export else library thumb; per-photo
+  shape/colour/light/gesture/pace features; pairs (rhymes + contrasts, ranked per type, good/bad
+  marks); sequence styles flow / time / mood with locked positions; fill-the-gap; leave-outs;
+  versions). Essays tab: strip / contact sheet / spreads (page 1 alone on the right), drag, lock,
+  undo, versions. `essay_out.py`: PDF contact sheet (thumbnails, works offline) and numbered export
+  (01_title.jpg: graded JPG resized, else RAW + essay look + crop via `engine.render_full`) into a
+  new folder under ~/Pictures/Film Look Studio Essays; waits while a drive is offline.
 - PyTorch model calls must go through `vision` (one at a time: concurrent MPS use segfaults).
 - The app's open folder / collection is global server state: test on another port (e.g. 8766).
 - Library CLI: `./studio library add|scan|status|search|folders`.

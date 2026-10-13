@@ -187,6 +187,48 @@ CREATE TABLE IF NOT EXISTS cull_log (
     at         TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Photo essays (zines, sequences): ordered photos, versions, and your pair decisions.
+CREATE TABLE IF NOT EXISTS essays (
+    id         INTEGER PRIMARY KEY,
+    name       TEXT NOT NULL,
+    look       TEXT NOT NULL DEFAULT 'leica-m9',  -- for photos with no graded JPG yet (export)
+    target     INTEGER,                           -- target length, e.g. 20
+    source     TEXT,                              -- JSON: how it was started
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS essay_items (
+    essay_id INTEGER NOT NULL REFERENCES essays(id),
+    photo_id INTEGER NOT NULL REFERENCES photos(id),
+    pos      INTEGER NOT NULL,
+    locked   INTEGER NOT NULL DEFAULT 0,
+    title    TEXT,
+    PRIMARY KEY (essay_id, photo_id)
+);
+CREATE TABLE IF NOT EXISTS essay_versions (
+    id         INTEGER PRIMARY KEY,
+    essay_id   INTEGER NOT NULL REFERENCES essays(id),
+    name       TEXT NOT NULL,
+    items      TEXT NOT NULL,                     -- JSON [{photo_id, locked, title}] in order
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS pair_marks (
+    a          INTEGER NOT NULL,                  -- photo ids, a < b
+    b          INTEGER NOT NULL,
+    verdict    TEXT NOT NULL,                     -- good / bad
+    rhyme      TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (a, b)
+);
+-- Rhyme features measured on the image an essay shows (graded JPG, else RAW preview + crop).
+CREATE TABLE IF NOT EXISTS essay_features (
+    photo_id INTEGER PRIMARY KEY REFERENCES photos(id),
+    source   TEXT NOT NULL,                       -- which image/version they were measured on
+    thumb    TEXT,                                -- that image as a thumbnail (internal disk)
+    features TEXT NOT NULL,                       -- JSON
+    vector   BLOB                                 -- whole-photo SigLIP embedding of that image
+);
+
 CREATE TABLE IF NOT EXISTS embeddings (
     photo_id INTEGER PRIMARY KEY REFERENCES photos(id),
     model    TEXT NOT NULL,

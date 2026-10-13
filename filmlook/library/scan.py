@@ -36,9 +36,10 @@ class Stopped(Exception):
 
 def forget_photo(con, pid, keep_decision=False):
     """Delete a photo record and everything hanging off it (never the photo's files)."""
-    for table in ("embeddings", "quality", "scene") + (() if keep_decision else ("picks", "marks")):
+    for table in ("embeddings", "quality", "scene", "essay_features") + (() if keep_decision else ("picks", "marks")):
         con.execute(f"DELETE FROM {table} WHERE photo_id=?", (pid,))
     con.execute("UPDATE files SET photo_id=NULL WHERE photo_id=?", (pid,))
+    con.execute("DELETE FROM essay_items WHERE photo_id=?", (pid,))
     con.execute("DELETE FROM photos WHERE id=?", (pid,))
 
 
@@ -318,7 +319,28 @@ def repair_shoot(con, drive_id, shoot_rel):
     for pid in stale:
         if con.execute("SELECT 1 FROM files WHERE photo_id=? AND missing=1 AND role='original'", (pid,)).fetchone():
             continue  # original vanished from an online drive: keep the record (and its thumbnail)
+        merge_into_owner(con, pid)
         forget_photo(con, pid)
+
+
+def merge_into_owner(con, pid):
+    """A photo record is about to go because its file now belongs to another photo (e.g. an
+    export that is now linked to its RAW): carry your decisions over — marks and stars (unless
+    the other photo has its own), Second look keep/dismiss, and places in essays."""
+    row = con.execute("""SELECT f.photo_id FROM photos p JOIN files f ON f.id = p.primary_file_id
+                         WHERE p.id=?""", (pid,)).fetchone()
+    new = row[0] if row else None
+    if not new or new == pid:
+        return
+    m = con.execute("SELECT flag, rating FROM marks WHERE photo_id=?", (pid,)).fetchone()
+    if m and (m["flag"] or m["rating"]):
+        con.execute("INSERT OR IGNORE INTO marks (photo_id) VALUES (?)", (new,))
+        con.execute("""UPDATE marks SET flag=COALESCE(flag, ?), rating=COALESCE(rating, ?),
+                       updated_at=datetime('now') WHERE photo_id=?""", (m["flag"], m["rating"], new))
+    con.execute("UPDATE OR IGNORE picks SET photo_id=? WHERE photo_id=?", (new, pid))
+    for it in con.execute("SELECT essay_id, pos, locked, title FROM essay_items WHERE photo_id=?", (pid,)).fetchall():
+        con.execute("""INSERT OR IGNORE INTO essay_items (essay_id, photo_id, pos, locked, title)
+                       VALUES (?,?,?,?,?)""", (it["essay_id"], new, it["pos"], it["locked"], it["title"]))
 
 
 def link_duplicates(con, mounts):
