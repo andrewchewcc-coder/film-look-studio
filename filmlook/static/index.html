@@ -27,7 +27,7 @@
      scrolls inside its own panels; the photo always shrinks to fit (portrait or landscape). */
   body { display: flex; flex-direction: column; height: 100vh; }
   header { flex: 0 0 auto; }
-  main, #libView, #secondView, #cullView, #essayView, #browseView { flex: 1 1 auto; min-height: 0; }
+  main, #libView, #secondView, #cullView, #essayView { flex: 1 1 auto; min-height: 0; }
   main { display: grid; grid-template-columns: 210px 1fr 290px; grid-template-rows: minmax(0, 1fr); }
   #center { min-height: 0; overflow: hidden; }
   #film { border-right: 1px solid var(--line); overflow-y: auto; padding: 10px; }
@@ -102,16 +102,18 @@
   .tabs button { border: 0; background: transparent; padding: 5px 14px; color: var(--muted); }
   .tabs button.on { background: #2a2a2a; color: var(--text); }
   [hidden] { display: none !important; }
-  #libView { display: grid; grid-template-columns: 250px 1fr; grid-template-rows: minmax(0, 1fr); }
-  #libSide { border-right: 1px solid var(--line); overflow-y: auto; padding: 14px; }
-  #libSide h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
-  #libSide h2:first-child { margin-top: 0; }
-  #libSide label.chk { display: flex; align-items: center; gap: 7px; margin: 5px 0; cursor: pointer; }
-  #libSide label.chk input { accent-color: var(--accent); width: 15px; height: 15px; }
-  #libSide label.chk small { color: var(--muted); margin-left: auto; }
-  #libSide select, #libSide input[type=date], #libSide input[type=text] { width: 100%; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; }
-  #libSide .field { margin: 8px 0; }
-  #libSide .field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  #libView { display: grid; grid-template-columns: 230px 1fr; grid-template-rows: minmax(0, 1fr); position: relative; color-scheme: dark; }
+  #libSide { border-right: 1px solid var(--line); overflow-y: auto; padding: 4px 14px 14px; }
+  #libSide > label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
+  #libSide select, #libSide input[type=date], #libSide input[type=text] { width: 100%; height: 32px; box-sizing: border-box; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 0 8px; border-radius: 6px; font: inherit; font-size: 13px; }
+  #libSide input[type=range] { width: 100%; }
+  .dates2 { display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; align-items: center; font-size: 12px; color: var(--muted); }
+  #libTools { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  #libTools button { width: 100%; height: 32px; font-size: 13px; }
+  #foldersBox { position: absolute; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center; z-index: 6; padding: 16px; }
+  #foldersBox[hidden] { display: none; }
+  #foldersBox .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; width: min(560px, 100%); max-height: 80vh; overflow-y: auto; }
+  #foldersBox h3 { margin: 0 0 8px; font-size: 15px; }
   .dates { display: flex; flex-direction: column; gap: 6px; }
   .root { font-size: 12px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; margin: 6px 0; word-break: break-word; }
   .root b { font-weight: 600; }
@@ -120,11 +122,18 @@
   .pill.off { background: #3a2a1f; color: #e3a36f; }
   .bar { height: 5px; background: #2a2a2a; border-radius: 3px; overflow: hidden; margin: 6px 0; }
   .bar div { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
-  #libMain { overflow-y: auto; padding: 12px 16px 30px; min-width: 0; }
-  #libInfo { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; color: var(--muted); font-size: 13px; }
-  #libInfo b { color: var(--text); }
-  #libInfo .chip { background: #2a2a2a; border: 1px solid #383838; border-radius: 12px; padding: 2px 9px; color: var(--text); font-size: 12px; cursor: pointer; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+  #libMain { overflow-y: auto; padding: 0 16px 30px; min-width: 0; }
+  #libHead { position: sticky; top: 0; z-index: 2; background: var(--bg, #111); display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+  #libHead button { padding: 5px 10px; font-size: 13px; }
+  #lbTitle { font-size: 15px; font-weight: 600; }
+  #lbNote { min-height: 16px; margin: 4px 0 8px; }
+  #lbNote button { padding: 2px 8px; font-size: 12px; margin-left: 6px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--cs, 180px), 1fr)); gap: 8px; }
+  .cell.sel { border-color: var(--accent); }
+  .cell img { height: calc(100% - 18px) !important; }
+  .cell .nm { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; font-size: 11px; color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+  .cell .tags { bottom: 23px !important; }
+  .cell .tags .dl { color: #ff7b7b; }
   .cell { position: relative; aspect-ratio: 1; background: #1b1b1b; border-radius: 4px; overflow: hidden; cursor: pointer; border: 2px solid transparent; }
   .cell:hover { border-color: #555; }
   .cell img { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -241,28 +250,6 @@
   .cuTile.cur { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
   .cuTile b { position: absolute; right: 2px; bottom: 2px; font-size: 10px; background: #000b; padding: 0 4px; border-radius: 2px; font-weight: 500; }
   .cuTile i { position: absolute; left: 2px; top: 2px; font-size: 9px; background: #3a2a1f; color: #e3a36f; padding: 0 3px; border-radius: 2px; font-style: normal; }
-  #browseView { color-scheme: dark; display: grid; grid-template-columns: 250px 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
-  #brSide { border-right: 1px solid var(--line); overflow-y: auto; padding: 12px; }
-  #brFind { width: 100%; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; margin-bottom: 8px; }
-  .brShoot { padding: 6px 8px; border-radius: 6px; cursor: pointer; color: var(--text); font-size: 13px; }
-  .brShoot:hover { background: #1c1c1c; } .brShoot.on { background: #2a2a2a; }
-  .brShoot small { display: block; color: var(--muted); font-size: 11px; }
-  .brYear { font-size: 11px; letter-spacing: .08em; color: var(--muted); margin: 12px 0 4px; font-weight: 600; }
-  #brMain { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-  #brTop { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-  #brTop button { padding: 5px 9px; font-size: 13px; }
-  #brNote { padding: 5px 14px; min-height: 16px; }
-  #brNote button { padding: 2px 8px; font-size: 12px; margin-left: 6px; }
-  #brGrid { flex: 1; overflow-y: auto; padding: 8px 14px 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--brs, 200px), 1fr)); gap: 10px; align-content: start; }
-  .brCell { background: #161616; border: 2px solid transparent; border-radius: 6px; padding: 5px; cursor: default; user-select: none; position: relative; }
-  .brCell.sel { border-color: var(--accent); background: #1f1c14; }
-  .brCell .im { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
-  .brCell img { max-width: 100%; max-height: 100%; display: block; }
-  .brCell.rej img { opacity: .35; }
-  .brCell .nm { font-size: 11px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
-  .brCell .bd { position: absolute; left: 9px; top: 9px; display: flex; gap: 3px; flex-wrap: wrap; }
-  .brCell .bd span { font-size: 10px; padding: 0 5px; border-radius: 3px; background: #000b; }
-  .bdPick { color: #6fd28a; } .bdRej { color: #ff7b7b; } .bdStar { color: var(--accent); } .bdGr { color: #9ec5ff; } .bdOff { color: #aaa; } .bdDel { color: #ff7b7b; }
   #brViewer { position: absolute; inset: 0; background: #0b0b0b; display: flex; flex-direction: column; z-index: 5; }
   #brViewer[hidden] { display: none; }
   #brVTop { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -325,11 +312,13 @@
   .esPage .pn { position: absolute; bottom: 5px; font-size: 10px; color: #777; }
   .esPage.left .pn { left: 8px; } .esPage.right .pn { right: 8px; }
   .esSpreadWhy { grid-column: 1 / -1; text-align: center; font-size: 11px; color: var(--muted); padding-top: 4px; }
-  #esPanel { border-top: 1px solid var(--line); height: 210px; display: flex; flex-direction: column; flex: 0 0 auto; }
+  #esPanel { border-top: 1px solid var(--line); height: 250px; display: flex; flex-direction: column; flex: 0 0 auto; }
   #esPanelTabs { margin: 8px 14px; align-self: flex-start; }
-  #esPanelBody { flex: 1; overflow-x: auto; overflow-y: hidden; padding: 0 14px 10px; display: flex; gap: 12px; align-items: flex-start; }
+  #esPanelBody { flex: 1; overflow-x: auto; overflow-y: auto; padding: 0 14px 10px; display: flex; gap: 12px; align-items: flex-start; }
   .esPair, .esCand { flex: 0 0 auto; background: #181818; border-radius: 5px; padding: 6px; }
-  .esPair .imgs { display: flex; gap: 3px; }
+  .esPair .imgs { display: flex; gap: 3px; cursor: pointer; }
+  .esPair .acts, .esCand .acts { margin-bottom: 5px; }
+  .esCard.flash { border-color: #6fd28a; box-shadow: 0 0 0 3px #6fd28a55; }
   .esPair img, .esCand img { height: 96px; display: block; }
   .esPair .why, .esCand .why { max-width: 260px; margin: 4px 0; color: var(--text); font-size: 12px; white-space: normal; }
   .esPair .acts, .esCand .acts { display: flex; gap: 5px; }
@@ -374,37 +363,61 @@
 <body>
 <header>
   <h1>Film Look Studio</h1>
-  <div class="tabs"><button id="tabLib">Library</button><button id="tabBrowse">Browse</button><button id="tabSecond">Second look</button><button id="tabCull">Cull</button><button id="tabEssay">Essays</button><button id="tabGrade">Grade</button></div>
-  <input type="text" id="libq" placeholder="Search in plain words, e.g. rain at night, lone figure in red, reflections in glass" spellcheck="false">
+  <div class="tabs"><button id="tabLib">Library</button><button id="tabSecond">Second look</button><button id="tabCull">Cull</button><button id="tabEssay">Essays</button><button id="tabGrade">Grade</button></div>
   <div id="folderBar"><span id="folderName" title="">No folder open</span><button id="open" class="primary">Choose folder…</button></div>
 </header>
 <section id="libView" hidden>
   <div id="libSide">
-    <h2>Category</h2>
-    <div id="cats"></div>
-    <h2>Filter</h2>
-    <div class="field"><span>Year</span><select id="fYear"><option value="">All years</option></select></div>
-    <div class="field"><span>Date range</span><div class="dates"><input type="date" id="fFrom" title="From"><input type="date" id="fTo" title="To"></div></div>
-    <div class="field"><span>Camera</span><select id="fCamera"><option value="">All cameras</option></select></div>
-    <div class="field"><span>Graded</span><select id="fGraded"><option value="">Graded or not</option><option value="1">Graded (exported)</option><option value="0">Not graded yet</option></select></div>
-    <div class="field"><span>My culling marks</span><select id="fFlag"><option value="">Any</option><option value="pick">Picked</option><option value="reject">Rejected</option><option value="none">Not marked</option></select></div>
-    <div class="field"><span>My stars</span><select id="fStars"><option value="0">Any</option><option value="1">★ 1 or more</option><option value="2">★★ 2 or more</option><option value="3">★★★ 3 or more</option><option value="4">★★★★ 4 or more</option><option value="5">★★★★★ 5</option></select></div>
-    <div class="row"><button id="fClear">Clear filters</button><button id="showFolders">Folders…</button></div>
-
-    <h2>Library folders</h2>
-    <div id="roots"></div>
-    <div class="row"><button id="addRoot">Add folder…</button></div>
-    <div class="row"><button id="scanBtn" class="primary">Scan for new photos</button><button id="pauseBtn" hidden>Pause</button></div>
-    <div class="bar"><div id="scanBar"></div></div>
-    <div id="scanStatus" class="small"></div>
+    <label for="libq">Search</label>
+    <input type="text" id="libq" placeholder="rain at night" spellcheck="false">
+    <label for="lbWhere">Browse</label>
+    <select id="lbWhere"><option value="">All shoots</option></select>
+    <label>Dates</label>
+    <div class="dates2"><span>From</span><input type="date" id="fFrom"><span>To</span><input type="date" id="fTo"></div>
+    <label for="fFlag">Marks</label>
+    <select id="fFlag"><option value="">All</option><option value="pick">Picked</option><option value="reject">Rejected</option><option value="none">Not marked</option></select>
+    <label for="fGraded">Graded</label>
+    <select id="fGraded"><option value="">Any</option><option value="1">Graded</option><option value="0">Not graded</option></select>
+    <label for="fStars">Stars</label>
+    <select id="fStars"><option value="0">Any</option><option value="1">★ 1 or more</option><option value="2">★★ 2 or more</option><option value="3">★★★ 3 or more</option><option value="4">★★★★ 4 or more</option><option value="5">★★★★★ 5</option></select>
+    <label for="lbView">View</label>
+    <select id="lbView"><option value="graded">Graded versions</option><option value="original">Originals</option></select>
+    <label for="lbSize">Thumbnail size</label>
+    <input type="range" id="lbSize" min="120" max="420" step="10" value="180">
+    <label for="fCamera">Camera</label>
+    <select id="fCamera"><option value="">All cameras</option></select>
+    <div id="libTools">
+      <button id="scanBtn">Scan for new photos</button><button id="pauseBtn" hidden>Pause</button>
+      <div class="bar"><div id="scanBar"></div></div>
+      <div id="scanStatus" class="small"></div>
+      <button id="showFolders">Folders…</button>
+      <div id="drivesLine" class="small"></div>
+    </div>
   </div>
   <div id="libMain">
-    <div id="libInfo"></div>
+    <div id="libHead">
+      <div><div id="lbTitle">All shoots</div><div id="lbSub" class="small"></div></div>
+      <span style="flex:1"></span>
+      <span id="lbCount" class="small"></span>
+      <button id="lbAll">Select all</button>
+      <button id="lbFinder" title="Open Finder with the selected photos' files selected (one shoot at a time)">Show in Finder</button>
+    </div>
+    <div id="lbNote" class="small"></div>
     <div id="grid" class="grid"></div>
     <button id="more" hidden>Show more</button>
     <div id="libEmpty" hidden></div>
-    <div id="folderView" hidden></div>
   </div>
+  <div id="brViewer" hidden>
+    <div id="brVTop"><span id="brVName"></span><span id="brVInfo" class="small"></span>
+      <span class="hint">← → next · G graded/original · S side by side · P X U · 0–5 stars · F Finder · Esc close</span>
+      <button id="brVGrade">Open in Grade</button><button id="brVClose">✕</button></div>
+    <div id="brVImgs"></div>
+  </div>
+  <div id="foldersBox" hidden><div class="box">
+    <h3>Library folders</h3>
+    <div id="roots"></div>
+    <div class="row" style="justify-content:flex-end"><button id="addRoot" style="flex:0 0 auto">Add folder…</button><button id="foldersClose" style="flex:0 0 auto">Close</button></div>
+  </div></div>
 </section>
 <section id="secondView" hidden>
   <div id="slSide">
@@ -482,31 +495,6 @@
     <div id="cuPane"><img id="cuZoomImg" alt="" draggable="false"></div>
     <div id="cuNav" title="Click to jump there"><img id="cuNavImg" alt="" draggable="false"><div id="cuNavBox"></div></div>
     <div id="cuZoomNote"></div>
-  </div>
-</section>
-<section id="browseView" hidden>
-  <div id="brSide">
-    <input type="text" id="brFind" placeholder="Find a shoot…" spellcheck="false">
-    <div id="brShoots" class="small">Loading…</div>
-  </div>
-  <div id="brMain">
-    <div id="brTop">
-      <b id="brName">Choose a shoot</b><span id="brCount" class="small"></span>
-      <span class="seg" id="brFilter"><button data-f="all" class="on">All</button><button data-f="pick">Picked</button><button data-f="reject">Rejected</button><button data-f="unmarked">Not marked</button><button data-f="graded">Graded</button><button data-f="ungraded">Not graded</button></span>
-      <span class="seg" id="brShow" title="For graded photos, show the graded version or the original"><button data-v="graded" class="on">Graded versions</button><button data-v="original">Originals</button></span>
-      <input type="range" id="brSize" min="120" max="420" value="200" title="Thumbnail size">
-      <button id="brAll">Select all</button>
-      <button id="brFinder" class="primary" disabled>Show in Finder</button>
-      <button id="brRescan" title="Look for changes on the drive (e.g. after deleting in Finder)">Refresh</button>
-    </div>
-    <div id="brNote" class="small"></div>
-    <div id="brGrid"></div>
-  </div>
-  <div id="brViewer" hidden>
-    <div id="brVTop"><span id="brVName"></span><span id="brVInfo" class="small"></span>
-      <span class="hint">← → next · G graded/original · S side by side · P X U · 0–5 stars · F Finder · Esc close</span>
-      <button id="brVGrade">Open in Grade</button><button id="brVClose">✕</button></div>
-    <div id="brVImgs"></div>
   </div>
 </section>
 <section id="essayView" hidden>
@@ -850,7 +838,7 @@ document.addEventListener("keyup", e => { if (e.key === "b" && bDown) { bDown = 
 
 // --- Library -------------------------------------------------------------------------
 const CATS = ["street", "travel", "portrait", "misc"];
-const L = { cats: new Set(["street", "travel"]), offset: 0, total: 0, folder: null, folderName: "", seq: 0, polling: false };
+const L = { offset: 0, total: 0, seq: 0, polling: false, photos: [], sel: new Set(), last: null, view: null, side: false, orig: false, shoots: [], hover: null };
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function setTab(tab) {
@@ -858,10 +846,7 @@ function setTab(tab) {
   $("libView").hidden = !lib; $("secondView").hidden = !second; $("gradeView").hidden = !grade; $("cullView").hidden = !cullT;
   $("essayView").hidden = !essT; $("tabEssay").classList.toggle("on", essT);
   if (essT) esOpen();
-  const brT = tab === "browse";
-  $("browseView").hidden = !brT; $("tabBrowse").classList.toggle("on", brT);
-  if (brT) brOpen();
-  $("libq").hidden = !lib; $("folderBar").hidden = !grade;
+  $("folderBar").hidden = !grade;
   $("tabLib").classList.toggle("on", lib); $("tabSecond").classList.toggle("on", second);
   $("tabGrade").classList.toggle("on", grade); $("tabCull").classList.toggle("on", cullT);
   if (lib) libRefresh();                   // marks may have changed in Cull / Second look
@@ -870,20 +855,9 @@ function setTab(tab) {
 }
 $("tabCull").onclick = () => setTab("cull");
 $("tabEssay").onclick = () => setTab("essay");
-$("tabBrowse").onclick = () => setTab("browse");
 $("tabLib").onclick = () => setTab("lib");
 $("tabSecond").onclick = () => setTab("second");
 $("tabGrade").onclick = () => setTab("grade");
-
-function buildCats() {
-  $("cats").innerHTML = "";
-  for (const c of CATS) {
-    const l = document.createElement("label"); l.className = "chk";
-    l.innerHTML = `<input type="checkbox" ${L.cats.has(c) ? "checked" : ""}> ${c[0].toUpperCase() + c.slice(1)}`;
-    l.querySelector("input").onchange = (e) => { e.target.checked ? L.cats.add(c) : L.cats.delete(c); runSearch(); };
-    $("cats").appendChild(l);
-  }
-}
 
 function fillSelect(sel, values, keep) {
   const cur = sel.value; const first = sel.options[0].outerHTML;
@@ -893,19 +867,32 @@ function fillSelect(sel, values, keep) {
 
 async function loadLib() {
   const st = await (await api("/api/library/state")).json();
-  fillSelect($("fYear"), st.facets.years, true);
   fillSelect($("fCamera"), st.facets.cameras, true);
+  L.shoots = await (await api("/api/browse/shoots")).json();
+  lbWhereFill();
   $("roots").innerHTML = st.roots.length ? st.roots.map(r =>
     `<div class="root"><button data-id="${r.id}" data-name="${esc(r.rel_path)}" title="Take this folder out of the library">Remove</button><span class="pill ${r.online ? "on" : "off"}">${r.online ? "online" : "drive offline"}</span><b>${esc(r.drive)}</b><br>${esc(r.rel_path)}</div>`).join("")
-    : `<div class="small">No folders yet. Add one below, then Scan.</div>`;
+    : `<div class="small">No folders yet. Add one, then Scan for new photos.</div>`;
   $("roots").querySelectorAll("button").forEach(b => b.onclick = async () => {
     if (!confirm(`Remove “${b.dataset.name}” from the library?\n\nYour photos are not touched — only the library's index and thumbnails for this folder are cleared.`)) return;
     try { await api("/api/library/roots/" + b.dataset.id, { method: "DELETE" }); await loadLib(); runSearch(); }
     catch (e) { alert(e.message); }
   });
   $("roots").insertAdjacentHTML("beforeend", `<div class="small">${st.summary.photos.toLocaleString()} photos · ${st.summary.graded.toLocaleString()} graded</div>`);
+  const drv = {}; st.roots.forEach(r => { drv[r.drive] = drv[r.drive] || r.online; });
+  $("drivesLine").textContent = Object.entries(drv).map(([d, on]) => `${d} ${on ? "online" : "offline"}`).join(" · ");
   showJob(st.job);
   return st;
+}
+function lbWhereFill() {
+  const cur = $("lbWhere").value, years = [...new Set(L.shoots.map(x => x.year).filter(Boolean))];
+  let html = `<option value="">All shoots</option><optgroup label="Years">` + years.map(y => `<option value="y:${y}">${y}</option>`).join("") + `</optgroup>`;
+  for (const y of years) html += `<optgroup label="${y} shoots">` + L.shoots.filter(x => x.year === y)
+    .map(x => `<option value="f:${x.id}">${esc(x.name)} (${x.photos})</option>`).join("") + `</optgroup>`;
+  const undated = L.shoots.filter(x => !x.year);
+  if (undated.length) html += `<optgroup label="Undated">` + undated.map(x => `<option value="f:${x.id}">${esc(x.name)}</option>`).join("") + `</optgroup>`;
+  $("lbWhere").innerHTML = html;
+  $("lbWhere").value = [...$("lbWhere").options].some(o => o.value === cur) ? cur : "";
 }
 
 function showJob(j) {
@@ -995,43 +982,40 @@ $("pkAdd").onclick = async () => {
   } catch (e) { $("pkWhy").textContent = e.message; }
 };
 
+function lbFolder() { const v = $("lbWhere").value; return v.startsWith("f:") ? +v.slice(2) : null; }
 function params(offset) {
-  const p = { q: $("libq").value.trim(), cats: [...L.cats].join(","), year: $("fYear").value, date_from: $("fFrom").value,
-              date_to: $("fTo").value, camera: $("fCamera").value, graded: $("fGraded").value,
-              flag: $("fFlag").value, stars: $("fStars").value, offset, limit: 120 };
-  if (L.folder) { p.folder_id = L.folder; p.cats = ""; }
+  const v = $("lbWhere").value, folder = lbFolder(), text = $("libq").value.trim();
+  const p = { q: text, cats: "", year: v.startsWith("y:") ? v.slice(2) : "", date_from: $("fFrom").value, date_to: $("fTo").value,
+              camera: $("fCamera").value, graded: $("fGraded").value, flag: $("fFlag").value, stars: $("fStars").value,
+              offset, limit: folder ? 3000 : 200, order: folder && !text ? "oldest" : "newest" };
+  if (folder) p.folder_id = folder;
   return p;
 }
-async function libRefresh() {             // reload what's shown so tags are current; keep the scroll position
-  if (!$("grid").children.length || $("grid").hidden || $("libq").value.trim()) return runSearch();
-  const keep = $("libMain").scrollTop, p = params(0);
-  p.limit = Math.max(L.offset, 120);
-  try {
-    const res = await (await api("/api/library/search?" + q(p))).json();
-    $("grid").innerHTML = ""; L.divided = false;
-    for (const r of res.results) $("grid").appendChild(cell(r));
-    L.offset = res.results.length; L.total = res.total; $("more").hidden = L.offset >= L.total;
-    $("libMain").scrollTop = keep;
-  } catch (e) {}
+async function libRefresh() {                 // marks may have changed elsewhere: reload, keep scroll and selection
+  const keep = $("libMain").scrollTop;
+  await runSearch(false, Math.max(L.offset, 0));
+  $("libMain").scrollTop = keep;
 }
-async function runSearch(more = false) {
-  $("folderView").hidden = true; $("grid").hidden = false;
+async function runSearch(more = false, atLeast = 0) {
   const seq = ++L.seq;
   if (!more) L.offset = 0;
   const p = params(L.offset);
-  if (!more) $("libInfo").innerHTML = p.q ? "Searching…" : "Loading…";
-  const slow = setTimeout(() => { if (seq === L.seq) $("libInfo").textContent =
+  if (atLeast > p.limit) p.limit = atLeast;
+  const where = $("lbWhere").selectedOptions[0];
+  $("lbTitle").textContent = where ? where.textContent.replace(/ \(\d+\)$/, "") : "All shoots";
+  if (!more) $("lbSub").textContent = p.q ? "Searching…" : "Loading…";
+  const slow = setTimeout(() => { if (seq === L.seq) $("lbSub").textContent =
     "Loading the search model — the first search after opening the app takes about 15 seconds…"; }, 2500);
   const ctrl = new AbortController(), limit = setTimeout(() => ctrl.abort(), 90000);
   let res;
   try { res = await (await api("/api/library/search?" + q(p), { signal: ctrl.signal })).json(); }
   catch (e) {
-    if (seq === L.seq) $("libInfo").textContent = e.name === "AbortError"
+    if (seq === L.seq) $("lbSub").textContent = e.name === "AbortError"
       ? "Search is taking too long. Close the app window and open it again from the Desktop icon." : "Search failed: " + e.message;
     return;
   } finally { clearTimeout(slow); clearTimeout(limit); }
   if (seq !== L.seq) return;
-  if (!more) { $("grid").innerHTML = ""; L.divided = false; }
+  if (!more) { L.photos = []; $("grid").innerHTML = ""; L.divided = false; }
   for (const r of res.results) {
     if (p.q && r.strong === false && !L.divided) {
       L.divided = true;
@@ -1039,17 +1023,17 @@ async function runSearch(more = false) {
       d.textContent = res.strong ? `Weaker matches — these may not show “${p.q}”` : `No clear matches for “${p.q}” — closest photos`;
       $("grid").appendChild(d);
     }
-    $("grid").appendChild(cell(r));
+    L.photos.push(r);
+    $("grid").appendChild(cell(r, L.photos.length - 1));
   }
+  const ids = new Set(L.photos.map(r => r.id)); L.sel = new Set([...L.sel].filter(i => ids.has(i)));
   L.total = res.total; L.offset += res.results.length;
   $("more").hidden = L.offset >= L.total;
-  const what = p.q ? `<b>${res.strong.toLocaleString()}</b> clear matches for <b>“${esc(p.q)}”</b>, best first` : "newest first";
-  const scope = L.folder ? ` in <span class="chip" id="clearFolder" title="Show all folders">${esc(L.folderName)} ✕</span>` :
-    (L.cats.size ? ` · ${[...L.cats].join(" + ")}` : " · all categories");
-  $("libInfo").innerHTML = p.q ? `<span>${what}${scope}</span>` : `<span><b>${L.total.toLocaleString()}</b> photos</span><span>${what}${scope}</span>`;
-  const cf = $("clearFolder"); if (cf) cf.onclick = () => { L.folder = null; runSearch(); };
+  const order = p.q ? "best match first" : p.order === "oldest" ? "shooting order" : "newest first";
+  $("lbSub").textContent = p.q ? `${(res.strong || 0).toLocaleString()} clear matches for “${p.q}” · ${order}` : `${L.total.toLocaleString()} photos · ${order}`;
   $("libEmpty").hidden = L.total > 0;
-  $("libEmpty").textContent = L.total ? "" : "No photos match. Try other words, or tick more categories.";
+  $("libEmpty").textContent = L.total ? "" : "No photos match. Try other words or loosen the filters.";
+  lbCount(); lbNoteDeleted();
 }
 $("more").onclick = () => runSearch(true);
 
@@ -1059,49 +1043,142 @@ function describe(r) {
     r.shutter ? (r.shutter < 1 ? "1/" + Math.round(1 / r.shutter) : r.shutter + "s") : "", r.iso ? "ISO " + r.iso : ""];
   return bits.filter(Boolean).join(" · ");
 }
-function cell(r) {
-  const d = document.createElement("div"); d.className = "cell" + (r.online ? "" : " offline") + (r.mark === "reject" ? " rejected" : "");
-  d.dataset.id = r.id;
+function lbThumb(r) { return $("lbView").value === "graded" && r.graded ? `/api/browse/thumb/${r.id}` : `/api/library/thumb/${r.id}`; }
+function cell(r, i) {
+  const d = document.createElement("div");
+  d.className = "cell" + (r.online ? "" : " offline") + (r.mark === "reject" ? " rejected" : "") + (L.sel.has(r.id) ? " sel" : "");
+  d.dataset.id = r.id; d.dataset.i = i;
   const tags = [];
   if (r.mark === "pick") tags.push(`<span class="pk">Picked</span>`);
   if (r.mark === "reject") tags.push(`<span class="rj">Rejected</span>`);
   if (r.graded) tags.push(`<span class="g">Graded</span>`);
   if (r.my_rating > 0) tags.push(`<span class="st" title="Your stars">${"★".repeat(r.my_rating)}</span>`);
-  if (r.rating > 0) tags.push(`<span class="on1" title="ON1 rating">ON1 ${"★".repeat(r.rating)}</span>`);
-  if (!r.online) tags.push(`<span class="o">Drive offline</span>`);
+  if (r.deleted) tags.push(`<span class="dl">Deleted from drive</span>`);
+  else if (!r.online) tags.push(`<span class="o">Drive offline</span>`);
   const stars = [1, 2, 3, 4, 5].map(n => `<b data-r="${n}" class="${(r.my_rating || 0) >= n ? "on" : ""}">★</b>`).join("");
-  d.innerHTML = `<img loading="lazy" src="/api/library/thumb/${r.id}" alt=""><div class="tags">${tags.join("")}</div>
+  d.innerHTML = `<img loading="lazy" src="${lbThumb(r)}" alt="" draggable="false"><div class="tags">${tags.join("")}</div><div class="nm">${esc(r.name)}</div>
     <div class="acts"><button data-f="pick" class="${r.mark === "pick" ? "on" : ""}" title="Pick (P)">✓</button><button data-f="reject" class="${r.mark === "reject" ? "on" : ""}" title="Reject (X)">✕</button><button data-f="" title="Unmark (U)">↺</button><span class="st">${stars}</span></div>`;
-  d.title = `${r.name}\n${r.folder}\n${describe(r)}\n${r.category}`;
-  d.onclick = () => openPhoto(r);
-  d.querySelectorAll(".acts [data-f]").forEach(b => b.onclick = (e) => { e.stopPropagation(); libMark(r, d, { flag: b.dataset.f || null }); });
+  d.title = `${r.name}\n${r.folder}\n${describe(r)}`;
+  d.onclick = (e) => lbSelect(+d.dataset.i, e);
+  d.ondblclick = () => lbOpenViewer(+d.dataset.i);
+  d.querySelectorAll(".acts [data-f]").forEach(b => b.onclick = (e) => { e.stopPropagation(); libMark([r], { flag: b.dataset.f || null }); });
   d.querySelectorAll(".acts [data-r]").forEach(b => b.onclick = (e) => {
-    e.stopPropagation(); const n = +b.dataset.r; libMark(r, d, { rating: r.my_rating === n ? 0 : n });
+    e.stopPropagation(); const n = +b.dataset.r; libMark([r], { rating: r.my_rating === n ? 0 : n });
   });
   d.querySelector(".acts").onclick = (e) => e.stopPropagation();
-  d.addEventListener("mouseenter", () => { L.hover = { r, d }; });
-  d.addEventListener("mouseleave", () => { if (L.hover && L.hover.d === d) L.hover = null; });
+  d.querySelector(".acts").ondblclick = (e) => e.stopPropagation();
+  d.addEventListener("mouseenter", () => { L.hover = r; });
+  d.addEventListener("mouseleave", () => { if (L.hover === r) L.hover = null; });
   return d;
 }
-async function libMark(r, d, change) {
-  const body = { flag: "keep-as-is", rating: -1, ...change };
-  try {
-    const m = await (await api("/api/library/mark/" + r.id, { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body) })).json();
-    r.mark = m.flag; r.my_rating = m.rating;
-    const now = $("grid").querySelector(`.cell[data-id="${r.id}"]`) || d;   // the one on screen now
-    const fresh = cell(r), wasHover = L.hover && L.hover.r.id === r.id;
-    now.replaceWith(fresh);
-    if (wasHover) L.hover = { r, d: fresh };
-  } catch (e) { alert("Couldn't save: " + e.message); }
+function lbRedraw(r) {
+  const i = L.photos.indexOf(r), old = $("grid").querySelector(`.cell[data-id="${r.id}"]`);
+  if (old && i >= 0) old.replaceWith(cell(r, i));
 }
+async function libMark(rs, change) {
+  for (const r of rs) {
+    try {
+      const m = await (await api("/api/library/mark/" + r.id, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flag: "keep-as-is", rating: -1, ...change }) })).json();
+      r.mark = m.flag; r.my_rating = m.rating; lbRedraw(r);
+    } catch (e) { $("lbNote").textContent = "Couldn't save: " + e.message; }
+  }
+  if (L.view != null) lbViewRender();
+}
+function lbSelect(i, e) {
+  const id = L.photos[i].id;
+  if (e.shiftKey && L.last != null) {
+    const [a, b] = [Math.min(L.last, i), Math.max(L.last, i)];
+    for (let k = a; k <= b; k++) L.sel.add(L.photos[k].id);
+  } else if (e.metaKey || e.ctrlKey) { L.sel.has(id) ? L.sel.delete(id) : L.sel.add(id); L.last = i; }
+  else { L.sel = new Set([id]); L.last = i; }
+  document.querySelectorAll("#grid .cell").forEach(c => c.classList.toggle("sel", L.sel.has(+c.dataset.id)));
+  lbCount();
+}
+function lbCount() {
+  const k = L.sel.size;
+  $("lbCount").textContent = k ? `${k} selected` : "";
+  $("lbFinder").textContent = k > 1 ? `Show ${k} in Finder` : "Show in Finder";
+}
+$("lbAll").onclick = () => { L.sel = new Set(L.photos.map(r => r.id)); document.querySelectorAll("#grid .cell").forEach(c => c.classList.add("sel")); lbCount(); };
+$("lbFinder").onclick = () => lbFinder(L.photos.filter(r => L.sel.has(r.id)));
+async function lbFinder(rs) {
+  if (!rs.length) return $("lbNote").textContent = "Select one or more photos first (click, ⌘-click, Shift-click, or Select all).";
+  if (new Set(rs.map(r => r.folder_id)).size > 1)
+    return $("lbNote").textContent = "These photos are from more than one shoot. Choose one shoot in Browse (or select photos from one shoot) to show them in Finder.";
+  $("lbNote").textContent = "Opening Finder…";
+  try {
+    const r = await (await api("/api/browse/reveal", esJSON({ photo_ids: rs.map(x => x.id) }))).json();
+    let msg = r.files ? `Finder is showing ${r.files} file${r.files === 1 ? "" : "s"} (originals and their ON1 sidecars)` + (r.selected ? ", selected." : ".") +
+      " To delete them, press ⌘⌫ in Finder (they go to the Bin), then click Scan for new photos." : "No files to show — the drive may be unplugged.";
+    if (r.exports_left) msg += ` ${r.exports_left} graded version${r.exports_left === 1 ? " is" : "s are"} not selected, so they stay.`;
+    if (r.offline.length) msg += ` Not plugged in: ${r.offline.join(", ")}.`;
+    $("lbNote").textContent = msg;
+  } catch (e) { $("lbNote").textContent = e.message; }
+}
+function lbNoteDeleted() {
+  const folder = lbFolder(), gone = L.photos.filter(r => r.deleted).length;
+  if (!gone) { if ($("lbNote").querySelector("#lbForget")) $("lbNote").textContent = ""; return; }
+  if (!folder) return;
+  $("lbNote").innerHTML = `${gone} photo${gone === 1 ? " was" : "s were"} deleted from the drive.<button id="lbForget">Remove ${gone === 1 ? "it" : "them"} from the library</button>`;
+  $("lbForget").onclick = async () => {
+    const r = await (await api(`/api/browse/forget_deleted/${folder}`, { method: "POST" })).json();
+    $("lbNote").textContent = `Removed ${r.removed} from the library.`;
+    await loadLib(); runSearch();
+  };
+}
+// Big viewer
+function lbOpenViewer(i) { L.view = i; L.orig = $("lbView").value === "original"; L.side = false; $("brViewer").hidden = false; lbViewRender(); }
+function lbViewRender() {
+  const r = L.photos[L.view]; if (!r) return;
+  const graded = `/api/browse/graded/${r.id}`, orig = `/api/cull/view/${r.id}`;
+  $("brVImgs").innerHTML = r.graded && L.side
+    ? `<figure><img src="${orig}"><figcaption>Original</figcaption></figure><figure><img src="${graded}"><figcaption>Graded</figcaption></figure>`
+    : `<figure><img src="${r.graded && !L.orig ? graded : orig}"><figcaption>${r.graded ? (L.orig ? "Original (G for graded)" : "Graded (G for original)") : "Not graded yet"}</figcaption></figure>`;
+  $("brVName").textContent = `${L.view + 1} / ${L.photos.length}  ${r.name}`;
+  $("brVInfo").textContent = [r.mark === "pick" ? "✓ picked" : r.mark === "reject" ? "✕ rejected" : "", r.my_rating ? "★".repeat(r.my_rating) : "",
+    describe(r), r.online ? "" : (r.deleted ? "deleted from drive" : "drive offline")].filter(Boolean).join(" · ");
+  const n = L.photos[L.view + 1]; if (n) { const im = new Image(); im.src = n.graded && !L.orig ? `/api/browse/graded/${n.id}` : `/api/cull/view/${n.id}`; }
+}
+function lbCloseViewer() {
+  $("brViewer").hidden = true; const r = L.photos[L.view]; L.view = null;
+  if (r) { L.sel = new Set([r.id]); L.last = L.photos.indexOf(r);
+    document.querySelectorAll("#grid .cell").forEach(c => c.classList.toggle("sel", L.sel.has(+c.dataset.id)));
+    const c = $("grid").querySelector(`.cell[data-id="${r.id}"]`); if (c) c.scrollIntoView({ block: "nearest" }); lbCount(); }
+}
+$("brVClose").onclick = lbCloseViewer;
+$("brVGrade").onclick = () => { const r = L.photos[L.view]; if (r) { lbCloseViewer(); openPhoto(r); } };
 document.addEventListener("keydown", (e) => {
-  if ($("libView").hidden || !L.hover || typing(e) || e.metaKey || e.ctrlKey) return;
-  const k = e.key, { r, d } = L.hover;
-  if (k === "p" || k === "P") libMark(r, d, { flag: "pick" });
-  else if (k === "x" || k === "X") libMark(r, d, { flag: "reject" });
-  else if (k === "u" || k === "U") libMark(r, d, { flag: null });
-  else if (/^[0-5]$/.test(k)) libMark(r, d, { rating: +k });
+  if ($("libView").hidden || typing(e) || !$("foldersBox").hidden) return;
+  const k = e.key, inView = L.view != null;
+  if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === "a" && !inView) { e.preventDefault(); return $("lbAll").click(); }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  let targets = inView ? [L.photos[L.view]] : L.photos.filter(r => L.sel.has(r.id));
+  if (!targets.length && L.hover) targets = [L.hover];
+  if (inView) {
+    if (k === "Escape" || k === " ") { e.preventDefault(); return lbCloseViewer(); }
+    if (k === "ArrowRight" && L.view < L.photos.length - 1) { L.view++; return lbViewRender(); }
+    if (k === "ArrowLeft" && L.view > 0) { L.view--; return lbViewRender(); }
+    if (k === "g" || k === "G") { L.orig = !L.orig; L.side = false; return lbViewRender(); }
+    if (k === "s" || k === "S") { L.side = !L.side; return lbViewRender(); }
+  } else {
+    if ((k === " " || k === "Enter") && targets.length) { e.preventDefault(); return lbOpenViewer(L.photos.indexOf(targets[0])); }
+    if (k.startsWith("Arrow") && L.photos.length) {
+      const first = $("grid").querySelector(".cell");
+      const cols = Math.max(1, Math.round($("grid").clientWidth / ((first ? first.offsetWidth : 180) + 8)));
+      const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[k];
+      const i = Math.min(L.photos.length - 1, Math.max(0, (L.last ?? -1) + step));
+      e.preventDefault(); lbSelect(i, { shiftKey: e.shiftKey });
+      const c = $("grid").querySelector(`.cell[data-i="${i}"]`); if (c) c.scrollIntoView({ block: "nearest" });
+      return;
+    }
+  }
+  if (!targets.length) return;
+  if (k === "f" || k === "F") lbFinder(targets);
+  else if (k === "p" || k === "P") libMark(targets, { flag: "pick" });
+  else if (k === "x" || k === "X") libMark(targets, { flag: "reject" });
+  else if (k === "u" || k === "U") libMark(targets, { flag: null });
+  else if (/^[0-5]$/.test(k)) libMark(targets, { rating: +k });
   else return;
   e.preventDefault();
 });
@@ -1122,30 +1199,12 @@ $("lightbox").onclick = (e) => { if (e.target.id === "lightbox") $("lightbox").h
 let typeTimer = null;
 $("libq").addEventListener("input", () => { clearTimeout(typeTimer); typeTimer = setTimeout(() => runSearch(), 400); });
 $("libq").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(typeTimer); runSearch(); } });
-["fYear", "fFrom", "fTo", "fCamera", "fGraded", "fFlag", "fStars"].forEach(id => $(id).addEventListener("change", () => runSearch()));
-$("fClear").onclick = () => {
-  ["fYear", "fFrom", "fTo", "fCamera", "fGraded", "fFlag"].forEach(id => $(id).value = ""); $("fStars").value = "0";
-  L.cats = new Set(["street", "travel"]); L.folder = null; $("libq").value = ""; buildCats(); runSearch();
-};
-
-$("showFolders").onclick = async () => {
-  const rows = await (await api("/api/library/folders")).json();
-  $("grid").hidden = true; $("more").hidden = true; $("libEmpty").hidden = true;
-  $("libInfo").innerHTML = `<span><b>${rows.length}</b> folders</span><span>Set a category for a whole shoot. “Auto” uses the image model per photo.</span>`;
-  const opts = (sel) => [`<option value="">Auto</option>`, ...CATS.map(c => `<option value="${c}" ${sel === c ? "selected" : ""}>${c}</option>`)].join("");
-  $("folderView").innerHTML = `<table class="folders"><tr><th>Folder</th><th>Photos</th><th>Model's view</th><th>Category</th></tr>` +
-    rows.map(f => `<tr><td><a data-id="${f.id}" data-name="${esc(f.folder)}">${esc(f.folder)}</a><div class="small">${esc(f.drive)}</div></td><td>${f.photos}</td>
-      <td class="counts">${Object.entries(f.counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)} ${v}`).join(" · ")}</td>
-      <td><select data-id="${f.id}">${opts(f.override)}</select>${f.override ? "" : ` <span class="small">→ mostly ${esc(f.suggested || "?")}</span>`}</td></tr>`).join("") + "</table>";
-  $("folderView").hidden = false;
-  $("folderView").querySelectorAll("select").forEach(s => s.onchange = async () => {
-    await api("/api/library/folders/" + s.dataset.id, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: s.value || null }) });
-    $("showFolders").click();
-  });
-  $("folderView").querySelectorAll("a").forEach(a => a.onclick = () => { L.folder = +a.dataset.id; L.folderName = a.dataset.name; runSearch(); });
-};
-
-buildCats();
+["lbWhere", "fFrom", "fTo", "fCamera", "fGraded", "fFlag", "fStars"].forEach(id => $(id).addEventListener("change", () => { L.sel.clear(); $("lbNote").textContent = ""; runSearch(); }));
+$("lbView").onchange = () => { document.querySelectorAll("#grid .cell").forEach(c => { const r = L.photos[+c.dataset.i]; if (r) c.querySelector("img").src = lbThumb(r); }); };
+$("lbSize").oninput = () => $("grid").style.setProperty("--cs", $("lbSize").value + "px");
+$("showFolders").onclick = () => { $("foldersBox").hidden = false; };
+$("foldersClose").onclick = () => { $("foldersBox").hidden = true; };
+$("foldersBox").onclick = (e) => { if (e.target.id === "foldersBox") $("foldersBox").hidden = true; };
 
 // --- Second look ------------------------------------------------------------------------
 const SL = { view: "gems", cats: new Set(["street", "travel"]), offset: 0, total: 0, seq: 0, loaded: false };
@@ -1658,9 +1717,10 @@ async function cuLoad(sid) {
   cuFilter(true);
 }
 function cuFilter(jumpToFirstOpen) {
-  CU.list = CU.groups.filter(g => !$("cuUnsure").checked || g.unsure).map(g => g.idx);
+  // CU.list holds positions in CU.groups (a group's idx can skip numbers if photos left the library)
+  CU.list = CU.groups.map((g, k) => k).filter(k => !$("cuUnsure").checked || CU.groups[k].unsure);
   cuBuildStrip();
-  let pos = jumpToFirstOpen ? CU.list.findIndex(i => !CU.groups[i].done) : Math.max(0, CU.list.indexOf(CU.groups[CU.cur]?.idx));
+  let pos = jumpToFirstOpen ? CU.list.findIndex(i => !CU.groups[i].done) : Math.max(0, CU.list.indexOf(CU.cur));
   CU.gi = pos < 0 ? Math.max(0, CU.list.length - 1) : pos; CU.fi = -1;
   cuShow();
 }
@@ -1681,7 +1741,7 @@ function cuUpdateStrip() {
   const tiles = $("cuStrip").children;
   CU.list.forEach((gidx, pos) => {
     const g = CU.groups[gidx], t = tiles[pos]; if (!t) return;
-    const flags = g.ids.map(id => CU.frames[id].flag);
+    const flags = g.ids.map(id => (CU.frames[id] || {}).flag);
     const pick = flags.includes("pick"), rej = !pick && flags.every(f => f === "reject");
     t.className = "cuTile" + (pick ? " pick" : "") + (rej ? " rej" : "") + (g.done ? " done" : "") + (pos === CU.gi ? " cur" : "");
     if (pick) { const pid = g.ids.find(id => CU.frames[id].flag === "pick"); const im = t.querySelector("img");
@@ -1700,7 +1760,7 @@ function cuShow() {
   cuUpdateStrip();
   $("cuPrev").disabled = CU.gi <= 0;
   if (!g) { $("cuWhy").textContent = $("cuUnsure").checked ? "No unsure groups — untick the box to see them all." : ""; return; }
-  CU.cur = g.idx;
+  CU.cur = CU.list[CU.gi];
   if (CU.fi < 0 || CU.fi >= g.ids.length) CU.fi = Math.max(0, g.ids.indexOf(g.suggested));
   const start = Math.max(0, Math.min(CU.fi - 1, g.ids.length - 4)), shown = g.ids.slice(start, start + 4);
   shown.forEach((id, k) => {
@@ -2216,11 +2276,12 @@ async function esPanel(which) {
       P.innerHTML = ps.length ? "" : "No pairs yet — add more photos.";
       for (const pr of ps) {
         const d = document.createElement("div"); d.className = "esPair" + (pr.mark === "good" ? " good" : "");
-        d.innerHTML = `<div class="imgs">${thumb(pr.a)}${thumb(pr.b)}</div><div class="why"><span class="pnum" data-a="${pr.a}" data-b="${pr.b}">#${num(pr.a)} + #${num(pr.b)}</span> · ${esc(pr.reason)}</div>
-          <div class="acts"><button class="sbs" title="Move them next to each other (a spread in Spreads view)">Side by side</button><button class="ok" title="A good pair: remember it">✓ Save</button><button class="no" title="Not a good pair: don't suggest it again">✕ Bad</button></div>`;
+        d.innerHTML = `<div class="acts"><button class="sbs" title="Move them next to each other (facing pages in Spreads view)">Side by side</button><button class="ok" title="A good pair: remember it">✓ Save</button><button class="no" title="Not a good pair: don't suggest it again">✕ Bad</button></div>
+          <div class="imgs" title="Click to show where these two are in your essay">${thumb(pr.a)}${thumb(pr.b)}</div><div class="why"><span class="pnum" data-a="${pr.a}" data-b="${pr.b}">#${num(pr.a)} + #${num(pr.b)}</span> · ${esc(pr.reason)}</div>`;
         d.querySelector(".ok").onclick = async () => { await api("/api/pairs/mark", esJSON({ a: pr.a, b: pr.b, verdict: pr.mark === "good" ? null : "good", rhyme: pr.rhyme })); pr.mark = pr.mark === "good" ? null : "good"; d.classList.toggle("good", pr.mark === "good"); };
         d.querySelector(".no").onclick = async () => { await api("/api/pairs/mark", esJSON({ a: pr.a, b: pr.b, verdict: "bad", rhyme: pr.rhyme })); d.remove(); };
-        d.querySelector(".sbs").onclick = () => esSideBySide(pr.a, pr.b);
+        d.querySelector(".sbs").onclick = () => { esSideBySide(pr.a, pr.b); esFlash([pr.a, pr.b]); };
+        d.querySelector(".imgs").onclick = () => esFlash([pr.a, pr.b]);
         P.appendChild(d);
       }
     } else if (which === "fill") {
@@ -2229,7 +2290,7 @@ async function esPanel(which) {
       P.innerHTML = cs.length ? "" : "No suggestions for this spot.";
       for (const c of cs) {
         const d = document.createElement("div"); d.className = "esCand";
-        d.innerHTML = `${thumb(c.photo_id)}<div class="why">${esc(c.reason)}</div><div class="acts"><button>Add here</button></div>`;
+        d.innerHTML = `<div class="acts"><button>Add here</button></div>${thumb(c.photo_id)}<div class="why">${esc(c.reason)}</div>`;
         d.querySelector("button").onclick = async () => {
           esPushUndo();
           await api(`/api/essays/${ES.id}/add`, esJSON({ photo_ids: [c.photo_id] }));
@@ -2251,7 +2312,7 @@ async function esPanel(which) {
       P.appendChild(all);
       for (const x of lo) {
         const d = document.createElement("div"); d.className = "esCand";
-        d.innerHTML = `${thumb(x.photo_id)}<div class="why">#${num(x.photo_id)} — ${esc(x.reason)}${x.like ? ` (#${num(x.like)})` : ""}</div><div class="acts"><button>Remove</button></div>`;
+        d.innerHTML = `<div class="acts"><button>Remove</button></div>${thumb(x.photo_id)}<div class="why">#${num(x.photo_id)} — ${esc(x.reason)}${x.like ? ` (#${num(x.like)})` : ""}</div>`;
         d.querySelector("button").onclick = () => { esPushUndo(); ES.photos = ES.photos.filter(p => p.id !== x.photo_id); esRender(); esSave(); d.remove(); };
         P.appendChild(d);
       }
@@ -2313,6 +2374,14 @@ async function esJobView(P) {
   if (!j.finished) setTimeout(() => esJobView(P), 1500);
 }
 
+function esFlash(ids) {             // show where photos are: scroll to them and outline them in green
+  if (ES.view === "spreads") ES.view = "strip";
+  esRender();
+  const cards = ids.map(id => $("esBoard").querySelector(`.esCard[data-i="${ES.photos.findIndex(p => p.id === id)}"]`)).filter(Boolean);
+  cards.forEach(c => c.classList.add("flash"));
+  if (cards[0]) cards[0].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  setTimeout(() => cards.forEach(c => c.classList.remove("flash")), 2500);
+}
 function esSideBySide(a, b) {
   const ia = ES.photos.findIndex(p => p.id === a), ib = ES.photos.findIndex(p => p.id === b);
   if (ia < 0 || ib < 0) return;
@@ -2348,178 +2417,6 @@ function esSideBySide(a, b) {
   esRender(); esSave(); $("esNote").textContent = `#${ES.photos.findIndex(p => p.id === a) + 1} and #${ES.photos.findIndex(p => p.id === b) + 1} face each other on a spread.`;
 }
 
-// --- Browse: a shoot like a Finder window -----------------------------------------------------
-const BR = { shoots: [], folder: null, filter: "all", show: "graded", photos: [], sel: new Set(), last: null, view: null, side: false, orig: false };
-async function brOpen() {
-  BR.shoots = await (await api("/api/browse/shoots")).json();
-  brShoots();
-  if (BR.folder) brLoad(BR.folder.id, true);
-}
-function brShoots() {
-  const f = $("brFind").value.trim().toLowerCase();
-  const box = $("brShoots"); box.innerHTML = "";
-  let year = null;
-  for (const sh of BR.shoots.filter(x => !f || x.name.toLowerCase().includes(f))) {
-    if (sh.year !== year) { year = sh.year; const y = document.createElement("div"); y.className = "brYear"; y.textContent = year || "Undated"; box.appendChild(y); }
-    const d = document.createElement("div"); d.className = "brShoot" + (BR.folder && BR.folder.id === sh.id ? " on" : "");
-    d.innerHTML = `${esc(sh.name)}<small>${sh.photos} photos · ${sh.graded} graded${sh.picks ? ` · ${sh.picks} picked` : ""}${sh.rejects ? ` · ${sh.rejects} rejected` : ""}${sh.online ? "" : " · offline"}</small>`;
-    d.onclick = () => brLoad(sh.id);
-    box.appendChild(d);
-  }
-}
-$("brFind").addEventListener("input", brShoots);
-async function brLoad(id, keepSel = false) {
-  BR.folder = BR.shoots.find(x => x.id === id) || { id, name: "" };
-  if (!keepSel) BR.sel.clear();
-  $("brName").textContent = BR.folder.name; brShoots();
-  BR.photos = await (await api(`/api/browse/photos/${id}?` + q({ filter: BR.filter }))).json();
-  const ids = new Set(BR.photos.map(p => p.id)); BR.sel = new Set([...BR.sel].filter(i => ids.has(i)));
-  brGrid(); brNoteDeleted();
-}
-function brThumb(p) { return BR.show === "graded" && p.graded ? `/api/browse/thumb/${p.id}` : `/api/library/thumb/${p.id}`; }
-function brCell(p, i) {
-  const d = document.createElement("div");
-  d.className = "brCell" + (BR.sel.has(p.id) ? " sel" : "") + (p.mark === "reject" ? " rej" : ""); d.dataset.id = p.id;
-  const b = [];
-  if (p.mark === "pick") b.push(`<span class="bdPick">✓ picked</span>`);
-  if (p.mark === "reject") b.push(`<span class="bdRej">✕ rejected</span>`);
-  if (p.my_rating) b.push(`<span class="bdStar">${"★".repeat(p.my_rating)}</span>`);
-  if (p.graded) b.push(`<span class="bdGr">graded</span>`);
-  if (p.deleted) b.push(`<span class="bdDel">deleted from drive</span>`);
-  else if (!p.online) b.push(`<span class="bdOff">offline</span>`);
-  d.innerHTML = `<div class="im"><img loading="lazy" src="${brThumb(p)}" alt=""></div><div class="bd">${b.join("")}</div><div class="nm" title="${esc(p.name)}">${esc(p.name)}</div>`;
-  d.onclick = (e) => brSelect(i, e);
-  d.ondblclick = () => brView(i);
-  return d;
-}
-function brGrid() {
-  const g = $("brGrid"); g.innerHTML = "";
-  g.style.setProperty("--brs", $("brSize").value + "px");
-  BR.photos.forEach((p, i) => g.appendChild(brCell(p, i)));
-  brCount();
-}
-function brCount() {
-  const n = BR.photos.length, k = BR.sel.size;
-  $("brCount").textContent = `${n} photo${n === 1 ? "" : "s"}` + (k ? ` · ${k} selected` : "");
-  $("brFinder").disabled = !k;
-  $("brFinder").textContent = k ? `Show ${k} in Finder` : "Show in Finder";
-  document.querySelectorAll("#brFilter button").forEach(b => b.classList.toggle("on", b.dataset.f === BR.filter));
-  document.querySelectorAll("#brShow button").forEach(b => b.classList.toggle("on", b.dataset.v === BR.show));
-}
-function brRefreshCell(p) {
-  const i = BR.photos.indexOf(p), old = $("brGrid").querySelector(`.brCell[data-id="${p.id}"]`);
-  if (old && i >= 0) old.replaceWith(brCell(p, i));
-}
-function brSelect(i, e) {
-  const id = BR.photos[i].id;
-  if (e.shiftKey && BR.last != null) {
-    const [a, b] = [Math.min(BR.last, i), Math.max(BR.last, i)];
-    for (let k = a; k <= b; k++) BR.sel.add(BR.photos[k].id);
-  } else if (e.metaKey || e.ctrlKey) { BR.sel.has(id) ? BR.sel.delete(id) : BR.sel.add(id); BR.last = i; }
-  else { BR.sel = new Set([id]); BR.last = i; }
-  document.querySelectorAll("#brGrid .brCell").forEach(c => c.classList.toggle("sel", BR.sel.has(+c.dataset.id)));
-  brCount();
-}
-document.querySelectorAll("#brFilter button").forEach(b => b.onclick = () => { BR.filter = b.dataset.f; if (BR.folder) brLoad(BR.folder.id, true); });
-document.querySelectorAll("#brShow button").forEach(b => b.onclick = () => { BR.show = b.dataset.v; brGrid(); });
-$("brSize").oninput = () => $("brGrid").style.setProperty("--brs", $("brSize").value + "px");
-$("brAll").onclick = () => { BR.sel = new Set(BR.photos.map(p => p.id)); brGrid(); };
-$("brFinder").onclick = () => brFinder([...BR.sel]);
-async function brFinder(ids) {
-  if (!ids.length) return;
-  $("brNote").textContent = "Opening Finder…";
-  try {
-    const r = await (await api("/api/browse/reveal", esJSON({ photo_ids: ids }))).json();
-    let msg = r.files ? `Finder is showing ${r.files} file${r.files === 1 ? "" : "s"} (originals and their ON1 sidecars)` + (r.selected ? ", selected." : ".") +
-      " To delete them, press ⌘⌫ in Finder (they go to the Bin), then click Refresh here." : "No files to show — the drive may be unplugged.";
-    if (r.exports_left) msg += ` ${r.exports_left} graded version${r.exports_left === 1 ? " is" : "s are"} not selected, so they stay.`;
-    if (r.offline.length) msg += ` Not plugged in: ${r.offline.join(", ")}.`;
-    $("brNote").textContent = msg;
-  } catch (e) { $("brNote").textContent = e.message; }
-}
-$("brRescan").onclick = async () => {
-  if (!BR.folder) return;
-  $("brNote").textContent = "Looking for changes on the drive…";
-  try { await api("/api/library/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); } catch (e) {}
-  for (let k = 0; k < 600; k++) {
-    await new Promise(r => setTimeout(r, 1000));
-    const st = await (await api("/api/library/state")).json();
-    if (!st.job || !st.job.running) break;
-  }
-  BR.shoots = await (await api("/api/browse/shoots")).json();
-  await brLoad(BR.folder.id, true);
-  if (!BR.photos.some(p => p.deleted)) $("brNote").textContent = "Up to date.";
-};
-function brNoteDeleted() {
-  const gone = BR.photos.filter(p => p.deleted).length;
-  if (!gone) return;
-  $("brNote").innerHTML = `${gone} photo${gone === 1 ? " was" : "s were"} deleted from the drive.<button id="brForget">Remove ${gone === 1 ? "it" : "them"} from the library</button>`;
-  $("brForget").onclick = async () => {
-    const r = await (await api(`/api/browse/forget_deleted/${BR.folder.id}`, { method: "POST" })).json();
-    $("brNote").textContent = `Removed ${r.removed} from the library.`;
-    BR.shoots = await (await api("/api/browse/shoots")).json(); brLoad(BR.folder.id, true);
-  };
-}
-// Viewer
-function brView(i) {
-  BR.view = i; BR.orig = BR.show === "original"; $("brViewer").hidden = false; brViewRender();
-}
-function brViewRender() {
-  const p = BR.photos[BR.view]; if (!p) return;
-  const graded = `/api/browse/graded/${p.id}`, orig = `/api/cull/view/${p.id}`;
-  let figs;
-  if (p.graded && BR.side) figs = `<figure><img src="${orig}"><figcaption>Original</figcaption></figure><figure><img src="${graded}"><figcaption>Graded</figcaption></figure>`;
-  else figs = `<figure><img src="${p.graded && !BR.orig ? graded : orig}"><figcaption>${p.graded ? (BR.orig ? "Original (G for graded)" : "Graded (G for original)") : "Not graded yet"}</figcaption></figure>`;
-  $("brVImgs").innerHTML = figs;
-  $("brVName").textContent = `${BR.view + 1} / ${BR.photos.length}  ${p.name}`;
-  $("brVInfo").textContent = [p.mark === "pick" ? "✓ picked" : p.mark === "reject" ? "✕ rejected" : "", p.my_rating ? "★".repeat(p.my_rating) : "",
-    (p.time || "").replace("T", " ").slice(0, 16), p.camera || "", p.online ? "" : (p.deleted ? "deleted from drive" : "drive offline")].filter(Boolean).join(" · ");
-  const n = BR.photos[BR.view + 1]; if (n) { const im = new Image(); im.src = n.graded && !BR.orig ? `/api/browse/graded/${n.id}` : `/api/cull/view/${n.id}`; }
-}
-function brViewClose() { $("brViewer").hidden = true; const p = BR.photos[BR.view]; BR.view = null;
-  if (p) { BR.sel = new Set([p.id]); BR.last = BR.photos.indexOf(p); brGrid(); const c = $("brGrid").querySelector(`.brCell[data-id="${p.id}"]`); if (c) c.scrollIntoView({ block: "nearest" }); } }
-$("brVClose").onclick = brViewClose;
-$("brVGrade").onclick = () => { const p = BR.photos[BR.view]; if (p) { brViewClose(); openPhoto(p); } };
-async function brMark(ps, change) {
-  for (const p of ps) {
-    try {
-      const m = await (await api("/api/library/mark/" + p.id, { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flag: "keep-as-is", rating: -1, ...change }) })).json();
-      p.mark = m.flag; p.my_rating = m.rating; brRefreshCell(p);
-    } catch (e) { $("brNote").textContent = "Couldn't save: " + e.message; }
-  }
-  if (BR.view != null) brViewRender();
-}
-document.addEventListener("keydown", (e) => {
-  if ($("browseView").hidden || typing(e)) return;
-  const k = e.key, inView = BR.view != null;
-  const targets = inView ? [BR.photos[BR.view]] : BR.photos.filter(p => BR.sel.has(p.id));
-  if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === "a" && !inView) { e.preventDefault(); $("brAll").click(); return; }
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (inView) {
-    if (k === "Escape" || k === " ") { e.preventDefault(); return brViewClose(); }
-    if (k === "ArrowRight" && BR.view < BR.photos.length - 1) { BR.view++; return brViewRender(); }
-    if (k === "ArrowLeft" && BR.view > 0) { BR.view--; return brViewRender(); }
-    if (k === "g" || k === "G") { BR.orig = !BR.orig; BR.side = false; return brViewRender(); }
-    if (k === "s" || k === "S") { BR.side = !BR.side; return brViewRender(); }
-  } else {
-    if ((k === " " || k === "Enter") && targets.length) { e.preventDefault(); return brView(BR.photos.indexOf(targets[0])); }
-    if (k.startsWith("Arrow") && BR.photos.length) {
-      const cols = Math.max(1, Math.round($("brGrid").clientWidth / ($("brGrid").firstChild?.offsetWidth + 10 || 210)));
-      const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[k];
-      const i = Math.min(BR.photos.length - 1, Math.max(0, (BR.last ?? -1) + step));
-      e.preventDefault(); brSelect(i, { shiftKey: e.shiftKey });
-      const c = $("brGrid").children[i]; if (c) c.scrollIntoView({ block: "nearest" });
-      return;
-    }
-  }
-  if (!targets.length) return;
-  if (k === "f" || k === "F") return brFinder(targets.map(p => p.id));
-  if (k === "p" || k === "P") return brMark(targets, { flag: "pick" });
-  if (k === "x" || k === "X") return brMark(targets, { flag: "reject" });
-  if (k === "u" || k === "U") return brMark(targets, { flag: null });
-  if (/^[0-5]$/.test(k)) return brMark(targets, { rating: +k });
-});
 
 buildSliders();
 api("/api/state").then(r => r.json()).then(st => {

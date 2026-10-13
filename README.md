@@ -22,17 +22,16 @@ a small JSON recipe you can tweak and save as your own.
 
 ## Use it
 
-### Library (search all your photos)
-```bash
-./studio serve
-```
-Open the **Library** tab, add your photo folders (e.g. `/Volumes/Extreme SSD/2025 Photography`) and
-click **Scan**. Then search in plain words ("rain at night", "lone figure in red"), filter by year,
-dates, camera, category and graded / not graded, and click a photo to grade it. RAW files and
-their exported JPGs count as one photo. Everything stays on your Mac; the database and thumbnails
-live in `~/Library/Application Support/Film Look Studio/`, and your photo folders are only read.
-Unplugged drives stay searchable from their thumbnails. The first scan downloads the local
-search model once (~1.5 GB).
+### Library (search and browse all your photos)
+Add your photo folders with **Folders…**, then **Scan for new photos**. Everything is set in the sidebar:
+search in plain words, **Browse** all shoots / a year / one shoot, dates, marks (picked / rejected /
+not marked), graded or not, stars, camera, and whether to show graded versions or originals. One shoot
+is shown in shooting order (like Finder), a search best match first, otherwise newest first.
+Click to select (⌘ / Shift for more), double-click or Space for the big viewer (← →, **G** graded ↔
+original, **S** side by side), P / X / U and 0–5 to mark. **Show in Finder** opens Finder with the
+selected photos' originals and ON1 sidecars selected (one shoot at a time) so you can delete them
+there yourself — the app never deletes. Afterwards **Scan for new photos** and the app offers to
+remove them from the library. Drives can be unplugged: thumbnails stay on the iMac.
 
 ### Second look (rediscover photos you never graded)
 In the **Second look** tab: *Overlooked gems* (best ungraded photos across the library), *On this
@@ -50,14 +49,6 @@ look around). The strip at the bottom jumps to any group. **Send picks to Grade*
 After each cull the suggestions re-learn from what you picked, and the agreement rate shows how often
 it matched you. Picks, rejects and stars are the same everywhere: change them in Cull, in the Library
 (hover a photo: ✓ ✕ ↺ ★, or P / X / U / 1–5) or with Keep in Second look. Rejects are only a flag.
-
-### Browse (a shoot like a Finder window)
-The **Browse** tab shows every photo of a shoot in shooting order, with your picks, rejects, stars and
-which are graded. Filter (Picked / Rejected / Not marked / Graded / Not graded), view large with ← →,
-press **G** to flip between the graded version and the original or **S** for side by side.
-To delete photos: select them and click **Show in Finder** — Finder opens with the originals and their
-ON1 sidecars selected, and you delete them there (⌘⌫). The app itself never deletes anything; click
-**Refresh** afterwards and it offers to remove them from the library.
 
 ### Essays (sequence a photo essay, zine or exhibition)
 In the **Essays** tab start an essay from a search, your picks or stars, the Second look shortlist, a

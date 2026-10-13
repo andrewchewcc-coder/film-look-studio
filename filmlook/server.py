@@ -324,9 +324,9 @@ def library_pause():
 @app.get("/api/library/search")
 def library_search(q: str = "", cats: str = "street,travel", year: str = "", date_from: str = "",
                    date_to: str = "", camera: str = "", graded: str = "", folder_id: int = 0,
-                   flag: str = "", stars: int = 0, offset: int = 0, limit: int = 200):
+                   flag: str = "", stars: int = 0, offset: int = 0, limit: int = 200, order: str = "newest"):
     from .library import search
-    return search.search(_lib().con(), q, limit=min(limit, 500), offset=offset,
+    return search.search(_lib().con(), q, limit=min(limit, 3000), offset=offset, order=order,
                          categories=[c for c in cats.split(",") if c] or None, year=year or None,
                          date_from=date_from or None, date_to=date_to or None, camera=camera or None,
                          graded=None if graded == "" else graded == "1", folder_id=folder_id or None,
@@ -606,6 +606,14 @@ def cull_session(sid: int):
                                "folder": PurePath(r["rel_path"]).parent.name, "on1": r["on1"],
                                "online": r["drive_id"] in mounts and not r["missing"], "flag": r["flag"],
                                "rating": r["rating"], "focus": _focus_point(feat)}
+    # Photos can leave the library after a cull started (merged into their RAW, or deleted and
+    # removed): leave them out, and drop groups that end up empty.
+    for g in groups:
+        g["ids"] = [i for i in g["ids"] if i in frames]
+        g["order"] = [i for i in g["order"] if i in frames]
+        if g["suggested"] not in frames:
+            g["suggested"] = (g["order"] or g["ids"] or [None])[0]
+    groups = [g for g in groups if g["ids"]]
     first_open = next((k for k, g in enumerate(groups) if not g["done"]), 0)
     _warm_views([i for g in groups[first_open:] + groups[:first_open] for i in g["ids"]])
     return {"id": sid, "label": s["label"], "finished": s["finished_at"], "groups": groups, "frames": frames}

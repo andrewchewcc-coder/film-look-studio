@@ -82,18 +82,20 @@ def _shape(r, mounts, score=None):
             "graded": bool(r["graded"]), "category": r["category"], "folder": PurePath(r["folder"]).name,
             "folder_id": r["folder_id"], "name": PurePath(r["rel_path"]).name, "drive": r["drive"],
             "online": mount is not None and not r["missing"],
+            "deleted": mount is not None and bool(r["missing"]),
             "path": f"{mount}/{r['rel_path']}" if mount else None,
             "score": None if score is None else round(float(score), 4),
             "mark": r["mark"], "my_rating": r["my_rating"]}
 
 
-def search(con, text="", limit=200, offset=0, **filters):
-    """Return {total, results}. With text, ranked by match; otherwise newest first."""
+def search(con, text="", limit=200, offset=0, order="newest", **filters):
+    """Return {total, results}. With text, ranked by match; otherwise newest first
+    (order="oldest": shooting order, as when looking through one shoot)."""
     mounts = drives.online_mounts(con)
     where, args = _filters(filters)
     rows = con.execute(SELECT + where, args).fetchall()
     if not text.strip():
-        rows.sort(key=lambda r: r["capture_time"] or "", reverse=True)
+        rows.sort(key=lambda r: (r["capture_time"] or "", r["rel_path"]), reverse=order != "oldest")
         page = rows[offset:offset + limit]
         return {"total": len(rows), "results": [_shape(r, mounts) for r in page]}
     ids, mat = _matrix(con)

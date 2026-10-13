@@ -22,7 +22,7 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   never in the photo. Preview, thumbnails, export and the CLI all apply them.
 - JPGs open in Grade too: `raw.decode` handles them and `pipeline.base(display=True)` keeps a
   neutral JPG unchanged (no auto exposure / contrast).
-- `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only): Library, Browse, Second look, Cull, Essays and Grade tabs.
+- `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only): Library (search + browse in one, sidebar filters), Second look, Cull, Essays and Grade tabs.
 - `filmlook/library/` – searchable archive. Database + thumbnails live in
   `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos).
   `db.py` schema (photos ← files, sidecars, embeddings; later features attach to `photos.id`),
@@ -36,7 +36,7 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   `cull.py` (groups, within-group ranking + reasons, sessions, learning weights from picks),
   `marks.py` (THE place for pick / reject / stars: Cull, Second look "Keep" and the Library all
   use it, so they always agree; every change is logged in `cull_log`).
-  `browse.py` (Browse tab: a shoot like a Finder window; "Show in Finder" selects originals +
+  `browse.py` (Library's shoot list / graded thumbs / Finder helpers: "Show in Finder" selects originals +
   copies + sidecars via osascript so YOU delete in Finder — the app never deletes; after a rescan,
   photos whose original is gone can be forgotten). `pairing.py` accepts whole-hour time-zone
   shifts when names match (-IG exports); `scan.merge_into_owner` keeps marks/essay places on merge.
