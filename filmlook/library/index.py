@@ -194,10 +194,51 @@ def refresh_photo_file(con, path):
     return True
 
 
+def build_scene(con, progress=None, should_stop=lambda: False, folder_ids=None, workers=3):
+    """Vision analysis + culling features for photos not yet analysed (needs the drive)."""
+    import json as _json
+    from . import scene
+    mounts = drives.online_mounts(con)
+    rows = con.execute("""SELECT p.id, p.folder_id, f.drive_id, f.rel_path, f.kind, f.quick_hash FROM photos p
+                          JOIN files f ON f.id = p.primary_file_id LEFT JOIN scene s ON s.photo_id = p.id
+                          WHERE s.photo_id IS NULL OR s.source != f.quick_hash""").fetchall()
+    if folder_ids is not None:
+        rows = [r for r in rows if r["folder_id"] in folder_ids]
+    todo = [r for r in rows if r["drive_id"] in mounts]
+
+    def work(r):
+        try:
+            return r, scene.measure(Path(mounts[r["drive_id"]]) / r["rel_path"], r["kind"])
+        except Exception:
+            return r, None
+
+    done = 0
+    with ThreadPoolExecutor(workers) as pool:
+        for i in range(0, len(todo), BATCH):
+            if should_stop():
+                break
+            for r, res in pool.map(work, todo[i:i + BATCH]):
+                if res is None:
+                    continue
+                a, f = res
+                con.execute("INSERT OR REPLACE INTO scene (photo_id, source, analysis, features) VALUES (?,?,?,?)",
+                            (r["id"], r["quick_hash"], _json.dumps(a), _json.dumps(f)))
+                done += 1
+            con.commit()
+            if progress:
+                progress({"phase": "analysing", "done": done, "todo": len(todo)})
+    return {"analysed": done, "unanalysed_offline": len(rows) - len(todo)}
+
+
 def build(con, progress=None, should_stop=lambda: False):
     out = build_thumbnails(con, progress, should_stop)
     if not should_stop():
         out.update(build_embeddings(con, progress, should_stop))
     if not should_stop():
         out.update(build_quality(con, progress, should_stop))
+    if not should_stop():
+        try:
+            out.update(build_scene(con, progress, should_stop))
+        except ImportError:            # Vision bridge (pyobjc) not installed: culling scores skipped
+            out["analysed"] = 0
     return out

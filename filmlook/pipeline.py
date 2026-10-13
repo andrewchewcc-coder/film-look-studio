@@ -146,9 +146,9 @@ def look(d, recipe, match_src=None):
 
 # ---------------------------------------------------------------- stage C
 
-def _hash_uniform(y0, h, w, seed):
+def _hash_uniform(y0, h, w, seed, x0=0):
     ys = np.arange(y0, y0 + h, dtype=np.int64).astype(np.uint32)[:, None]
-    xs = np.arange(w, dtype=np.uint32)[None, :]
+    xs = np.arange(x0, x0 + w, dtype=np.int64).astype(np.uint32)[None, :]
     with np.errstate(over="ignore"):
         n = xs * np.uint32(374761393) + ys * np.uint32(668265263) + np.uint32(seed) * np.uint32(2246822519)
         n = (n ^ (n >> np.uint32(13))) * np.uint32(1274126177)
@@ -168,36 +168,38 @@ def _blur_1d(x, k, axis):
     return out
 
 
-def grain_noise(y0, h, w, full_w, size, seed=7):
-    """Unit-variance film grain noise for rows y0..y0+h, seamless across strips."""
+def grain_noise(y0, h, w, full_w, size, seed=7, x0=0):
+    """Unit-variance film grain noise for the block at (x0, y0) of size w x h in a frame
+    full_w wide; seamless across strips and tiles (it depends only on absolute position)."""
     sigma = size * full_w / 4000.0
     if sigma < 0.5:
         # Grain finer than a pixel: what survives is the average over each pixel's
         # area (std ~ 2*sqrt(pi)*sigma), so small previews match the full-size export.
-        n = _hash_uniform(y0, h, w, seed) + _hash_uniform(y0, h, w, seed + 1)
+        n = _hash_uniform(y0, h, w, seed, x0) + _hash_uniform(y0, h, w, seed + 1, x0)
         return n * np.float32(min(1.0, 3.545 * sigma) / math.sqrt(1 / 6))
     r = int(math.ceil(3 * sigma))
     k = np.exp(-0.5 * (np.arange(-r, r + 1) / sigma) ** 2).astype(np.float32)
     k /= k.sum()
-    n = _hash_uniform(y0 - r, h + 2 * r, w, seed) + _hash_uniform(y0 - r, h + 2 * r, w, seed + 1)
-    n = _blur_1d(_blur_1d(n, k, 1), k, 0)[r:r + h]
+    n = (_hash_uniform(y0 - r, h + 2 * r, w + 2 * r, seed, x0 - r)
+         + _hash_uniform(y0 - r, h + 2 * r, w + 2 * r, seed + 1, x0 - r))
+    n = _blur_1d(_blur_1d(n, k, 1), k, 0)[r:r + h, r:r + w]
     return n / np.float32(math.sqrt(1 / 6) * float((k ** 2).sum()))
 
 
-def finish(d, recipe, y0=0, full_size=None):
+def finish(d, recipe, y0=0, full_size=None, x0=0):
     h, w = d.shape[:2]
     full_h, full_w = full_size or (h, w)
     v = recipe.get("vignette") or {}
     if v.get("amount"):
         ys = (np.arange(y0, y0 + h, dtype=np.float32) + 0.5) / full_h * 2 - 1
-        xs = (np.arange(w, dtype=np.float32) + 0.5) / full_w * 2 - 1
+        xs = (np.arange(x0, x0 + w, dtype=np.float32) + 0.5) / full_w * 2 - 1
         r = np.sqrt(ys[:, None] ** 2 + xs[None, :] ** 2) / math.sqrt(2)
         mid = v.get("midpoint", 0.5)
         t = np.clip((r - mid) / max(1.0 - mid, 1e-3), 0, 1)
         d = d * (1 - v["amount"] * t * t * (3 - 2 * t))[..., None]
     gr = recipe.get("grain") or {}
     if gr.get("amount"):
-        noise = grain_noise(y0, h, w, full_w, gr.get("size", 1.0))
+        noise = grain_noise(y0, h, w, full_w, gr.get("size", 1.0), x0=x0)
         lum = d @ LUMA
         amp = gr["amount"] * 0.045 * (0.3 + 2.8 * lum * (1 - lum))
         d = d + (noise * amp)[..., None]
@@ -206,11 +208,12 @@ def finish(d, recipe, y0=0, full_size=None):
 
 # ---------------------------------------------------------------- full render
 
-def render(linear, recipe, gain, y0=0, full_size=None, match_src=None, look_fn=None, display=False):
-    """Full render. `look_fn` can replace stage B (e.g. a baked LUT for fast exports)."""
+def render(linear, recipe, gain, y0=0, full_size=None, match_src=None, look_fn=None, display=False, x0=0):
+    """Full render. `look_fn` can replace stage B (e.g. a baked LUT for fast exports).
+    (x0, y0) / full_size place a strip or tile within the whole frame (grain, vignette)."""
     neutral = base(linear, gain, recipe.get("exposure", 0.0), display)
     graded = look_fn(neutral) if look_fn else look(neutral, recipe, match_src)
-    graded = finish(graded, recipe, y0, full_size)
+    graded = finish(graded, recipe, y0, full_size, x0)
     s = recipe.get("strength", 1.0)
     if s >= 1.0:
         return graded

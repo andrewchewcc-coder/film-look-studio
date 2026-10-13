@@ -91,7 +91,7 @@ def resize_float(img, size, resample=Image.LANCZOS):
                      for c in range(3)], axis=-1).astype(np.float32)
 
 
-def decode(path, max_edge=None):
+def decode(path, max_edge=None, fast=False):
     """Decode a RAW file to linear sRGB.
 
     Full size (max_edge=None) returns uint16 (H, W, 3). With max_edge, a fast
@@ -108,7 +108,10 @@ def decode(path, max_edge=None):
         flip = raw.sizes.flip
         active_w = raw.sizes.width
         margins = (raw.sizes.left_margin, raw.sizes.top_margin)
+        # fast=True (zoom-to-check-focus): simple demosaic, ~20x quicker on Fuji X-Trans
+        extra = {"demosaic_algorithm": rawpy.DemosaicAlgorithm.LINEAR} if fast else {}
         rgb = raw.postprocess(
+            **extra,
             use_camera_wb=True,
             no_auto_bright=True,
             gamma=(1, 1),

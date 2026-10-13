@@ -41,11 +41,23 @@ skipped and each burst shows only its best frame. Each photo says why it was pic
 to your shortlist, **Dismiss** hides it, **Open** grades it; your choices are remembered and teach the
 scoring your taste.
 
+### Cull (from hundreds of frames to your picks)
+In the **Cull** tab choose a shoot, dates, or "new since last cull". Frames of the same scene are grouped;
+in each group the app suggests a pick (from subject focus, face and eyes, gesture, edges, separation,
+exposure and your taste — using Apple's on-device Vision) and says why. **P** pick, **X** reject, **U**
+unmark, **1–5** stars, **← →** frames, **↑ ↓ / Enter** groups, **Z** zoom to 100% where you point (drag to
+look around). The strip at the bottom jumps to any group. **Send picks to Grade** opens your picks in order.
+After each cull the suggestions re-learn from what you picked, and the agreement rate shows how often
+it matched you. Picks, rejects and stars are the same everywhere: change them in Cull, in the Library
+(hover a photo: ✓ ✕ ↺ ★, or P / X / U / 1–5) or with Keep in Second look. Rejects are only a flag.
+
 ### Browser app (sliders)
 ```bash
 ./studio serve ~/Pictures/2026-10-street-walk
 ```
 - Click a thumbnail, then click a look in the strip underneath.
+- Zoom from Fit to 400% (slider, pinch, + / −, Z or double-click for 100%) and drag to look around;
+  the zoomed view shows your look, crop and grain at full detail.
 - Sliders: strength, exposure, warmth, tint, contrast, saturation, toning (the gold in
   Tri-X Gold), grain, vignette. Hold **B** to see the "before" image.
 - **Save as my look** keeps your tweak for next time.

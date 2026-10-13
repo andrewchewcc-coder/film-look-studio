@@ -266,3 +266,61 @@ def test_folders_ending_in_a_space_open(tmp_path):
     Image.new("RGB", (40, 30), (90, 60, 30)).save(shoot / "a.jpg")
     r = TestClient(server.app).post("/api/folder", json={"folder": str(shoot)})
     assert r.status_code == 200 and r.json()["photos"] == ["a.jpg"]
+
+
+def test_library_filters_by_culling_marks_and_stars(tmp_path, monkeypatch):
+    from filmlook.library import search
+    monkeypatch.setattr(scan.drives, "_volume_info", lambda mount: ("TEST-UUID", "Test"))
+    monkeypatch.setattr(scan, "read_exif", lambda paths: {})
+    d = tmp_path / "photos" / "2025 01 01 A"
+    d.mkdir(parents=True)
+    for n in ("A.dng", "B.dng", "C.dng"):
+        (d / n).write_bytes(n.encode() * 300)
+    con = db.connect(tmp_path / "lib.db")
+    scan.add_root(con, tmp_path / "photos")
+    scan.scan(con)
+    con.execute("UPDATE photos SET category='street'")
+    ids = [r[0] for r in con.execute("SELECT id FROM photos ORDER BY id")]
+    con.execute("INSERT INTO marks (photo_id, flag, rating) VALUES (?, 'pick', 4), (?, 'reject', NULL)", (ids[0], ids[1]))
+    con.commit()
+    assert search.search(con, flag="pick")["total"] == 1
+    assert search.search(con, flag="reject")["total"] == 1
+    assert search.search(con, flag="none")["total"] == 1
+    assert search.search(con, stars=3)["total"] == 1
+    top = search.search(con, flag="pick")["results"][0]
+    assert top["mark"] == "pick" and top["my_rating"] == 4
+
+
+def test_second_look_keep_is_a_pick(tmp_path, monkeypatch):
+    from filmlook.library import secondlook
+    from tests.test_library import _fake_library
+    con = _fake_library(tmp_path, monkeypatch)
+    pick = lambda pid: con.execute("SELECT flag FROM marks WHERE photo_id=?", (pid,)).fetchone()
+    secondlook.decide(con, 7, "keep")
+    assert pick(7)[0] == "pick"
+    secondlook.decide(con, 7, None)                  # undo
+    assert pick(7)[0] is None
+    con.execute("INSERT INTO marks (photo_id, flag) VALUES (9, 'pick')"); con.commit()   # picked in Cull
+    short = {r["id"]: r["decision"] for r in secondlook.suggestions(con, "shortlist", limit=50)["results"]}
+    assert short.get(9) == "keep"
+    secondlook.decide(con, 11, "dismiss")
+    assert pick(11) is None or pick(11)[0] is None   # dismiss is not a reject
+
+
+def test_marks_are_shared_by_cull_library_and_second_look(tmp_path, monkeypatch):
+    from filmlook.library import marks, secondlook
+    con = _fake_library(tmp_path, monkeypatch)
+    short = lambda: {r["id"] for r in secondlook.suggestions(con, "shortlist", limit=50)["results"]}
+    gems = lambda: {r["id"] for r in secondlook.suggestions(con, "gems", limit=100)["results"]}
+    marks.set_mark(con, 7, flag="pick")                      # picked in Cull
+    assert 7 in short()
+    marks.set_mark(con, 7, flag=None)                        # unpicked in the Library
+    assert 7 not in short() and marks.get(con, 7)["flag"] is None
+    secondlook.decide(con, 9, "keep")                        # kept in Second look
+    assert marks.get(con, 9)["flag"] == "pick"
+    marks.set_mark(con, 9, flag="reject")                    # rejected in the Library
+    assert 9 not in short() and 9 not in gems()
+    marks.set_mark(con, 11, rating=4)
+    assert marks.get(con, 11) == {"flag": None, "rating": 4}
+    marks.set_mark(con, 11, rating=0)
+    assert marks.get(con, 11)["rating"] is None

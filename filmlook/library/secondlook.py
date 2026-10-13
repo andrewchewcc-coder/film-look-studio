@@ -58,6 +58,7 @@ def _cache_key(con):
     return tuple(con.execute("""SELECT (SELECT COUNT(*) FROM embeddings),
         (SELECT COALESCE(SUM(graded), 0) FROM photos), (SELECT COUNT(*) FROM quality),
         (SELECT COUNT(*) || COALESCE(MAX(decided_at), '') FROM picks),
+        (SELECT COUNT(*) || COALESCE(MAX(updated_at), '') FROM marks),
         (SELECT COALESCE(SUM(rating), 0) + COALESCE(SUM(flag), 0) FROM photos)""").fetchone())
 
 
@@ -75,9 +76,10 @@ def _scores(con):
 
 
 def _compute_scores(con, key):
-    rows = con.execute("""SELECT p.id, p.graded, p.rating, p.flag, p.folder_id, e.vector, pk.decision
+    rows = con.execute("""SELECT p.id, p.graded, p.rating, p.flag, p.folder_id, e.vector, pk.decision, m.flag AS mark
                           FROM photos p JOIN embeddings e ON e.photo_id = p.id
-                          LEFT JOIN picks pk ON pk.photo_id = p.id WHERE e.model = ?""",
+                          LEFT JOIN picks pk ON pk.photo_id = p.id
+                          LEFT JOIN marks m ON m.photo_id = p.id WHERE e.model = ?""",
                        (vision.MODEL_ID,)).fetchall()
     if not rows:
         return None
@@ -88,8 +90,8 @@ def _compute_scores(con, key):
     graded = np.array([bool(r["graded"]) for r in rows])
     rating = np.array([r["rating"] or 0 for r in rows])
     flag = np.array([(r["flag"] or 0) == 4 for r in rows])
-    keep = np.array([r["decision"] == "keep" for r in rows])
-    dismiss = np.array([r["decision"] == "dismiss" for r in rows])
+    keep = np.array([r["mark"] == "pick" for r in rows])
+    dismiss = np.array([r["decision"] == "dismiss" or r["mark"] == "reject" for r in rows])
     folder = np.array([r["folder_id"] for r in rows])
     y = (graded | (rating >= 3) | flag | keep) & ~dismiss
     taste = _cross_fit(X, y, folder)
@@ -139,13 +141,14 @@ def _cross_fit(X, y, groups, folds=5):
 SELECT = """SELECT p.id, p.thumb, p.capture_time, p.camera, p.lens, p.rating, p.flag, p.folder_id,
                    COALESCE(fo.category, p.category, 'misc') AS category, fo.rel_path AS folder,
                    f.rel_path, f.drive_id, f.missing, d.name AS drive, q.sharpness, q.burst_id,
-                   pk.decision
+                   CASE WHEN m.flag = 'pick' THEN 'keep' WHEN pk.decision = 'dismiss' THEN 'dismiss' END AS decision
             FROM photos p
             JOIN files f ON f.id = p.primary_file_id
             JOIN folders fo ON fo.id = p.folder_id
             JOIN drives d ON d.id = f.drive_id
             JOIN quality q ON q.photo_id = p.id
-            LEFT JOIN picks pk ON pk.photo_id = p.id"""
+            LEFT JOIN picks pk ON pk.photo_id = p.id
+            LEFT JOIN marks m ON m.photo_id = p.id"""
 
 CANDIDATE = """p.graded = 0 AND q.verdict = 'ok'
     AND NOT EXISTS (SELECT 1 FROM quality q2 JOIN photos p2 ON p2.id = q2.photo_id
@@ -180,10 +183,11 @@ def suggestions(con, view="gems", categories=("street", "travel"), year=None, da
         return {"total": 0, "results": [], "note": "Scan your folders first."}
     where, args, note = [], [], None
     if view == "shortlist":
-        where.append("pk.decision = 'keep'")
+        where.append("m.flag = 'pick'")
     else:
         where.append(CANDIDATE)
         where.append("(pk.decision IS NULL OR pk.decision != 'dismiss')")
+        where.append("COALESCE(m.flag, '') != 'reject'")      # rejected elsewhere: don't suggest
     if categories and view != "shortlist":
         where.append(f"COALESCE(fo.category, p.category, 'misc') IN ({','.join('?' * len(categories))})")
         args += list(categories)
@@ -261,17 +265,34 @@ def _spread_shoots(ranked, total):
 
 
 def decide(con, photo_id, decision, source="second-look"):
-    """Keep / dismiss / None (undo). Saved immediately; survives restarts."""
+    """Keep / dismiss / None (undo). Saved immediately; survives restarts.
+
+    Keep is the same as a Pick (marks); Undo removes the pick. Dismiss only stops suggesting the
+    photo — it is not a reject — and removes a pick if there was one."""
+    from . import marks
     if decision in (None, "", "undo"):
         con.execute("DELETE FROM picks WHERE photo_id=?", (photo_id,))
-    elif decision in ("keep", "dismiss"):
-        con.execute("""INSERT INTO picks (photo_id, decision, source, decided_at) VALUES (?, ?, ?, datetime('now'))
-                       ON CONFLICT(photo_id) DO UPDATE SET decision=excluded.decision, source=excluded.source,
-                       decided_at=excluded.decided_at""", (photo_id, decision, source))
+        if marks.get(con, photo_id)["flag"] == "pick":
+            marks.set_mark(con, photo_id, flag=None)
+    elif decision == "keep":
+        marks.set_mark(con, photo_id, flag="pick")
+    elif decision == "dismiss":
+        if marks.get(con, photo_id)["flag"] == "pick":
+            marks.set_mark(con, photo_id, flag=None)
+        con.execute("""INSERT INTO picks (photo_id, decision, source, decided_at) VALUES (?, 'dismiss', ?, datetime('now'))
+                       ON CONFLICT(photo_id) DO UPDATE SET decision='dismiss', source=excluded.source,
+                       decided_at=excluded.decided_at""", (photo_id, source))
     else:
         raise ValueError(f"unknown decision: {decision}")
     con.commit()
 
 
+def _set_pick(con, photo_id, on, source="second-look"):
+    from . import marks
+    marks.set_mark(con, photo_id, flag="pick" if on else None)
+
+
 def counts(con):
-    return dict(con.execute("SELECT decision, COUNT(*) FROM picks GROUP BY decision").fetchall())
+    out = dict(con.execute("SELECT decision, COUNT(*) FROM picks WHERE decision='dismiss' GROUP BY decision").fetchall())
+    out["keep"] = con.execute("SELECT COUNT(*) FROM marks WHERE flag='pick'").fetchone()[0]
+    return out

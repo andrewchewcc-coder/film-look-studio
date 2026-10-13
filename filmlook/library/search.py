@@ -53,17 +53,25 @@ def _filters(f):
         where.append("p.graded = ?"); args.append(1 if f["graded"] else 0)
     if f.get("folder_id"):
         where.append("p.folder_id = ?"); args.append(int(f["folder_id"]))
+    if f.get("flag") in ("pick", "reject"):
+        where.append("m.flag = ?"); args.append(f["flag"])
+    elif f.get("flag") == "none":
+        where.append("m.flag IS NULL")
+    if f.get("stars"):
+        where.append("COALESCE(m.rating, 0) >= ?"); args.append(int(f["stars"]))
     return (" WHERE " + " AND ".join(where)) if where else "", args
 
 
 SELECT = """SELECT p.id, p.thumb, p.capture_time, p.camera, p.lens, p.focal_length, p.aperture, p.shutter,
                    p.iso, p.rating, p.flag, p.graded, p.width, p.height, p.gps_lat, p.gps_lon,
                    COALESCE(fo.category, p.category, 'misc') AS category, fo.category IS NOT NULL AS category_set,
-                   fo.rel_path AS folder, fo.id AS folder_id, f.rel_path, f.drive_id, f.kind, f.missing, d.name AS drive
+                   fo.rel_path AS folder, fo.id AS folder_id, f.rel_path, f.drive_id, f.kind, f.missing, d.name AS drive,
+                   m.flag AS mark, m.rating AS my_rating
             FROM photos p
             JOIN files f ON f.id = p.primary_file_id
             JOIN folders fo ON fo.id = p.folder_id
-            JOIN drives d ON d.id = f.drive_id"""
+            JOIN drives d ON d.id = f.drive_id
+            LEFT JOIN marks m ON m.photo_id = p.id"""
 
 
 def _shape(r, mounts, score=None):
@@ -75,7 +83,8 @@ def _shape(r, mounts, score=None):
             "folder_id": r["folder_id"], "name": PurePath(r["rel_path"]).name, "drive": r["drive"],
             "online": mount is not None and not r["missing"],
             "path": f"{mount}/{r['rel_path']}" if mount else None,
-            "score": None if score is None else round(float(score), 4)}
+            "score": None if score is None else round(float(score), 4),
+            "mark": r["mark"], "my_rating": r["my_rating"]}
 
 
 def search(con, text="", limit=200, offset=0, **filters):

@@ -139,6 +139,54 @@ CREATE TABLE IF NOT EXISTS edits (
     UNIQUE (drive_id, rel_path)
 );
 
+-- Culling: what's in each frame (Apple Vision) and the street-photography features from it.
+CREATE TABLE IF NOT EXISTS scene (
+    photo_id    INTEGER PRIMARY KEY REFERENCES photos(id),
+    source      TEXT NOT NULL,          -- primary file's quick hash it was measured from
+    analysis    TEXT NOT NULL,          -- people / faces / poses / subjects (JSON)
+    features    TEXT NOT NULL,          -- focus, face, gesture, edges, separation, exposure (JSON)
+    measured_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Culling sessions: what was culled, the groups shown, and every decision you made.
+CREATE TABLE IF NOT EXISTS cull_sessions (
+    id          INTEGER PRIMARY KEY,
+    label       TEXT NOT NULL,
+    scope       TEXT NOT NULL,          -- JSON: folder / dates / new-since, categories
+    weights     TEXT NOT NULL,          -- ranking weights used (JSON)
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    finished_at TEXT
+);
+CREATE TABLE IF NOT EXISTS cull_groups (
+    session_id  INTEGER NOT NULL REFERENCES cull_sessions(id),
+    idx         INTEGER NOT NULL,
+    photo_ids   TEXT NOT NULL,          -- JSON list, shooting order
+    suggested   INTEGER,                -- the app's suggested pick
+    order_ids   TEXT,                   -- JSON list, app's ranking best first
+    unsure      INTEGER NOT NULL DEFAULT 0,
+    reasons     TEXT,                   -- JSON list
+    done        INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (session_id, idx)
+);
+-- Your current marks per photo (the archive filters use these). Rejects are only a flag.
+CREATE TABLE IF NOT EXISTS marks (
+    photo_id   INTEGER PRIMARY KEY REFERENCES photos(id),
+    flag       TEXT,                    -- pick / reject / NULL
+    rating     INTEGER,                 -- your 1-5 stars (ON1's stay separate in photos.rating)
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- Every decision, in order (for learning and agreement rates).
+CREATE TABLE IF NOT EXISTS cull_log (
+    id         INTEGER PRIMARY KEY,
+    session_id INTEGER,
+    group_idx  INTEGER,
+    photo_id   INTEGER NOT NULL,
+    action     TEXT NOT NULL,           -- pick / reject / unmark / rate
+    value      INTEGER,
+    suggested  INTEGER,                 -- the group's suggested pick at the time
+    at         TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS embeddings (
     photo_id INTEGER PRIMARY KEY REFERENCES photos(id),
     model    TEXT NOT NULL,

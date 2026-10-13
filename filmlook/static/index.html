@@ -27,7 +27,7 @@
      scrolls inside its own panels; the photo always shrinks to fit (portrait or landscape). */
   body { display: flex; flex-direction: column; height: 100vh; }
   header { flex: 0 0 auto; }
-  main, #libView, #secondView { flex: 1 1 auto; min-height: 0; }
+  main, #libView, #secondView, #cullView { flex: 1 1 auto; min-height: 0; }
   main { display: grid; grid-template-columns: 210px 1fr 290px; grid-template-rows: minmax(0, 1fr); }
   #center { min-height: 0; overflow: hidden; }
   #film { border-right: 1px solid var(--line); overflow-y: auto; padding: 10px; }
@@ -39,8 +39,16 @@
   .thumb .nm { font-size: 11px; color: var(--muted); padding: 2px 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #center { display: flex; flex-direction: column; min-width: 0; }
   #stage { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 0; padding: 12px; }
-  #stage #big { position: absolute; left: 12px; top: 12px; width: calc(100% - 24px); height: calc(100% - 24px);
-    object-fit: contain; filter: drop-shadow(0 6px 24px #000a); }
+  #stage { overflow: hidden; }
+  #stage #big { position: absolute; filter: drop-shadow(0 6px 24px #000a); user-select: none; }
+  #stage #bigTile { position: absolute; pointer-events: none; user-select: none; }
+  #stage.zoomed #big { cursor: grab; filter: none; }
+  #stage.zoomed.panning #big { cursor: grabbing; }
+  #zoomBar { position: absolute; right: 14px; bottom: 12px; display: flex; align-items: center; gap: 6px; background: #000c;
+    padding: 5px 8px; border-radius: 8px; z-index: 3; }
+  #zoomBar button { padding: 3px 9px; font-size: 13px; }
+  #zoomBar input { width: 130px; accent-color: var(--accent); }
+  #zLabel { font-size: 12px; min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
   #badge { position: absolute; top: 18px; left: 18px; background: #000b; padding: 3px 9px; border-radius: 4px; font-size: 12px; }
   #busy { position: absolute; top: 18px; right: 18px; font-size: 12px; color: var(--muted); }
   #empty { color: var(--muted); text-align: center; max-width: 420px; }
@@ -124,6 +132,20 @@
   .cell .tags { position: absolute; left: 5px; bottom: 5px; display: flex; gap: 4px; flex-wrap: wrap; }
   .cell .tags span { background: #000c; font-size: 10px; padding: 1px 6px; border-radius: 3px; }
   .cell .tags .g { color: var(--accent); }
+  .cell .tags .pk { background: #1f6b35; color: #fff; }
+  .cell .tags .rj { background: #7a2a22; color: #fff; }
+  .cell .tags .st { color: var(--accent); letter-spacing: 1px; }
+  .cell .tags .on1 { color: #8d8a85; }
+  .cell.rejected img { opacity: .4; }
+  .cell .acts { position: absolute; left: 0; right: 0; top: 0; display: none; align-items: center; gap: 3px; padding: 5px;
+    background: linear-gradient(#000d, #0000); }
+  .cell:hover .acts { display: flex; }
+  .cell .acts button { padding: 1px 7px; font-size: 12px; background: #000a; border-color: #555; }
+  .cell .acts button.on[data-f="pick"] { background: #1f6b35; border-color: #2e9c4f; }
+  .cell .acts button.on[data-f="reject"] { background: #7a2a22; border-color: #a33b30; }
+  .cell .acts .st { margin-left: auto; font-size: 14px; letter-spacing: 1px; }
+  .cell .acts .st b { color: #777; cursor: pointer; font-weight: normal; }
+  .cell .acts .st b.on { color: var(--accent); }
   .cell .tags .o { color: #e3a36f; }
   #more { display: block; margin: 16px auto; }
   .divider { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin: 14px 0 4px; }
@@ -165,6 +187,60 @@
     #secondView { grid-template-columns: 1fr; height: auto; }
     #slSide { border-right: 0; border-bottom: 1px solid var(--line); }
   }
+  #cullView { position: relative; display: flex; flex-direction: column; min-height: 0; }
+  #cuStart { display: grid; grid-template-columns: minmax(260px, 380px) minmax(260px, 1fr); gap: 32px; padding: 20px 24px; overflow-y: auto; }
+  .cuCol h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
+  .cuCol h2:first-child { margin-top: 0; }
+  .cuCol label.opt, .cuCol label.chk { display: flex; align-items: center; gap: 7px; margin: 8px 0 4px; cursor: pointer; }
+  .cuCol input[type=radio], .cuCol input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+  .cuCol select, .cuCol input[type=date] { width: 100%; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; }
+  .cuCol .field { margin: 0 0 6px 22px; }
+  .cuCol .dates { display: flex; gap: 6px; }
+  .cuSess { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 6px 0; display: flex; align-items: center; gap: 10px; color: var(--text); }
+  .cuSess div { flex: 1; }
+  .cuSess .rm { padding: 4px 8px; color: var(--muted); }
+  .cuSess small { color: var(--muted); display: block; }
+  #cuRun { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  #cuTop { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  #cuBarWrap { flex: 1; max-width: 360px; margin: 0; }
+  .cuToggle { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .cuToggle input { accent-color: var(--accent); }
+  #cuFrames { flex: 1; min-height: 0; display: flex; gap: 12px; padding: 14px 16px; }
+  .cuCard { flex: 1; min-width: 0; display: flex; flex-direction: column; border: 2px solid transparent; border-radius: 6px; background: #181818; position: relative; }
+  .cuCard.focus { border-color: #8a8a8a; }
+  .cuCard.sugg { box-shadow: 0 0 0 2px var(--accent) inset; }
+  .cuCard .ph { flex: 1; min-height: 0; position: relative; }
+  .cuCard .ph img { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); object-fit: contain; }
+  .cuCard.reject .ph img { opacity: .35; }
+  .cuCard .tags { position: absolute; left: 10px; top: 10px; display: flex; gap: 5px; flex-wrap: wrap; z-index: 1; }
+  .cuCard .tags span { background: #000c; font-size: 11px; padding: 2px 7px; border-radius: 3px; }
+  .cuCard .tags .s { color: var(--accent); } .cuCard .tags .p { background: #1f6b35; color: #fff; }
+  .cuCard .tags .x { background: #7a2a22; color: #fff; } .cuCard .tags .o { color: #e3a36f; }
+  .cuCard .meta { padding: 6px 10px 8px; font-size: 12px; color: var(--muted); display: flex; gap: 8px; }
+  .cuCard .meta .stars { color: var(--accent); margin-left: auto; letter-spacing: 1px; }
+  .cuCard .meta .on1 { color: #6d6a65; }
+  #cuFoot { display: flex; gap: 16px; align-items: baseline; padding: 6px 16px 12px; }
+  #cuWhy { flex: 1; }
+  #cuWhy .u { background: #3a2a1f; color: #e3a36f; font-size: 11px; padding: 2px 7px; border-radius: 3px; margin-right: 8px; }
+  #cuDone { padding: 24px; }
+  #cuSummary { font-size: 15px; line-height: 1.7; margin-bottom: 14px; }
+  #cuZoom { position: absolute; inset: 0; background: #0b0b0b; z-index: 5; }
+  #cuPane { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: none; }
+  #cuPane.dragging { cursor: grabbing; }
+  #cuZoomImg { position: absolute; left: 0; top: 0; max-width: none; user-select: none; }
+  #cuNav { position: absolute; right: 16px; bottom: 16px; width: 200px; border: 1px solid #fff6; background: #000; cursor: crosshair; }
+  #cuNavImg { width: 100%; display: block; }
+  #cuNavBox { position: absolute; border: 2px solid var(--accent); box-shadow: 0 0 0 999px #0006; pointer-events: none; }
+  #cuNav { overflow: hidden; }
+  #cuZoomNote { position: absolute; left: 16px; top: 12px; background: #000c; padding: 4px 9px; border-radius: 4px; font-size: 12px; z-index: 1; }
+  #cuStrip { display: flex; gap: 5px; overflow-x: auto; padding: 4px 16px 10px; flex: 0 0 auto; }
+  .cuTile { flex: 0 0 auto; position: relative; border: 2px solid #2a2a2a; border-radius: 3px; cursor: pointer; opacity: .9; }
+  .cuTile img { height: 52px; display: block; border-radius: 1px; }
+  .cuTile.pick { border-color: #2e9c4f; } .cuTile.rej { border-color: #a33b30; }
+  .cuTile.done:not(.pick):not(.rej) { opacity: .5; }
+  .cuTile.cur { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
+  .cuTile b { position: absolute; right: 2px; bottom: 2px; font-size: 10px; background: #000b; padding: 0 4px; border-radius: 2px; font-weight: 500; }
+  .cuTile i { position: absolute; left: 2px; top: 2px; font-size: 9px; background: #3a2a1f; color: #e3a36f; padding: 0 3px; border-radius: 2px; font-style: normal; }
   #picker { position: fixed; inset: 0; background: #000d; display: flex; align-items: center; justify-content: center; z-index: 11; padding: 16px; }
   #picker .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; width: 100%; max-width: 560px; }
   #picker h3 { margin: 0 0 12px; font-size: 16px; }
@@ -198,7 +274,7 @@
 <body>
 <header>
   <h1>Film Look Studio</h1>
-  <div class="tabs"><button id="tabLib">Library</button><button id="tabSecond">Second look</button><button id="tabGrade">Grade</button></div>
+  <div class="tabs"><button id="tabLib">Library</button><button id="tabSecond">Second look</button><button id="tabCull">Cull</button><button id="tabGrade">Grade</button></div>
   <input type="text" id="libq" placeholder="Search in plain words, e.g. rain at night, lone figure in red, reflections in glass" spellcheck="false">
   <div id="folderBar"><span id="folderName" title="">No folder open</span><button id="open" class="primary">Choose folder…</button></div>
 </header>
@@ -211,6 +287,8 @@
     <div class="field"><span>Date range</span><div class="dates"><input type="date" id="fFrom" title="From"><input type="date" id="fTo" title="To"></div></div>
     <div class="field"><span>Camera</span><select id="fCamera"><option value="">All cameras</option></select></div>
     <div class="field"><span>Graded</span><select id="fGraded"><option value="">Graded or not</option><option value="1">Graded (exported)</option><option value="0">Not graded yet</option></select></div>
+    <div class="field"><span>My culling marks</span><select id="fFlag"><option value="">Any</option><option value="pick">Picked</option><option value="reject">Rejected</option><option value="none">Not marked</option></select></div>
+    <div class="field"><span>My stars</span><select id="fStars"><option value="0">Any</option><option value="1">★ 1 or more</option><option value="2">★★ 2 or more</option><option value="3">★★★ 3 or more</option><option value="4">★★★★ 4 or more</option><option value="5">★★★★★ 5</option></select></div>
     <div class="row"><button id="fClear">Clear filters</button><button id="showFolders">Folders…</button></div>
 
     <h2>Library folders</h2>
@@ -254,6 +332,58 @@
     <div id="slEmpty" hidden></div>
   </div>
 </section>
+<section id="cullView" hidden>
+  <div id="cuStart">
+    <div class="cuCol">
+      <h2>New cull</h2>
+      <label class="opt"><input type="radio" name="cuscope" value="folder" checked> A shoot</label>
+      <div class="field"><select id="cuFolder"></select></div>
+      <label class="opt"><input type="radio" name="cuscope" value="dates"> A date range</label>
+      <div class="field dates"><input type="date" id="cuFrom"><input type="date" id="cuTo"></div>
+      <label class="opt"><input type="radio" name="cuscope" value="new"> New since last cull <small id="cuNewCount"></small></label>
+      <h2>Category</h2>
+      <div id="cuCats"></div>
+      <div class="row" style="margin-top:14px"><button id="cuStartBtn" class="primary">Start culling</button></div>
+      <div id="cuStartMsg" class="small"></div>
+    </div>
+    <div class="cuCol">
+      <h2>Recent culls</h2>
+      <div id="cuRecent" class="small">None yet.</div>
+      <h2>Learning your taste</h2>
+      <div id="cuLearn" class="small"></div>
+      <h2>How it works</h2>
+      <div class="small">Frames of the same scene are grouped. In each group the app suggests a pick (yellow) and says why. You decide:
+        <b>P</b> pick · <b>X</b> reject · <b>U</b> unmark · <b>1–5</b> stars · <b>← →</b> move · <b>Enter</b> next group ·
+        <b>↑ / Shift+Enter</b> previous group · <b>Z</b> zoom to 100% where the pointer is (or double-click; drag or scroll to look around) · <b>Shift+P</b> pick and stay. The strip at the bottom shows every group — click one to go back. Rejects are only a flag — nothing is deleted or moved.</div>
+    </div>
+  </div>
+  <div id="cuRun" hidden>
+    <div id="cuTop">
+      <b id="cuLabel"></b>
+      <div class="bar" id="cuBarWrap"><div id="cuBar"></div></div>
+      <span id="cuCount" class="small"></span>
+      <label class="small cuToggle"><input type="checkbox" id="cuUnsure"> Only unsure groups</label>
+      <button id="cuSendTop" title="Open this cull's picks in Grade">Send picks to Grade</button>
+      <button id="cuFinish" class="primary">Finish</button>
+      <button id="cuBack" title="Back to the cull list (progress is saved)">Back</button>
+    </div>
+    <div id="cuFrames"></div>
+    <div id="cuFoot"><button id="cuPrev" title="Previous group (↑ or Shift+Enter)">◀ Previous</button><span id="cuWhy"></span>
+      <span class="small" id="cuKeys">P pick · X reject · U unmark · 1–5 stars · ← → frame · ↑ ↓ group · Z zoom where you point</span>
+      <button id="cuNextBtn" title="Next group (↓ or Enter)">Next ▶</button></div>
+    <div id="cuStrip"></div>
+  </div>
+  <div id="cuDone" hidden>
+    <h2>Cull finished</h2>
+    <div id="cuSummary"></div>
+    <div class="row" style="max-width:420px"><button id="cuSend" class="primary">Send picks to grading</button><button id="cuAgain">Back to culls</button></div>
+  </div>
+  <div id="cuZoom" hidden>
+    <div id="cuPane"><img id="cuZoomImg" alt="" draggable="false"></div>
+    <div id="cuNav" title="Click to jump there"><img id="cuNavImg" alt="" draggable="false"><div id="cuNavBox"></div></div>
+    <div id="cuZoomNote"></div>
+  </div>
+</section>
 <div id="picker" hidden><div class="box">
   <h3>Choose a photo folder</h3>
   <div class="prow"><select id="pkPlace"></select><button id="pkUp" title="Go up one folder">↑ Up</button></div>
@@ -269,7 +399,16 @@
   <section id="center">
     <div id="stage">
       <div id="empty">Open a folder of photos (RAW or JPG) to start.<br><br>Click <b>Choose folder…</b> at the top right, or click any photo in the Library.</div>
-      <img id="big" alt="" hidden>
+      <img id="big" alt="" hidden draggable="false">
+      <img id="bigTile" alt="" hidden draggable="false">
+      <div id="zoomBar" hidden>
+        <button id="zFit" title="Fit the whole photo (0)">Fit</button>
+        <button id="zOut" title="Zoom out (−)">−</button>
+        <input type="range" id="zSlider" min="0" max="1000" value="0" title="Zoom">
+        <button id="zIn" title="Zoom in (+)">+</button>
+        <button id="z100" title="100% — actual pixels (Z zooms where the pointer is)">100%</button>
+        <span id="zLabel">Fit</span>
+      </div>
       <div id="badge" hidden></div>
       <div id="busy"></div>
       <div id="cropWrap" hidden>
@@ -390,7 +529,11 @@ function syncSliders() { for (const [key] of SLIDERS) { $("s_" + key).value = S.
 
 async function loadState(st) {
   S.photos = st.photos; S.looks = st.looks;
-  if (st.folder) {
+  if (st.collection) {
+    S.folder = null;
+    $("folderName").innerHTML = `<b>${esc(st.collection)}</b> · ${st.photos.length} photo${st.photos.length === 1 ? "" : "s"}`;
+    $("folderName").title = "Photos sent from a cull, in culling order";
+  } else if (st.folder) {
     S.folder = st.folder;
     const parts = st.folder.split("/").filter(Boolean);
     $("folderName").innerHTML = `${esc(parts.slice(-2, -1).join(""))} › <b>${esc(parts[parts.length - 1] || st.folder)}</b>`;
@@ -425,6 +568,7 @@ function updateCopyRatio() {
 
 function select(name) {
   if (CR.on) cropExit(false);
+  GZ.fit = true; GZ.tile = null; $("bigTile").hidden = true;
   S.current = name; S.editKey = Date.now();
   loadEdit();
   document.querySelectorAll(".thumb").forEach(t => t.classList.toggle("active", t.dataset.name === name));
@@ -461,7 +605,11 @@ function renderBig(before = false) {
   const params = before ? { name: S.current, look: "neutral", crop: "none" } : { name: S.current, look: S.look, adjust: JSON.stringify(S.adjust) };
   $("busy").textContent = "rendering…";
   const img = new Image();
-  img.onload = () => { if (seq === renderSeq) { $("big").src = img.src; $("busy").textContent = ""; } };
+  img.onload = () => {
+    if (seq !== renderSeq) return;
+    $("big").src = img.src; $("busy").textContent = "";
+    if (before) { $("bigTile").hidden = true; } else if (!GZ.fit) { GZ.tile = null; layoutBig(); }
+  };
   img.onerror = () => { if (seq === renderSeq) $("busy").textContent = "render failed"; };
   img.src = "/api/render?" + q({ ...params, edge: 1600, t: seq });
   $("badge").hidden = false;
@@ -522,7 +670,7 @@ cmp.addEventListener("mousedown", () => renderBig(true));
 let bDown = false;
 const typing = (e) => ["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) && e.target.type !== "range";
 document.addEventListener("keydown", e => { if (e.key === "b" && !bDown && !typing(e) && !CR.on && !$("gradeView").hidden) { bDown = true; renderBig(true); } });
-document.addEventListener("keyup", e => { if (e.key === "b" && bDown) { bDown = false; renderBig(); } });
+document.addEventListener("keyup", e => { if (e.key === "b" && bDown) { bDown = false; renderBig(); layoutBig(); } });
 
 
 // --- Library -------------------------------------------------------------------------
@@ -531,14 +679,16 @@ const L = { cats: new Set(["street", "travel"]), offset: 0, total: 0, folder: nu
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function setTab(tab) {
-  const lib = tab === "lib", second = tab === "second", grade = tab === "grade";
-  $("libView").hidden = !lib; $("secondView").hidden = !second; $("gradeView").hidden = !grade;
+  const lib = tab === "lib", second = tab === "second", grade = tab === "grade", cullT = tab === "cull";
+  $("libView").hidden = !lib; $("secondView").hidden = !second; $("gradeView").hidden = !grade; $("cullView").hidden = !cullT;
   $("libq").hidden = !lib; $("folderBar").hidden = !grade;
   $("tabLib").classList.toggle("on", lib); $("tabSecond").classList.toggle("on", second);
-  $("tabGrade").classList.toggle("on", grade);
-  if (lib && !$("grid").children.length) runSearch();
-  if (second) slOpen();
+  $("tabGrade").classList.toggle("on", grade); $("tabCull").classList.toggle("on", cullT);
+  if (lib) libRefresh();                   // marks may have changed in Cull / Second look
+  if (second) { slOpen(); if (SL.loaded) slLoad(); }
+  if (cullT) { if (!CU.sid) cuOpenStart(); else if (!$("cuRun").hidden) cuRefreshMarks(); }
 }
+$("tabCull").onclick = () => setTab("cull");
 $("tabLib").onclick = () => setTab("lib");
 $("tabSecond").onclick = () => setTab("second");
 $("tabGrade").onclick = () => setTab("grade");
@@ -581,7 +731,7 @@ function showJob(j) {
   $("scanBtn").hidden = run; $("pauseBtn").hidden = !run;
   $("scanBtn").textContent = j.phase === "paused" ? "Resume scan" : "Scan for new photos";
   const names = { starting: "Starting", listing: "Listing files", reading: "Reading photos", duplicates: "Checking duplicates",
-                  thumbnails: "Making thumbnails", understanding: "Understanding photos", checking: "Checking focus and exposure", done: "Up to date", paused: "Paused — safe to resume any time",
+                  thumbnails: "Making thumbnails", understanding: "Understanding photos", checking: "Checking focus and exposure", analysing: "Finding people, faces and poses", done: "Up to date", paused: "Paused — safe to resume any time",
                   error: "Stopped with an error", idle: "" };
   const pct = j.todo ? Math.round(100 * j.done / j.todo) : (j.phase === "done" ? 100 : 0);
   $("scanBar").style.width = (run || j.phase === "done" ? pct : 0) + "%";
@@ -665,9 +815,22 @@ $("pkAdd").onclick = async () => {
 
 function params(offset) {
   const p = { q: $("libq").value.trim(), cats: [...L.cats].join(","), year: $("fYear").value, date_from: $("fFrom").value,
-              date_to: $("fTo").value, camera: $("fCamera").value, graded: $("fGraded").value, offset, limit: 120 };
+              date_to: $("fTo").value, camera: $("fCamera").value, graded: $("fGraded").value,
+              flag: $("fFlag").value, stars: $("fStars").value, offset, limit: 120 };
   if (L.folder) { p.folder_id = L.folder; p.cats = ""; }
   return p;
+}
+async function libRefresh() {             // reload what's shown so tags are current; keep the scroll position
+  if (!$("grid").children.length || $("grid").hidden || $("libq").value.trim()) return runSearch();
+  const keep = $("libMain").scrollTop, p = params(0);
+  p.limit = Math.max(L.offset, 120);
+  try {
+    const res = await (await api("/api/library/search?" + q(p))).json();
+    $("grid").innerHTML = ""; L.divided = false;
+    for (const r of res.results) $("grid").appendChild(cell(r));
+    L.offset = res.results.length; L.total = res.total; $("more").hidden = L.offset >= L.total;
+    $("libMain").scrollTop = keep;
+  } catch (e) {}
 }
 async function runSearch(more = false) {
   $("folderView").hidden = true; $("grid").hidden = false;
@@ -715,16 +878,51 @@ function describe(r) {
   return bits.filter(Boolean).join(" · ");
 }
 function cell(r) {
-  const d = document.createElement("div"); d.className = "cell" + (r.online ? "" : " offline");
+  const d = document.createElement("div"); d.className = "cell" + (r.online ? "" : " offline") + (r.mark === "reject" ? " rejected" : "");
+  d.dataset.id = r.id;
   const tags = [];
+  if (r.mark === "pick") tags.push(`<span class="pk">Picked</span>`);
+  if (r.mark === "reject") tags.push(`<span class="rj">Rejected</span>`);
   if (r.graded) tags.push(`<span class="g">Graded</span>`);
-  if (r.rating > 0) tags.push(`<span>${"★".repeat(r.rating)}</span>`);
+  if (r.my_rating > 0) tags.push(`<span class="st" title="Your stars">${"★".repeat(r.my_rating)}</span>`);
+  if (r.rating > 0) tags.push(`<span class="on1" title="ON1 rating">ON1 ${"★".repeat(r.rating)}</span>`);
   if (!r.online) tags.push(`<span class="o">Drive offline</span>`);
-  d.innerHTML = `<img loading="lazy" src="/api/library/thumb/${r.id}" alt=""><div class="tags">${tags.join("")}</div>`;
+  const stars = [1, 2, 3, 4, 5].map(n => `<b data-r="${n}" class="${(r.my_rating || 0) >= n ? "on" : ""}">★</b>`).join("");
+  d.innerHTML = `<img loading="lazy" src="/api/library/thumb/${r.id}" alt=""><div class="tags">${tags.join("")}</div>
+    <div class="acts"><button data-f="pick" class="${r.mark === "pick" ? "on" : ""}" title="Pick (P)">✓</button><button data-f="reject" class="${r.mark === "reject" ? "on" : ""}" title="Reject (X)">✕</button><button data-f="" title="Unmark (U)">↺</button><span class="st">${stars}</span></div>`;
   d.title = `${r.name}\n${r.folder}\n${describe(r)}\n${r.category}`;
   d.onclick = () => openPhoto(r);
+  d.querySelectorAll(".acts [data-f]").forEach(b => b.onclick = (e) => { e.stopPropagation(); libMark(r, d, { flag: b.dataset.f || null }); });
+  d.querySelectorAll(".acts [data-r]").forEach(b => b.onclick = (e) => {
+    e.stopPropagation(); const n = +b.dataset.r; libMark(r, d, { rating: r.my_rating === n ? 0 : n });
+  });
+  d.querySelector(".acts").onclick = (e) => e.stopPropagation();
+  d.addEventListener("mouseenter", () => { L.hover = { r, d }; });
+  d.addEventListener("mouseleave", () => { if (L.hover && L.hover.d === d) L.hover = null; });
   return d;
 }
+async function libMark(r, d, change) {
+  const body = { flag: "keep-as-is", rating: -1, ...change };
+  try {
+    const m = await (await api("/api/library/mark/" + r.id, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body) })).json();
+    r.mark = m.flag; r.my_rating = m.rating;
+    const now = $("grid").querySelector(`.cell[data-id="${r.id}"]`) || d;   // the one on screen now
+    const fresh = cell(r), wasHover = L.hover && L.hover.r.id === r.id;
+    now.replaceWith(fresh);
+    if (wasHover) L.hover = { r, d: fresh };
+  } catch (e) { alert("Couldn't save: " + e.message); }
+}
+document.addEventListener("keydown", (e) => {
+  if ($("libView").hidden || !L.hover || typing(e) || e.metaKey || e.ctrlKey) return;
+  const k = e.key, { r, d } = L.hover;
+  if (k === "p" || k === "P") libMark(r, d, { flag: "pick" });
+  else if (k === "x" || k === "X") libMark(r, d, { flag: "reject" });
+  else if (k === "u" || k === "U") libMark(r, d, { flag: null });
+  else if (/^[0-5]$/.test(k)) libMark(r, d, { rating: +k });
+  else return;
+  e.preventDefault();
+});
 async function openPhoto(r) {
   try {
     const st = await (await api("/api/library/open/" + r.id, { method: "POST" })).json();
@@ -742,9 +940,9 @@ $("lightbox").onclick = (e) => { if (e.target.id === "lightbox") $("lightbox").h
 let typeTimer = null;
 $("libq").addEventListener("input", () => { clearTimeout(typeTimer); typeTimer = setTimeout(() => runSearch(), 400); });
 $("libq").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(typeTimer); runSearch(); } });
-["fYear", "fFrom", "fTo", "fCamera", "fGraded"].forEach(id => $(id).addEventListener("change", () => runSearch()));
+["fYear", "fFrom", "fTo", "fCamera", "fGraded", "fFlag", "fStars"].forEach(id => $(id).addEventListener("change", () => runSearch()));
 $("fClear").onclick = () => {
-  ["fYear", "fFrom", "fTo", "fCamera", "fGraded"].forEach(id => $(id).value = "");
+  ["fYear", "fFrom", "fTo", "fCamera", "fGraded", "fFlag"].forEach(id => $(id).value = ""); $("fStars").value = "0";
   L.cats = new Set(["street", "travel"]); L.folder = null; $("libq").value = ""; buildCats(); runSearch();
 };
 
@@ -984,6 +1182,7 @@ async function cropEnter() {
   }
   $("crCustom").hidden = $("crRatio").value !== "custom";
   $("gradePanel").hidden = true; $("cropPanel").hidden = false;
+  GZ.fit = true; GZ.tile = null; $("bigTile").hidden = true; $("zoomBar").hidden = true; $("stage").classList.remove("zoomed");
   $("big").hidden = true; $("badge").hidden = true; $("cropWrap").hidden = false; $("stage").classList.add("cropping");
   layoutCrop();
   for (let i = 0; i < 20 && CR.ww < 10; i++) {          // the screen may still be laying out
@@ -1003,6 +1202,7 @@ function cropExit(save) {
   $("cropWrap").hidden = true; $("big").hidden = false; $("badge").hidden = false;
   $("cropPanel").hidden = true; $("gradePanel").hidden = false;
   $("stage").classList.remove("cropping", "rotating"); $("rotBadge").hidden = true;
+  requestAnimationFrame(() => layoutBig());
   document.querySelectorAll(".rotGrip").forEach(g => g.hidden = true);
   if (!save) return;
   const b = CR.box, g = CR.g;
@@ -1016,7 +1216,7 @@ async function saveEdit(g, name = S.current) {
       body: JSON.stringify({ name, geometry: g }) })).json();
     if (name !== S.current) return r;
     S.edit = { geometry: r.geometry, full_size: r.full_size }; S.editKey = Date.now();
-    showCropInfo(); renderBig(); buildLookStrip();
+    showCropInfo(); GZ.fit = true; GZ.tile = null; renderBig(); buildLookStrip();
     const t = [...document.querySelectorAll(".thumb")].find(t => t.dataset.name === name);
     if (t) t.querySelector("img").src = "/api/thumb?" + q({ name, k: S.editKey });
     return r;
@@ -1204,11 +1404,412 @@ document.addEventListener("keydown", (e) => {
   else if (k === "]" || k === "}") { e.preventDefault(); setAngle(CR.g.angle + (e.shiftKey ? 1 : 0.1)); }
 });
 
+// --- Cull -------------------------------------------------------------------------------------
+const CU = { sid: null, groups: [], frames: {}, list: [], gi: 0, fi: 0, cats: new Set(["street", "travel"]), zoom: null, busy: false };
+function cuBuildCats() {
+  $("cuCats").innerHTML = "";
+  for (const c of CATS) {
+    const l = document.createElement("label"); l.className = "chk";
+    l.innerHTML = `<input type="checkbox" ${CU.cats.has(c) ? "checked" : ""}> ${c[0].toUpperCase() + c.slice(1)}`;
+    l.querySelector("input").onchange = (e) => { e.target.checked ? CU.cats.add(c) : CU.cats.delete(c); };
+    $("cuCats").appendChild(l);
+  }
+}
+async function cuOpenStart() {
+  CU.sid = null;
+  $("cuStart").hidden = false; $("cuRun").hidden = true; $("cuDone").hidden = true; $("cuZoom").hidden = true;
+  try {
+    const st = await (await api("/api/cull/state")).json();
+    const cur = $("cuFolder").value;
+    $("cuFolder").innerHTML = st.shoots.map(f => `<option value="${f.id}">${esc(f.name)} (${f.photos})</option>`).join("");
+    if (cur) $("cuFolder").value = cur;
+    $("cuNewCount").textContent = `(${st.new_since_last} photos)`;
+    const L2 = st.learning, pct = (x) => Math.round(100 * x) + "%";
+    const hist = L2.history.slice(-8).map(h => `<span title="${esc(h.label)} · ${h.groups} groups">${pct(h.agreement)}</span>`).join(" → ");
+    const top = Object.entries(L2.weights).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k).join(", ");
+    $("cuLearn").innerHTML = (L2.groups
+      ? `Learned from <b>${L2.groups}</b> groups you culled. What matters most to you so far: <b>${esc(top)}</b>.`
+      : "Nothing learned yet — after you finish a cull, the suggestions adapt to the frames you picked.") +
+      (hist ? `<br>How often the suggested pick matched yours, cull by cull: ${hist}` : "");
+    $("cuRecent").innerHTML = st.sessions.length ? "" : "None yet.";
+    for (const s of st.sessions) {
+      const d = document.createElement("div"); d.className = "cuSess";
+      const pct = s.groups ? Math.round(100 * s.done / s.groups) : 0;
+      const agree = s.agreement == null ? "" : ` · agreed with you on ${Math.round(100 * s.agreement)}% of ${s.agreement_groups} groups`;
+      d.innerHTML = `<div>${esc(s.label)}<small>${esc(s.created.slice(0, 16))} · ${s.done}/${s.groups} groups (${pct}%)${s.finished ? " · finished" : ""}${agree}</small></div>
+        <button class="go">${s.finished ? "Review" : "Resume"}</button><button class="rm" title="Remove this cull from the list">✕</button>`;
+      d.querySelector(".go").onclick = () => cuLoad(s.id);
+      d.querySelector(".rm").onclick = async () => {
+        if (!confirm(`Remove “${s.label}” (${s.created.slice(0, 16)}) from your culls?\n\nYour picks, rejects and stars are kept — only this cull's list entry goes.`)) return;
+        try { await api("/api/cull/session/" + s.id, { method: "DELETE" }); cuOpenStart(); } catch (e) { alert(e.message); }
+      };
+      $("cuRecent").appendChild(d);
+    }
+  } catch (e) { $("cuStartMsg").textContent = e.message; }
+}
+$("cuStartBtn").onclick = async () => {
+  const mode = document.querySelector('input[name="cuscope"]:checked').value;
+  const scope = { categories: [...CU.cats] };
+  let label = "";
+  if (mode === "folder") { scope.folder_id = +$("cuFolder").value; label = $("cuFolder").selectedOptions[0]?.textContent.replace(/ \(\d+\)$/, "") || "Shoot"; }
+  if (mode === "dates") { scope.date_from = $("cuFrom").value; scope.date_to = $("cuTo").value; label = `${scope.date_from || "…"} to ${scope.date_to || "…"}`; }
+  if (mode === "new") { scope.new = true; label = "New since last cull"; }
+  $("cuStartMsg").textContent = "Grouping frames and ranking each group…";
+  try {
+    const r = await (await api("/api/cull/start", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scope, label }) })).json();
+    $("cuStartMsg").textContent = ""; cuLoad(r.session);
+  } catch (e) { $("cuStartMsg").textContent = e.message; }
+};
+async function cuRefreshMarks() {         // marks changed in the Library / Second look
+  try {
+    const s = await (await api("/api/cull/session/" + CU.sid)).json();
+    for (const [id, f] of Object.entries(s.frames)) if (CU.frames[id]) { CU.frames[id].flag = f.flag; CU.frames[id].rating = f.rating; }
+    cuShow();
+  } catch (e) {}
+}
+async function cuLoad(sid) {
+  const s = await (await api("/api/cull/session/" + sid)).json();
+  CU.sid = sid; CU.groups = s.groups; CU.frames = s.frames; CU.label = s.label;
+  $("cuLabel").textContent = s.label;
+  $("cuStart").hidden = true; $("cuDone").hidden = true; $("cuRun").hidden = false;
+  cuFilter(true);
+}
+function cuFilter(jumpToFirstOpen) {
+  CU.list = CU.groups.filter(g => !$("cuUnsure").checked || g.unsure).map(g => g.idx);
+  cuBuildStrip();
+  let pos = jumpToFirstOpen ? CU.list.findIndex(i => !CU.groups[i].done) : Math.max(0, CU.list.indexOf(CU.groups[CU.cur]?.idx));
+  CU.gi = pos < 0 ? Math.max(0, CU.list.length - 1) : pos; CU.fi = -1;
+  cuShow();
+}
+$("cuUnsure").onchange = () => cuFilter(true);
+function cuGroup() { return CU.groups[CU.list[CU.gi]]; }
+function cuBuildStrip() {
+  $("cuStrip").innerHTML = "";
+  CU.list.forEach((gidx, pos) => {
+    const g = CU.groups[gidx], t = document.createElement("div");
+    t.className = "cuTile"; t.dataset.pos = pos;
+    t.innerHTML = `<img loading="lazy" alt="" src="/api/library/thumb/${g.suggested || g.ids[0]}">${g.ids.length > 1 ? `<b>${g.ids.length}</b>` : ""}${g.unsure ? "<i>?</i>" : ""}`;
+    t.title = `Group ${pos + 1}` + (g.ids.length > 1 ? ` · ${g.ids.length} frames` : "");
+    t.onclick = () => { CU.gi = pos; CU.fi = -1; cuShow(); };
+    $("cuStrip").appendChild(t);
+  });
+}
+function cuUpdateStrip() {
+  const tiles = $("cuStrip").children;
+  CU.list.forEach((gidx, pos) => {
+    const g = CU.groups[gidx], t = tiles[pos]; if (!t) return;
+    const flags = g.ids.map(id => CU.frames[id].flag);
+    const pick = flags.includes("pick"), rej = !pick && flags.every(f => f === "reject");
+    t.className = "cuTile" + (pick ? " pick" : "") + (rej ? " rej" : "") + (g.done ? " done" : "") + (pos === CU.gi ? " cur" : "");
+    if (pick) { const pid = g.ids.find(id => CU.frames[id].flag === "pick"); const im = t.querySelector("img");
+      if (!im.src.endsWith("/" + pid)) im.src = "/api/library/thumb/" + pid; }
+  });
+  const cur = tiles[CU.gi];
+  if (cur) cur.scrollIntoView({ block: "nearest", inline: "center" });
+}
+function cuShow() {
+  const g = cuGroup();
+  const done = CU.list.filter(i => CU.groups[i].done).length;
+  $("cuBar").style.width = (CU.list.length ? 100 * done / CU.list.length : 0) + "%";
+  const all = Object.values(CU.frames), picks = all.filter(f => f.flag === "pick").length, rej = all.filter(f => f.flag === "reject").length;
+  $("cuCount").textContent = CU.list.length ? `Group ${CU.gi + 1} of ${CU.list.length} · ${done} done · ${picks} picked · ${rej} rejected` : "No groups";
+  $("cuFrames").innerHTML = "";
+  cuUpdateStrip();
+  $("cuPrev").disabled = CU.gi <= 0;
+  if (!g) { $("cuWhy").textContent = $("cuUnsure").checked ? "No unsure groups — untick the box to see them all." : ""; return; }
+  CU.cur = g.idx;
+  if (CU.fi < 0 || CU.fi >= g.ids.length) CU.fi = Math.max(0, g.ids.indexOf(g.suggested));
+  const start = Math.max(0, Math.min(CU.fi - 1, g.ids.length - 4)), shown = g.ids.slice(start, start + 4);
+  shown.forEach((id, k) => {
+    const f = CU.frames[id], i = start + k;
+    const d = document.createElement("div");
+    d.className = "cuCard" + (i === CU.fi ? " focus" : "") + (id === g.suggested && g.ids.length > 1 ? " sugg" : "") + (f.flag === "reject" ? " reject" : "");
+    const tags = [];
+    if (id === g.suggested && g.ids.length > 1) tags.push(`<span class="s">★ Suggested pick</span>`);
+    if (f.flag === "pick") tags.push(`<span class="p">PICK</span>`);
+    if (f.flag === "reject") tags.push(`<span class="x">REJECT</span>`);
+    if (!f.online) tags.push(`<span class="o">Drive offline</span>`);
+    d.innerHTML = `<div class="tags">${tags.join("")}</div><div class="ph"><img src="/api/cull/view/${id}" alt=""></div>
+      <div class="meta"><span>${esc(f.name)}</span><span>${f.time ? esc(f.time.slice(11, 19)) : ""}</span>
+      ${f.on1 ? `<span class="on1" title="ON1 rating">ON1 ${"★".repeat(f.on1)}</span>` : ""}<span class="stars">${f.rating ? "★".repeat(f.rating) : ""}</span></div>`;
+    d.onclick = () => { if (CU.fi !== i) { CU.fi = i; cuShow(); } };
+    const img = d.querySelector(".ph img");
+    const at = (e) => {                     // pointer position as a fraction of the photo
+      const r = img.getBoundingClientRect(), na = (img.naturalWidth || 3) / (img.naturalHeight || 2);
+      let dw = r.width, dh = r.height, ox = 0, oy = 0;
+      if (r.width / r.height > na) { dw = r.height * na; ox = (r.width - dw) / 2; } else { dh = r.width / na; oy = (r.height - dh) / 2; }
+      return [Math.min(1, Math.max(0, (e.clientX - r.left - ox) / dw)), Math.min(1, Math.max(0, (e.clientY - r.top - oy) / dh))];
+    };
+    img.addEventListener("mousemove", (e) => { const [fx, fy] = at(e); CU.hover = { id, i, fx, fy }; });
+    img.addEventListener("mouseleave", () => { if (CU.hover && CU.hover.id === id) CU.hover = null; });
+    img.addEventListener("dblclick", (e) => { const [fx, fy] = at(e); CU.fi = i; cuShow(); cuZoom(id, fx, fy); });
+    $("cuFrames").appendChild(d);
+  });
+  const more = g.ids.length > 4 ? ` · frames ${start + 1}–${start + shown.length} of ${g.ids.length}` : "";
+  const why = g.ids.length > 1 ? `Suggested: ${g.reasons.join(" · ")}` : g.reasons.join(" · ");
+  $("cuWhy").innerHTML = (g.unsure ? `<span class="u">UNSURE</span>` : "") + esc(why) + more;
+  // prefetch the next group's views
+  const nx = CU.groups[CU.list[CU.gi + 1]];
+  if (nx) nx.ids.slice(0, 4).forEach(id => { const im = new Image(); im.src = "/api/cull/view/" + id; });
+}
+async function cuMark(action, value) {
+  const g = cuGroup(); if (!g) return;
+  const id = g.ids[CU.fi], f = CU.frames[id], before = { flag: f.flag, rating: f.rating };
+  if (action === "rate") f.rating = value || null; else f.flag = action === "unmark" ? null : action;
+  cuShow();
+  try { await api("/api/cull/mark", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session: CU.sid, photo_id: id, action, value }) }); }
+  catch (e) { Object.assign(f, before); cuShow(); alert("Couldn't save: " + e.message); }
+}
+async function cuNext(step = 1) {
+  const g = cuGroup();
+  if (g && step > 0 && !g.done) {
+    g.done = true;
+    api("/api/cull/done", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session: CU.sid, idx: g.idx }) });
+  }
+  if (CU.gi + step >= CU.list.length && step > 0) { cuShow(); return cuFinish(); }
+  CU.gi = Math.max(0, CU.gi + step); CU.fi = -1; cuShow();
+}
+async function cuFinish() {
+  const r = await (await api("/api/cull/finish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session: CU.sid }) })).json();
+  $("cuRun").hidden = true; $("cuDone").hidden = false;
+  const agree = r.agreement == null ? "Pick at least one frame in groups of 2+ to get an agreement rate."
+    : `The suggested pick matched one of your picks in <b>${Math.round(100 * r.agreement)}%</b> of ${r.agreement_groups} groups.`;
+  let learnt = "";
+  if (r.learned && r.learned.groups) {
+    const pct = (x) => Math.round(100 * x) + "%";
+    learnt = `<br><span class="small">Learned from ${r.learned.groups} groups you've culled so far` +
+      (r.learned.before != null ? ` — on those, its picks would now match yours ${pct(r.learned.after)} of the time (was ${pct(r.learned.before)} with the starting settings).` : ".") +
+      " The next cull uses what it learned.</span>";
+  }
+  $("cuSummary").innerHTML = `<b>${r.picks}</b> picked · <b>${r.rejects}</b> rejected<br>${agree}${learnt}`;
+  $("cuSend").disabled = !r.picks;
+}
+$("cuFinish").onclick = () => cuFinish();
+async function cuSend() {
+  try {
+    const st = await (await api("/api/cull/send", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session: CU.sid }) })).json();
+    cuZoomClose(); S.current = null; setTab("grade"); loadState(st);
+    if (st.offline) status(`${st.offline} pick(s) are on a drive that's offline and were left out.`);
+  } catch (e) { alert(e.message); }
+}
+$("cuSend").onclick = cuSend;
+$("cuSendTop").onclick = cuSend;
+$("cuBack").onclick = () => { cuZoomClose(); cuOpenStart(); };
+$("cuAgain").onclick = () => cuOpenStart();
+
+const ZM = { id: null, w: 0, h: 0, x: 0, y: 0, canFull: false, raw: false, drag: null };
+function zmCentre() { const p = $("cuPane"); return [(p.clientWidth / 2 - ZM.x) / ZM.w, (p.clientHeight / 2 - ZM.y) / ZM.h]; }
+function zmPlace() {
+  const p = $("cuPane"), pw = p.clientWidth, ph = p.clientHeight;
+  ZM.x = ZM.w > pw ? Math.min(0, Math.max(pw - ZM.w, ZM.x)) : (pw - ZM.w) / 2;
+  ZM.y = ZM.h > ph ? Math.min(0, Math.max(ph - ZM.h, ZM.y)) : (ph - ZM.h) / 2;
+  $("cuZoomImg").style.transform = `translate(${ZM.x}px, ${ZM.y}px)`;
+  const nav = $("cuNavImg").getBoundingClientRect(), box = $("cuNavBox").style;
+  box.left = (-ZM.x / ZM.w) * nav.width + "px"; box.top = (-ZM.y / ZM.h) * nav.height + "px";
+  box.width = Math.min(1, pw / ZM.w) * nav.width + "px"; box.height = Math.min(1, ph / ZM.h) * nav.height + "px";
+}
+async function cuZoom(id, fx, fy, raw = false) {
+  if (!CU.frames[id].online) { $("cuWhy").textContent = "Drive offline — plug it in to zoom to 100%."; return; }
+  ZM.id = id; ZM.raw = raw;
+  $("cuZoom").hidden = false; $("cuNavImg").src = "/api/cull/view/" + id;
+  $("cuZoomNote").textContent = raw ? "Decoding the RAW for a true 100%…" : "Loading 100%…";
+  try {
+    const r = await api(`/api/cull/full/${id}?` + q({ raw_decode: raw ? 1 : 0 }));
+    const url = URL.createObjectURL(await r.blob()), img = $("cuZoomImg");
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    if (ZM.id !== id) return;
+    ZM.w = img.naturalWidth; ZM.h = img.naturalHeight;
+    img.style.width = ZM.w + "px"; img.style.height = ZM.h + "px";
+    const p = $("cuPane"); ZM.x = p.clientWidth / 2 - fx * ZM.w; ZM.y = p.clientHeight / 2 - fy * ZM.h;
+    zmPlace();
+    ZM.canFull = r.headers.get("X-Can-Full") === "1";
+    $("cuZoomNote").textContent = `${r.headers.get("X-Zoom")} · ${CU.frames[id].name} · drag or scroll to look around` +
+      (ZM.canFull ? " · Z again for a true 100% from the RAW" : "") + " · Esc to close";
+  } catch (e) { $("cuZoomNote").textContent = e.message || "Couldn't load the full-size photo."; }
+}
+function cuZoomClose() { $("cuZoom").hidden = true; ZM.id = null; $("cuZoomImg").removeAttribute("src"); }
+function cuZoomKey() {                      // Z: zoom where the pointer is (or the eyes / subject)
+  const g = cuGroup(); if (!g) return;
+  if (CU.hover && g.ids.includes(CU.hover.id)) { CU.fi = CU.hover.i; cuShow(); return cuZoom(CU.hover.id, CU.hover.fx, CU.hover.fy); }
+  const id = g.ids[CU.fi], f = CU.frames[id].focus || [0.5, 0.5];
+  cuZoom(id, f[0], f[1]);
+}
+$("cuPane").addEventListener("pointerdown", (e) => {
+  ZM.drag = { x0: e.clientX, y0: e.clientY, x: ZM.x, y: ZM.y, moved: false };
+  $("cuPane").setPointerCapture(e.pointerId); $("cuPane").classList.add("dragging");
+});
+$("cuPane").addEventListener("pointermove", (e) => {
+  if (!ZM.drag) return;
+  ZM.x = ZM.drag.x + e.clientX - ZM.drag.x0; ZM.y = ZM.drag.y + e.clientY - ZM.drag.y0;
+  if (Math.abs(e.clientX - ZM.drag.x0) + Math.abs(e.clientY - ZM.drag.y0) > 4) ZM.drag.moved = true;
+  zmPlace();
+});
+$("cuPane").addEventListener("pointerup", () => { $("cuPane").classList.remove("dragging"); ZM.drag = null; });
+$("cuPane").addEventListener("wheel", (e) => { e.preventDefault(); ZM.x -= e.deltaX; ZM.y -= e.deltaY; zmPlace(); }, { passive: false });
+$("cuNav").addEventListener("click", (e) => {
+  const r = $("cuNavImg").getBoundingClientRect(), p = $("cuPane");
+  ZM.x = p.clientWidth / 2 - ((e.clientX - r.left) / r.width) * ZM.w;
+  ZM.y = p.clientHeight / 2 - ((e.clientY - r.top) / r.height) * ZM.h; zmPlace();
+});
+window.addEventListener("resize", () => { if (ZM.id) zmPlace(); });
+$("cuPrev").onclick = () => cuNext(-1);
+$("cuNextBtn").onclick = () => cuNext(1);
+
+document.addEventListener("keydown", (e) => {
+  if ($("cullView").hidden || $("cuRun").hidden || typing(e) || e.metaKey || e.ctrlKey) return;
+  const k = e.key, g = cuGroup();
+  if (ZM.id) {
+    const step = e.shiftKey ? 600 : 200;
+    if (k === "Escape") cuZoomClose();
+    else if ((k === "z" || k === "Z") && ZM.canFull && !ZM.raw) { const [fx, fy] = zmCentre(); cuZoom(ZM.id, fx, fy, true); }
+    else if (k === "z" || k === "Z") cuZoomClose();
+    else if (k === "ArrowLeft") { ZM.x += step; zmPlace(); } else if (k === "ArrowRight") { ZM.x -= step; zmPlace(); }
+    else if (k === "ArrowUp") { ZM.y += step; zmPlace(); } else if (k === "ArrowDown") { ZM.y -= step; zmPlace(); }
+    else return;
+    e.preventDefault(); return;
+  }
+  if (!g) return;
+  if (k === "p" || k === "P") {
+    e.preventDefault(); cuMark("pick");
+    if (!e.shiftKey) setTimeout(() => cuNext(1), 280);         // auto-advance
+  } else if (k === "x" || k === "X") {
+    e.preventDefault(); cuMark("reject");
+    if (CU.fi < g.ids.length - 1) { CU.fi++; cuShow(); }
+  } else if (k === "u" || k === "U") { e.preventDefault(); cuMark("unmark"); }
+  else if (/^[0-5]$/.test(k)) { e.preventDefault(); cuMark("rate", +k); }
+  else if (k === "ArrowRight") { e.preventDefault(); if (CU.fi < g.ids.length - 1) { CU.fi++; cuShow(); } }
+  else if (k === "ArrowLeft") { e.preventDefault(); if (CU.fi > 0) { CU.fi--; cuShow(); } }
+  else if (k === "Enter") { e.preventDefault(); cuNext(e.shiftKey ? -1 : 1); }
+  else if (k === "ArrowUp") { e.preventDefault(); cuNext(-1); }
+  else if (k === "ArrowDown") { e.preventDefault(); cuNext(1); }
+  else if (k === "z" || k === "Z") { e.preventDefault(); cuZoomKey(); }
+});
+cuBuildCats();
+
+// --- Grade: variable zoom and pan --------------------------------------------------------
+// The photo is laid out explicitly: `scale` is screen pixels per full-resolution pixel of the
+// final (cropped) frame. Zoomed in, the normal preview is enlarged instantly, then a sharp tile
+// of just the visible area (with the look, grain and vignette) is rendered on top.
+const GZ = { fit: true, scale: 1, tx: 0, ty: 0, tile: null, tileSeq: 0, timer: null, drag: null };
+const MAX_ZOOM = 4;
+function frameDims() {
+  if (S.edit && S.edit.full_size) return outPx(S.edit.geometry, S.edit.full_size);
+  const b = $("big"); return [b.naturalWidth || 1600, b.naturalHeight || 1067];
+}
+function fitScale() {
+  const st = $("stage"), [W, H] = frameDims();
+  return Math.min((st.clientWidth - 24) / W, (st.clientHeight - 24) / H);
+}
+function layoutBig(schedule = true) {   // schedule=false: just place things (e.g. a tile arrived)
+  if ($("big").hidden) return;
+  const st = $("stage"), [W, H] = frameDims(), fs = fitScale();
+  if (GZ.fit) GZ.scale = fs;
+  const w = W * GZ.scale, h = H * GZ.scale, sw = st.clientWidth, sh = st.clientHeight;
+  if (GZ.fit) { GZ.tx = (sw - w) / 2; GZ.ty = (sh - h) / 2; }
+  else {
+    GZ.tx = w > sw ? Math.min(0, Math.max(sw - w, GZ.tx)) : (sw - w) / 2;
+    GZ.ty = h > sh ? Math.min(0, Math.max(sh - h, GZ.ty)) : (sh - h) / 2;
+  }
+  Object.assign($("big").style, { left: GZ.tx + "px", top: GZ.ty + "px", width: w + "px", height: h + "px" });
+  const zoomed = !GZ.fit && GZ.scale > fs * 1.02;
+  $("stage").classList.toggle("zoomed", zoomed);
+  const t = GZ.tile;
+  if (t && zoomed && !bDown) {
+    Object.assign($("bigTile").style, { left: GZ.tx + t.x * w + "px", top: GZ.ty + t.y * h + "px", width: t.w * w + "px", height: t.h * h + "px" });
+    $("bigTile").hidden = false;
+  } else $("bigTile").hidden = true;
+  $("zLabel").textContent = GZ.fit ? `Fit (${Math.round(fs * 100)}%)` : `${Math.round(GZ.scale * 100)}%`;
+  const lo = Math.log(fs), hi = Math.log(MAX_ZOOM);
+  $("zSlider").value = Math.round(1000 * (Math.log(GZ.scale) - lo) / Math.max(hi - lo, 1e-6));
+  $("zoomBar").hidden = !S.current || CR.on;
+  if (!schedule) return;
+  clearTimeout(GZ.timer);
+  if (zoomed) GZ.timer = setTimeout(requestTile, 220);
+}
+function zoomTo(scale, cx, cy) {             // keep the point (cx, cy) on screen fixed
+  const fs = fitScale(), [W, H] = frameDims();
+  scale = Math.max(fs, Math.min(MAX_ZOOM, scale));
+  if (cx == null) { cx = $("stage").clientWidth / 2; cy = $("stage").clientHeight / 2; }
+  const fx = (cx - GZ.tx) / (W * GZ.scale), fy = (cy - GZ.ty) / (H * GZ.scale);
+  GZ.fit = scale <= fs * 1.001; GZ.scale = scale;
+  GZ.tx = cx - fx * W * scale; GZ.ty = cy - fy * H * scale;
+  if (GZ.fit) GZ.tile = null;
+  layoutBig();
+}
+function zoomFit() { GZ.fit = true; GZ.tile = null; layoutBig(); }
+function requestTile() {
+  if (GZ.fit || !S.current || bDown) return;
+  const st = $("stage"), [W, H] = frameDims(), w = W * GZ.scale, h = H * GZ.scale;
+  const x0 = Math.max(0, -GZ.tx / w), y0 = Math.max(0, -GZ.ty / h);
+  const x1 = Math.min(1, (st.clientWidth - GZ.tx) / w), y1 = Math.min(1, (st.clientHeight - GZ.ty) / h);
+  if (x1 <= x0 || y1 <= y0) return;
+  const outW = Math.min(3000, Math.round((x1 - x0) * W * Math.min(GZ.scale, 1) * (window.devicePixelRatio || 1)));
+  const seq = ++GZ.tileSeq, box = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  const big = GZ.scale * (window.devicePixelRatio || 1) > 0.42;
+  $("busy").textContent = big ? "rendering full detail…" : "sharpening…";
+  const img = new Image();
+  img.onload = () => {
+    if (seq !== GZ.tileSeq) return;
+    $("bigTile").src = img.src; GZ.tile = box; $("busy").textContent = ""; layoutBig(false);
+  };
+  img.onerror = () => { if (seq === GZ.tileSeq) $("busy").textContent = "couldn't render detail"; };
+  img.src = "/api/render_region?" + q({ name: S.current, look: S.look, adjust: JSON.stringify(S.adjust),
+    x: box.x.toFixed(5), y: box.y.toFixed(5), w: box.w.toFixed(5), h: box.h.toFixed(5), out_w: outW, k: S.editKey || 0, t: seq });
+}
+$("big").addEventListener("load", () => layoutBig(!GZ.tile));
+window.addEventListener("resize", () => { if (!$("gradeView").hidden) layoutBig(); });
+$("zFit").onclick = () => zoomFit();
+$("z100").onclick = () => zoomTo(1);
+$("zIn").onclick = () => zoomTo(GZ.scale * 1.4);
+$("zOut").onclick = () => zoomTo(GZ.scale / 1.4);
+$("zSlider").addEventListener("input", () => {
+  const lo = Math.log(fitScale()), hi = Math.log(MAX_ZOOM);
+  zoomTo(Math.exp(lo + (hi - lo) * $("zSlider").value / 1000));
+});
+$("stage").addEventListener("wheel", (e) => {
+  if (CR.on || $("big").hidden || !S.current) return;
+  const r = $("stage").getBoundingClientRect();
+  if (e.ctrlKey || e.metaKey) {               // trackpad pinch / ⌘-scroll: zoom at the pointer
+    e.preventDefault(); zoomTo(GZ.scale * Math.exp(-e.deltaY * 0.01), e.clientX - r.left, e.clientY - r.top);
+  } else if (!GZ.fit) {                       // scroll: pan around
+    e.preventDefault(); GZ.tx -= e.deltaX; GZ.ty -= e.deltaY; layoutBig();
+  }
+}, { passive: false });
+$("big").addEventListener("pointerdown", (e) => {
+  if (GZ.fit || CR.on) return;
+  GZ.drag = { x: e.clientX, y: e.clientY, tx: GZ.tx, ty: GZ.ty };
+  $("big").setPointerCapture(e.pointerId); $("stage").classList.add("panning"); e.preventDefault();
+});
+$("big").addEventListener("pointermove", (e) => {
+  if (!GZ.drag) return;
+  GZ.tx = GZ.drag.tx + e.clientX - GZ.drag.x; GZ.ty = GZ.drag.ty + e.clientY - GZ.drag.y; layoutBig();
+});
+$("big").addEventListener("pointerup", () => { GZ.drag = null; $("stage").classList.remove("panning"); });
+$("big").addEventListener("dblclick", (e) => {
+  const r = $("stage").getBoundingClientRect();
+  if (GZ.fit) zoomTo(1, e.clientX - r.left, e.clientY - r.top); else zoomFit();
+});
+let gzPointer = null;
+$("stage").addEventListener("mousemove", (e) => { const r = $("stage").getBoundingClientRect(); gzPointer = [e.clientX - r.left, e.clientY - r.top]; });
+$("stage").addEventListener("mouseleave", () => { gzPointer = null; });
+document.addEventListener("keydown", (e) => {
+  if ($("gradeView").hidden || CR.on || typing(e) || e.metaKey || e.ctrlKey || !S.current) return;
+  const k = e.key, p = gzPointer || [];
+  if (k === "+" || k === "=") { e.preventDefault(); zoomTo(GZ.scale * 1.4, ...p); }
+  else if (k === "-" || k === "_") { e.preventDefault(); zoomTo(GZ.scale / 1.4, ...p); }
+  else if (k === "0") { e.preventDefault(); zoomFit(); }
+  else if (k === "z" || k === "Z") { e.preventDefault(); if (GZ.fit) zoomTo(1, ...p); else zoomFit(); }
+});
+
 buildSliders();
 api("/api/state").then(r => r.json()).then(st => {
   loadState(st);
-  if (st.folder) setTab("grade");          // don't wait for the library to load
-  loadLib().then(lib => { if (!st.folder) setTab(lib.roots.length ? "lib" : "grade"); });
+  const inGrade = st.folder || st.collection;
+  if (inGrade) setTab("grade");            // don't wait for the library to load
+  loadLib().then(lib => { if (!inGrade) setTab(lib.roots.length ? "lib" : "grade"); });
 });
 </script>
 </body>

@@ -15,7 +15,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8", "httpx>=0.27"]
 # Library search: local image-text model on the M1 GPU
-search = ["torch>=2.2", "open_clip_torch>=2.24", "transformers>=4.40", "sentencepiece>=0.2", "scikit-learn>=1.3"]
+search = ["torch>=2.2", "open_clip_torch>=2.24", "transformers>=4.40", "sentencepiece>=0.2", "scikit-learn>=1.3",
+          "pyobjc-framework-Vision>=10; sys_platform == 'darwin'", "pyobjc-framework-Quartz>=10; sys_platform == 'darwin'"]
 
 [project.scripts]
 filmlook = "filmlook.cli:main"

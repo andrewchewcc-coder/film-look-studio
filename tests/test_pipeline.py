@@ -203,3 +203,12 @@ def test_fuji_crop_respects_libraw_margins_and_scale():
     out = fuji.apply(img, info, scale=0.5, margins=(0, 6))
     assert out.shape == (50, 100, 3)
     assert out[0, 0, 0] == img[3, 10, 0]   # ((12-6)*0.5, 20*0.5)
+
+
+def test_a_zoomed_tile_matches_the_whole_frame():
+    r = recipes.load_look("tri-x-gold")
+    r["grain"]["amount"], r["vignette"]["amount"] = 0.5, 0.4
+    lin = ramp(120, 180)
+    whole = pipeline.render(lin, r, gain=1.0)
+    tile = pipeline.render(lin[30:80, 90:150], r, gain=1.0, y0=30, x0=90, full_size=(120, 180))
+    assert np.abs(tile - whole[30:80, 90:150]).max() < 1e-5

@@ -78,6 +78,46 @@ def render_preview(path, recipe, edge=None, geom=None):
     return to_image(pipeline.render(lin, recipe, gain, display=raw.is_display_referred(path)))
 
 
+_full_cache = {"key": None, "img": None}   # one full-resolution decode (with its edit) for zooming
+
+
+def render_region(path, recipe, geom, box, out_w):
+    """Render part of the final (edited) frame: box = [x, y, w, h] as fractions of it, at out_w
+    pixels wide. Uses the larger cached preview when that's detailed enough, otherwise the
+    full-resolution decode (cached for the photo being looked at). Grain and vignette are
+    placed as in the whole frame, so a zoomed tile matches the export."""
+    g = geometry.normalise(geom)
+    W, H = geometry.output_size(*raw.full_size(path), g)
+    bx, by, bw, bh = (min(max(v, 0.0), 1.0) for v in box)
+    bw, bh = max(bw, 1e-4), max(bh, 1e-4)
+    need = out_w / (bw * W)                       # output pixels per full-res pixel
+    display = raw.is_display_referred(path)
+    _, gain = preview_linear(path)
+    if need <= DETAIL_EDGE / max(W, H) * 1.05:
+        lin, _ = preview_linear(path, DETAIL_EDGE)
+        frame = geometry.apply(lin, g) if not geometry.is_identity(g) else lin
+    else:
+        key = (str(path), Path(path).stat().st_mtime_ns, geometry.key(g))
+        if _full_cache["key"] != key:
+            _full_cache.update(key=None, img=None)                    # free the previous photo first
+            full = raw.decode(path)
+            _full_cache.update(key=key, img=geometry.apply(full, g) if not geometry.is_identity(g) else full)
+        frame = _full_cache["img"]
+    fh, fw = frame.shape[:2]
+    x0, y0 = int(bx * fw), int(by * fh)
+    x1, y1 = max(x0 + 1, int(round((bx + bw) * fw))), max(y0 + 1, int(round((by + bh) * fh)))
+    tile = frame[y0:y1, x0:x1]
+    tile = raw.to_float(tile) if tile.dtype == np.uint16 else tile
+    match_src = None
+    if recipe.get("match"):
+        plin, _ = preview_linear(path)
+        match_src = pipeline.match_source_stats(plin[::4, ::4], recipe, gain, display)
+    out = pipeline.render(tile, recipe, gain, y0=y0, x0=x0, full_size=(fh, fw), match_src=match_src, display=display)
+    img = to_image(out)
+    out_h = max(1, round(out_w * img.height / img.width))
+    return img.resize((max(1, int(out_w)), out_h), Image.LANCZOS) if abs(img.width - out_w) > 1 else img
+
+
 def jpeg_bytes(img, quality=88):
     buf = io.BytesIO()
     img.save(buf, "JPEG", quality=quality, icc_profile=_SRGB_ICC)
