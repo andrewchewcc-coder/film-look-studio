@@ -75,6 +75,13 @@ a draft post is created in the same slideshow layout as your existing essays. Ch
 Publish there. The app never edits or deletes anything on your site. Library → **Publish…** turns a shoot or
 selection into an essay first.
 
+### Settings, activity and backups
+**⚙ Settings** (top right): library folders, website connection, defaults (look for ungraded photos,
+export size and quality), storage (the Grade preview cache is kept under a limit you choose) and
+**Back up now**: your picks, culls, grades, crops, essays and saved looks (not your photos) go to a
+*Film Look Studio Backups* folder on a drive. The header shows what's running in the background;
+press **?** for keyboard shortcuts.
+
 ### Browser app (sliders)
 ```bash
 ./studio serve ~/Pictures/2026-10-street-walk
@@ -94,7 +101,8 @@ selection into an essay first.
   exact settings.
 - **Match a reference photo**: upload any image whose colour or tone you love.
 - **Download LUT**: a `.cube` file for ON1 Photo RAW (grain and vignette aren't part of a LUT).
-Adjust has Highlights, Shadows, Whites and Blacks sliders and a **tone curve** (click to add a point, drag to
+Adjust has Highlights, Shadows, Whites and Blacks sliders (double-click one to reset it), undo/redo (⌘Z),
+copy/paste a grade (⌘C/⌘V), a split before/after view, and a **tone curve** (click to add a point, drag to
 move, double-click to remove; presets such as Gentle S or Faded film). Hold **B** (or Hold: before) for the original.
 
 ### With Claude Code (AI help, plain English)

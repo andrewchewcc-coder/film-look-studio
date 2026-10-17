@@ -1,6 +1,7 @@
 """Local browser app. Binds to 127.0.0.1 only; photos never leave your Mac."""
 import json
 import tempfile
+import shutil
 import threading
 import uuid
 import webbrowser
@@ -66,7 +67,7 @@ def get_state():
     return {"folder": str(state["folder"]) if state["folder"] and not coll else "",
             "collection": coll["label"] if coll else None,
             "photos": [p.name for p in _photos()], "looks": recipes.list_looks(),
-            "edited": edits.edited_names(_photos())}
+            "edited": edits.edited_names(_photos()), "exported": edits.exported_names(_photos())}
 
 
 class FolderIn(BaseModel):
@@ -250,17 +251,20 @@ class ExportIn(BaseModel):
     names: list[str]
     look: str = "neutral"
     adjust: dict = {}
-    quality: int = 95
+    quality: int | None = None  # default: Settings → export quality
     own: bool = False          # each photo with its own remembered grade (batch export)
 
 
 @app.post("/api/export")
 def export(body: ExportIn):
+    from . import appsettings
+    body.quality = body.quality or int(appsettings.load()["export_quality"])
     recipe = _recipe(body.look, body.adjust)
     files = [_photo(n) for n in body.names]
     recipes_for = {p: (_saved_recipe(p, body.look, body.adjust) if body.own else recipe) for p in files}
     job_id = uuid.uuid4().hex[:8]
-    jobs[job_id] = {"total": len(files), "done": 0, "current": "", "outputs": [], "error": None}
+    jobs[job_id] = {"total": len(files), "done": 0, "current": "", "outputs": [], "error": None,
+                    "kind": "export", "label": f"Exporting {len(files)} photo(s)", "finished": False, "cancel": False}
 
     def work():
         job = jobs[job_id]
@@ -272,6 +276,7 @@ def export(body: ExportIn):
         except Exception as e:  # report to the UI instead of dying silently
             job["error"] = str(e)
         job["current"] = ""
+        job["finished"] = True
         try:
             _lib().start_scan()           # quick: only the new exports are read; marks them graded
         except Exception:
@@ -579,6 +584,116 @@ def browse_forget_deleted(folder_id: int):
     return {"removed": browse.forget_deleted(_lib().con(), folder_id)}
 
 
+@app.on_event("startup")
+def _trim_cache_on_start():
+    """Keep the Grade preview cache under its limit (Settings → Storage); runs quietly in the background."""
+    def work():
+        try:
+            from . import appsettings
+            appsettings.prune_previews()
+        except Exception:
+            pass
+    threading.Thread(target=work, daemon=True).start()
+
+
+# --- Settings, storage, backups, activity --------------------------------------------------------
+
+@app.get("/api/settings")
+def settings_get():
+    from . import appsettings
+    return appsettings.load()
+
+
+class SettingsIn(BaseModel):
+    changes: dict
+
+
+@app.post("/api/settings")
+def settings_save(body: SettingsIn):
+    from . import appsettings
+    s = appsettings.save(body.changes)
+    if "cache_limit_gb" in body.changes:
+        threading.Thread(target=appsettings.prune_previews, daemon=True).start()
+    return s
+
+
+@app.get("/api/settings/storage")
+def settings_storage():
+    from . import appsettings
+    return appsettings.storage()
+
+
+class CleanIn(BaseModel):
+    what: str
+
+
+@app.post("/api/settings/clean")
+def settings_clean(body: CleanIn):
+    """Trim the app's own caches (they rebuild themselves) or its old safety copies."""
+    from . import appsettings
+    fn = {"previews": appsettings.prune_previews, "views": appsettings.clear_views,
+          "old_backups": appsettings.remove_old_backups}.get(body.what)
+    if not fn:
+        raise HTTPException(400, "unknown")
+    return {"freed": fn(), "storage": appsettings.storage()}
+
+
+@app.get("/api/settings/drives")
+def settings_drives():
+    """Plugged-in drives you could back up to, with free space."""
+    from .library import drives
+    c = _lib().con()
+    out = []
+    for did, mount in drives.online_mounts(c).items():
+        name = c.execute("SELECT name FROM drives WHERE id=?", (did,)).fetchone()[0]
+        try:
+            free = shutil.disk_usage(mount).free
+        except OSError:
+            free = None
+        out.append({"id": did, "name": name, "mount": mount, "free": free})
+    return out
+
+
+class BackupIn(BaseModel):
+    drive_id: int
+
+
+@app.post("/api/settings/backup")
+def settings_backup(body: BackupIn):
+    """Back up your work (not your photos) to a folder on the chosen drive."""
+    from . import appsettings
+    from .library import drives
+    c = _lib().con()
+    mount = drives.online_mounts(c).get(body.drive_id)
+    if not mount:
+        raise HTTPException(409, "That drive isn't plugged in.")
+    try:
+        return appsettings.backup(c, mount)
+    except OSError as e:
+        raise HTTPException(500, f"Couldn't write the backup: {e}")
+
+
+@app.get("/api/activity")
+def activity():
+    """Everything running in the background (scan, exports, book PDFs, uploads), for the header."""
+    import time as _t
+    out = []
+    lib = _lib()
+    if lib.job.get("running"):
+        out.append({"id": "scan", "kind": "scan", "label": "Scanning for new photos", "done": lib.job.get("done", 0),
+                    "total": lib.job.get("todo", 0), "current": lib.job.get("phase", ""), "finished": False, "cancel": True})
+    now = _t.time()
+    for jid, j in list(jobs.items()):
+        if "kind" not in j:
+            continue
+        if j.get("finished") and now - j.setdefault("_ended", now) > 90:
+            continue
+        out.append({"id": jid, "kind": j["kind"], "label": j.get("label", ""), "done": j.get("done", 0),
+                    "total": j.get("total", 0), "current": j.get("current", ""), "waiting": j.get("waiting", []),
+                    "error": j.get("error"), "finished": bool(j.get("finished")), "cancel": "cancel" in j})
+    return out
+
+
 # --- Publish to WordPress -----------------------------------------------------------------------
 
 @app.get("/api/publish/settings")
@@ -713,7 +828,8 @@ def essay_upload(eid: int):
     from . import publish
     _essay_row(eid)
     job_id = uuid.uuid4().hex[:8]
-    job = jobs[job_id] = {"total": 0, "done": 0, "current": "", "waiting": [], "uploaded": [], "result": None,
+    job = jobs[job_id] = {"kind": "upload", "label": f"Uploading “{_essay_row(eid)['name']}” to your website",
+                          "total": 0, "done": 0, "current": "", "waiting": [], "uploaded": [], "result": None,
                           "error": None, "note": None, "finished": False, "cancel": False}
 
     def work():
@@ -765,50 +881,6 @@ def publish_forget():
 
 
 # --- Second look: overlooked photos ------------------------------------------------------
-
-@app.get("/api/second/state")
-def second_state():
-    from .library import secondlook
-    c = _lib().con()
-    folders = [{"id": r["id"], "name": PurePath(r["rel_path"]).name} for r in c.execute(
-        """SELECT DISTINCT fo.id, fo.rel_path FROM folders fo JOIN photos p ON p.folder_id = fo.id
-           WHERE p.graded = 0 ORDER BY fo.rel_path DESC""")]
-    years = [r[0] for r in c.execute("""SELECT DISTINCT substr(capture_time, 1, 4) FROM photos
-                                         WHERE capture_time IS NOT NULL ORDER BY 1 DESC""")]
-    return {"counts": secondlook.counts(c), "folders": folders, "years": years,
-            "measured": c.execute("SELECT COUNT(*) FROM quality").fetchone()[0]}
-
-
-@app.get("/api/second/list")
-def second_list(view: str = "gems", cats: str = "street,travel", year: str = "", date_from: str = "",
-                date_to: str = "", folder_id: int = 0, offset: int = 0, limit: int = 20):
-    from .library import secondlook
-    if view not in ("gems", "this_day", "period", "shortlist"):
-        raise HTTPException(400, "unknown view")
-    return secondlook.suggestions(_lib().con(), view, categories=[c for c in cats.split(",") if c] or None,
-                                  year=year or None, date_from=date_from or None, date_to=date_to or None,
-                                  folder_id=folder_id or None, offset=offset, limit=min(limit, 100))
-
-
-@app.get("/api/library/second")
-def library_second(mode: str = "second", year: str = "", date_from: str = "", date_to: str = "",
-                   folder_id: int = 0, offset: int = 0, limit: int = 120):
-    """The Library's Second look views: "second" (worth a second look) or "this_day", for one
-    shoot, a year, dates or everything. Results are Library photos plus the reasons."""
-    from .library import search, secondlook
-    c = _lib().con()
-    scoped = folder_id or year or date_from or date_to
-    view = "this_day" if mode == "this_day" else ("period" if scoped else "gems")
-    res = secondlook.suggestions(c, view, categories=None, year=year or None, date_from=date_from or None,
-                                 date_to=date_to or None, folder_id=folder_id or None, offset=offset,
-                                 limit=min(limit, 300), undecided=True)
-    out = []
-    for r in res["results"]:
-        ph = search.photo(c, r["id"])
-        if ph:
-            out.append({**ph, "reasons": r["reasons"]})
-    return {"total": res["total"], "results": out, "note": res["note"]}
-
 
 class DecideIn(BaseModel):
     decision: str | None = None
@@ -1504,7 +1576,7 @@ def essay_export(eid: int, body: EssayExportIn):
     from .library import essay_out
     _essay_row(eid)
     job_id = uuid.uuid4().hex[:8]
-    job = jobs[job_id] = {"total": 0, "done": 0, "current": "", "waiting": [], "outputs": [],
+    job = jobs[job_id] = {"kind": "essay-export", "label": f"Exporting “{_essay_row(eid)['name']}”", "total": 0, "done": 0, "current": "", "waiting": [], "outputs": [],
                           "folder": None, "pdf": None, "error": None, "finished": False, "cancel": False}
 
     def work():
@@ -1542,7 +1614,7 @@ def essay_book(eid: int, body: BookIn):
     if body.size not in eb.SIZES:
         raise HTTPException(400, "unknown page size")
     job_id = uuid.uuid4().hex[:8]
-    job = jobs[job_id] = {"total": 0, "done": 0, "current": "", "waiting": [], "outputs": [], "folder": None,
+    job = jobs[job_id] = {"kind": "book", "label": f"Book PDF of “{_essay_row(eid)['name']}”", "total": 0, "done": 0, "current": "", "waiting": [], "outputs": [], "folder": None,
                           "pdf": None, "error": None, "finished": False, "cancel": False}
 
     def work():

@@ -31,7 +31,7 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   neutral JPG unchanged (no auto exposure / contrast).
 - `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only): Library (search + browse in one, sidebar filters; Show: Worth a
   second look / On this day via `/api/library/second` → `secondlook.suggestions(undecided=True)`), Cull,
-  Essays and Grade tabs (the old Second look tab is hidden, code kept). Library → Cull this shoot /
+  Essays and Grade tabs (the old Second look tab was removed; its views live in the Library). Library → Cull this shoot /
   Grade picks; Cull summary lists `cull.second_look` frames.
 - `filmlook/library/` – searchable archive. Database + thumbnails live in
   `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos).
@@ -66,6 +66,12 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   preview, Upload as draft = web JPGs (GPS stripped) to the Media Library + a DRAFT post copying the
   site's essay layout (Spectra container + Visual Portfolio fade slider, `VP_SETTINGS`). Only ever adds
   media and drafts; never edits or deletes site content.
+- `filmlook/appsettings.py` – ⚙ Settings: defaults (look, export size/quality), storage (preview cache
+  capped, default 4 GB, trimmed on start and as it grows; views; old DB copies), backups of your work to
+  <drive>/Film Look Studio Backups (newest 10). Header: activity indicator (`/api/activity`), ? shortcuts.
+- Essays panel groups: Arrange (pairs, bench, fill the gap) · Brief · Output (export, book PDF, contact
+  sheet, publish). Essays are made from the Library only. Grade: undo/redo, copy/paste a grade, double-click
+  a slider to reset, list filter, Next not graded, before/after split.
 - PyTorch model calls must go through `vision` (one at a time: concurrent MPS use segfaults).
 - The app's open folder / collection is global server state: test on another port (e.g. 8766).
 - Library CLI: `./studio library add|scan|status|search|folders`.

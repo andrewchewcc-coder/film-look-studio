@@ -79,32 +79,44 @@ def is_plain(look, adjust):
     return True
 
 
-def edited_names(paths):
-    """Names of these photo files (usually one folder) that have a remembered grade: one drive
-    lookup and one query, so opening a big folder stays quick."""
+def _file_keys(paths):
+    """[(drive_id, rel_path, name)] for photo files (usually one folder): one drive lookup per
+    folder, so a big folder stays quick."""
     from .library import drives
-    paths = [Path(p) for p in paths]
-    if not paths:
-        return []
-    con, out, by_mount, mount_of = _con(), [], {}, {}
-    for p in paths:
+    con, out, drive_of, mount_of = _con(), [], {}, {}
+    for p in (Path(x) for x in paths):
         try:
             rp = p.expanduser().resolve()
             if rp.parent not in mount_of:
                 mount_of[rp.parent] = drives._mount_point(rp)
             mount = mount_of[rp.parent]
-            if mount not in by_mount:
+            if mount not in drive_of:
                 uuid, _ = drives._volume_info(mount)
                 row = con.execute("SELECT id FROM drives WHERE uuid=?", (uuid,)).fetchone()
-                by_mount[mount] = row[0] if row else None
-            by_mount.setdefault(("files", mount), []).append((str(rp.relative_to(mount)), p.name))
+                drive_of[mount] = row[0] if row else None
+            if drive_of[mount] is not None:
+                out.append((drive_of[mount], str(rp.relative_to(mount)), p.name))
         except (OSError, ValueError):
             continue
-    for key, items in by_mount.items():
-        if not isinstance(key, tuple) or by_mount.get(key[1]) is None:
-            continue
-        saved = {r[0] for r in con.execute("SELECT rel_path FROM grades WHERE drive_id=?", (by_mount[key[1]],))}
-        out += [name for rel, name in items if rel in saved]
+    return out
+
+
+def edited_names(paths):
+    """Names of these photo files that have a remembered Grade-tab grade."""
+    keys, con, out = _file_keys(paths), _con(), []
+    for d in {k[0] for k in keys}:
+        saved = {r[0] for r in con.execute("SELECT rel_path FROM grades WHERE drive_id=?", (d,))}
+        out += [n for dd, rel, n in keys if dd == d and rel in saved]
+    return out
+
+
+def exported_names(paths):
+    """Names of these photo files whose photo has a graded (exported) JPG, per the library."""
+    keys, con, out = _file_keys(paths), _con(), []
+    for d in {k[0] for k in keys}:
+        graded = {r[0] for r in con.execute("""SELECT f.rel_path FROM files f JOIN photos p ON p.id = f.photo_id
+                                                WHERE f.drive_id=? AND p.graded=1""", (d,))}
+        out += [n for dd, rel, n in keys if dd == d and rel in graded]
     return out
 
 

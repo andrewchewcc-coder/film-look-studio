@@ -45,6 +45,17 @@ def preview_linear(path, edge=PREVIEW_EDGE):
         return _preview_linear(path, edge, key, mkey)
 
 
+_new_decodes = 0
+
+
+def _prune_quietly():
+    try:
+        from . import appsettings
+        appsettings.prune_previews()
+    except Exception:
+        pass
+
+
 METER_VERSION = 4      # 2: never brighter than the camera; 3/4: match the camera with the white-keeping base
 
 
@@ -86,6 +97,10 @@ def _preview_linear(path, edge, key, mkey):
     m = json.loads(meta.read_text()) if npy.exists() and meta.exists() else None
     if m is not None:
         lin, gain = np.load(npy), m["gain"]
+        try:
+            os.utime(meta)                        # "used recently": the cache trims the oldest first
+        except OSError:
+            pass
         if edge == PREVIEW_EDGE and m.get("meter") != METER_VERSION and not raw.is_display_referred(path):
             gain = _auto_gain(path, lin)              # metered with an older rule: re-check exposure
             meta.write_text(json.dumps({**m, "gain": gain, "meter": METER_VERSION}))
@@ -97,6 +112,10 @@ def _preview_linear(path, edge, key, mkey):
             gain = preview_linear(path)[1]
         np.save(npy, lin)
         meta.write_text(json.dumps({"gain": gain, "source": str(path), "meter": METER_VERSION}))
+        global _new_decodes
+        _new_decodes += 1
+        if _new_decodes % 40 == 0:                # keep the cache under its limit as it grows
+            threading.Thread(target=_prune_quietly, daemon=True).start()
     if edge != PREVIEW_EDGE and len([k for k in _mem_cache if k.endswith("@big")]) >= 2:
         for k in [k for k in _mem_cache if k.endswith("@big")][:1]:   # keep memory in check
             _mem_cache.pop(k)

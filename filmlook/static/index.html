@@ -12,10 +12,31 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
   header { display: flex; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  #hdrRight { margin-left: auto; display: flex; gap: 6px; align-items: center; flex: 0 0 auto; }
+  #hdrRight button { padding: 5px 10px; font-size: 13px; }
+  #actBtn { background: #1e1a10; border-color: #5a4a1e; color: var(--accent); }
+  #actPop { position: fixed; right: 16px; top: 52px; width: 360px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; z-index: 30; box-shadow: 0 8px 24px #0008; font-size: 13px; }
+  #actPop .it { margin: 6px 0 10px; } #actPop progress { width: 100%; } #actPop .sub { color: var(--muted); font-size: 12px; }
+  #actPop button { padding: 2px 8px; font-size: 12px; margin-top: 3px; }
+  #setBox, #keysBox { position: fixed; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center; z-index: 25; padding: 16px; }
+  #setBox[hidden], #keysBox[hidden], #actPop[hidden] { display: none; }
+  #setBox .box, #keysBox .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px 22px; width: min(680px, 100%); max-height: 88vh; overflow-y: auto; }
+  .setHead { display: flex; justify-content: space-between; align-items: center; }
+  .setHead h3 { margin: 0; font-size: 17px; }
+  #setBox h4, #keysBox h4 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 20px 0 8px; font-weight: 600; }
+  .setGrid { display: grid; grid-template-columns: 1fr 220px; gap: 8px 12px; align-items: center; font-size: 13px; }
+  #setBox select, #setBox input { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; font-size: 13px; }
+  #setBox .row button { flex: 0 0 auto; }
+  .stRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 4px 0; border-bottom: 1px solid #222; }
+  .stRow button { padding: 2px 9px; font-size: 12px; }
+  .keysGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; font-size: 13px; }
+  .keysGrid p { margin: 0; line-height: 1.7; }
   header h1 { font-size: 15px; font-weight: 600; margin: 0 12px 0 0; white-space: nowrap; }
   header input { flex: 1; min-width: 0; }
   #folderBar { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
   #folderBar button { white-space: nowrap; flex: 0 0 auto; }
+  button.linkish { background: transparent; border-color: transparent; color: var(--muted); text-decoration: underline; padding: 4px 6px; }
+  button.linkish:hover { color: var(--text); }
   #folderName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
   #folderName b { color: var(--text); font-weight: 600; }
   input[type=text] { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 7px 10px; border-radius: 6px; font: inherit; }
@@ -27,16 +48,27 @@
      scrolls inside its own panels; the photo always shrinks to fit (portrait or landscape). */
   body { display: flex; flex-direction: column; height: 100vh; }
   header { flex: 0 0 auto; }
-  main, #libView, #secondView, #cullView, #essayView { flex: 1 1 auto; min-height: 0; }
+  main, #libView, #cullView, #essayView { flex: 1 1 auto; min-height: 0; }
   main { display: grid; grid-template-columns: 210px 1fr 290px; grid-template-rows: minmax(0, 1fr); }
   #center { min-height: 0; overflow: hidden; }
   #film { border-right: 1px solid var(--line); overflow-y: auto; padding: 10px; }
   #film .hint { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .filmHead { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .filmHead select { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 5px; border-radius: 6px; font: inherit; font-size: 12px; }
+  .filmHead button { font-size: 12px; padding: 5px; }
+  #stage #bigSplit { position: absolute; pointer-events: none; user-select: none; }
+  #splitLine { position: absolute; width: 2px; background: #fffc; cursor: ew-resize; z-index: 3; box-shadow: 0 0 0 1px #0006; }
+  #splitLine::before { content: ""; position: absolute; left: -14px; right: -14px; top: 0; bottom: 0; }
+  #splitLine span { position: absolute; top: 8px; font-size: 11px; background: #000b; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
+  #splitLine .l { right: 8px; } #splitLine .r { left: 8px; }
+  #splitBtn.on { background: #2a2a2a; border-color: var(--accent); }
   .thumb { position: relative; margin-bottom: 10px; cursor: pointer; border: 2px solid transparent; border-radius: 4px; }
   .thumb.active { border-color: var(--accent); }
   .thumb img { width: 100%; display: block; border-radius: 2px; }
   .thumb input { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; accent-color: var(--accent); }
-  .thumb.edited::after { content: "edited"; position: absolute; right: 6px; top: 6px; font-size: 10px; background: #000c; color: var(--accent); padding: 1px 5px; border-radius: 3px; }
+  .thumb.edited::after, .thumb.exported::after { position: absolute; right: 6px; top: 6px; font-size: 10px; background: #000c; padding: 1px 5px; border-radius: 3px; }
+  .thumb.edited::after { content: "edited"; color: #9ec5ff; }
+  .thumb.exported::after { content: "graded"; color: var(--accent); }
   .thumb .nm { font-size: 11px; color: var(--muted); padding: 2px 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #center { display: flex; flex-direction: column; min-width: 0; }
   #stage { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 0; padding: 12px; }
@@ -129,10 +161,6 @@
   #briefBox label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
   #briefBox input, #briefBox select { width: 100%; height: 34px; box-sizing: border-box; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 0 8px; border-radius: 6px; font: inherit; }
   #brMsg { margin-top: 10px; min-height: 18px; }
-  #foldersBox { position: absolute; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center; z-index: 6; padding: 16px; }
-  #foldersBox[hidden] { display: none; }
-  #foldersBox .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; width: min(560px, 100%); max-height: 80vh; overflow-y: auto; }
-  #foldersBox h3 { margin: 0 0 8px; font-size: 15px; }
   .dates { display: flex; flex-direction: column; gap: 6px; }
   .root { font-size: 12px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; margin: 6px 0; word-break: break-word; }
   .root b { font-weight: 600; }
@@ -199,36 +227,6 @@
   table.folders td.counts { color: var(--muted); font-size: 12px; }
   table.folders a { color: var(--text); text-decoration: underline dotted; cursor: pointer; }
   table.folders select { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 4px 6px; border-radius: 5px; font: inherit; }
-  #secondView { display: grid; grid-template-columns: 250px 1fr; grid-template-rows: minmax(0, 1fr); }
-  #slSide { border-right: 1px solid var(--line); overflow-y: auto; padding: 14px; }
-  #slSide h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
-  #slSide h2:first-child { margin-top: 0; }
-  #slSide label.opt, #slSide label.chk { display: flex; align-items: center; gap: 7px; margin: 6px 0; cursor: pointer; }
-  #slSide input[type=radio], #slSide input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
-  #slSide small { color: var(--muted); margin-left: auto; }
-  #slSide select, #slSide input[type=date] { width: 100%; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; }
-  #slSide .field { margin: 8px 0; }
-  #slSide .field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
-  #slMain { overflow-y: auto; padding: 12px 16px 30px; min-width: 0; }
-  #slInfo { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
-  #slInfo b { color: var(--text); }
-  #slGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; }
-  .card .pic { position: relative; aspect-ratio: 4 / 3; background: #111; cursor: pointer; }
-  .card .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
-  .card .pic .off { position: absolute; left: 6px; top: 6px; background: #000c; color: #e3a36f; font-size: 10px; padding: 1px 6px; border-radius: 3px; }
-  .card .meta { padding: 8px 10px 4px; font-size: 12px; color: var(--muted); }
-  .card .why { padding: 0 10px 8px; font-size: 12px; line-height: 1.45; flex: 1; }
-  .card .acts { display: flex; gap: 6px; padding: 0 10px 10px; }
-  .card .acts button { flex: 1; padding: 6px 4px; font-size: 13px; }
-  .card .acts button.kept { background: #1f3a26; border-color: #2f5a3a; color: #8fd19e; }
-  .card.dismissed .pic, .card.dismissed .why, .card.dismissed .meta { opacity: .3; }
-  #slMore { display: block; margin: 16px auto; }
-  #slEmpty { color: var(--muted); text-align: center; margin-top: 80px; max-width: 460px; margin-left: auto; margin-right: auto; }
-  @media (max-width: 800px) {
-    #secondView { grid-template-columns: 1fr; height: auto; }
-    #slSide { border-right: 0; border-bottom: 1px solid var(--line); }
-  }
   #cullView { position: relative; display: flex; flex-direction: column; min-height: 0; }
   #cuStart { display: grid; grid-template-columns: minmax(260px, 380px) minmax(260px, 1fr); gap: 32px; padding: 20px 24px; overflow-y: auto; }
   .cuCol h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
@@ -380,7 +378,9 @@
   #esPanel.tall { height: 58%; }
   #esPanel.tall #esPanelBody { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
   #esPanel { border-top: 1px solid var(--line); height: 250px; display: flex; flex-direction: column; flex: 0 0 auto; }
-  #esPanelTabs { margin: 8px 14px; align-self: flex-start; }
+  .esPanelHead { display: flex; align-items: center; gap: 12px; margin: 8px 14px; flex-wrap: wrap; }
+  #esPanelGroups button { font-weight: 600; }
+  #esPanelTabs { align-self: flex-start; }
   #esPanelBody { flex: 1; overflow-x: auto; overflow-y: auto; padding: 0 14px 10px; display: flex; gap: 12px; align-items: flex-start; }
   .esPair, .esCand { flex: 0 0 auto; background: #181818; border-radius: 5px; padding: 6px; }
   .esPair .imgs { display: flex; gap: 3px; cursor: pointer; }
@@ -430,9 +430,43 @@
 <body>
 <header>
   <h1>Film Look Studio</h1>
-  <div class="tabs"><button id="tabLib">Library</button><button id="tabSecond" hidden>Second look</button><button id="tabCull">Cull</button><button id="tabEssay">Essays</button><button id="tabGrade">Grade</button></div>
-  <div id="folderBar"><button id="backLib" hidden title="Back to the Library, where these photos came from">← Library</button><span id="folderName" title="">No folder open</span><button id="open" class="primary">Choose folder…</button></div>
+  <div class="tabs"><button id="tabLib">Library</button><button id="tabCull">Cull</button><button id="tabEssay">Essays</button><button id="tabGrade">Grade</button></div>
+  <div id="folderBar"><button id="backLib" hidden title="Back to the Library, where these photos came from">← Library</button><span id="folderName" title="">No folder open</span><button id="open" class="linkish" title="Open a folder that isn't in the Library">Open a folder…</button></div>
+  <div id="hdrRight"><button id="actBtn" hidden title="What's running in the background"></button><button id="keysBtn" title="Keyboard shortcuts (?)">?</button><button id="setBtn" title="Settings">⚙ Settings</button></div>
 </header>
+<div id="actPop" hidden></div>
+<div id="setBox" hidden><div class="box">
+  <div class="setHead"><h3>Settings</h3><button id="setClose">Close</button></div>
+  <h4 id="setFolders">Library folders</h4>
+  <div id="roots"></div>
+  <div class="row"><button id="addRoot">Add folder…</button><button id="setScan">Scan for new photos</button></div>
+  <h4>Website (WordPress)</h4>
+  <div id="setPub" class="small"></div>
+  <h4>Defaults</h4>
+  <div class="setGrid">
+    <span>Look for photos not graded yet (essays, books, publishing)</span><select id="setLook"></select>
+    <span>Essay export photo size</span><select id="setSize"><option value="small">Small – 1080 px</option><option value="web">Web – 2048 px</option><option value="large">Large – 3000 px</option><option value="full">Full size</option></select>
+    <span>Grade export JPG quality</span><input type="number" id="setQuality" min="60" max="100">
+  </div>
+  <h4>Storage on this Mac</h4>
+  <div id="setStorage" class="small"></div>
+  <h4>Back up your work</h4>
+  <div class="small">Copies your picks, rejects, stars, culls, grades, crops, essays and saved looks (not your photos) to a <b>Film Look Studio Backups</b> folder on a drive. The newest 10 backups are kept.</div>
+  <div class="row"><select id="setDrive"></select><button id="setBackup" class="primary">Back up now</button></div>
+  <div id="setBackupMsg" class="small"></div>
+</div></div>
+<div id="keysBox" hidden><div class="box">
+  <div class="setHead"><h3>Keyboard shortcuts</h3><button id="keysClose">Close</button></div>
+  <div class="keysGrid">
+    <div><h4>Marking (Library, viewer, Cull)</h4><p><b>P</b> pick · <b>X</b> reject · <b>U</b> unmark<br><b>0–5</b> stars (0 clears)<br><b>N</b> not now (Worth a second look)</p></div>
+    <div><h4>Library</h4><p><b>Click</b> select · <b>⌘-click</b> add · <b>Shift-click</b> range<br><b>⌘A</b> select all · <b>Esc</b> clear<br><b>Arrows</b> move · <b>Space / Enter</b> view large<br><b>F</b> show in Finder</p></div>
+    <div><h4>Big viewer</h4><p><b>← →</b> previous / next<br><b>Click / Z</b> zoom to 100% (drag to move)<br><b>G</b> graded / original · <b>S</b> side by side<br><b>Esc / Space</b> close</p></div>
+    <div><h4>Cull</h4><p><b>← →</b> frame · <b>↑ ↓</b> group<br><b>Enter</b> next group · <b>Shift+Enter</b> previous<br><b>Z</b> zoom where you point · <b>Shift+P</b> pick and stay</p></div>
+    <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
+    <div><h4>Essays</h4><p><b>⌘Z</b> undo · drag to reorder<br><b>🔒</b> lock a photo · <b>⇄</b> replace</p></div>
+  </div>
+  <div class="small">Press <b>?</b> any time to see this.</div>
+</div></div>
 <section id="libView" hidden>
   <div id="libSide">
     <label for="libq">Search</label>
@@ -510,49 +544,15 @@
     <div id="aeMsg" class="small"></div>
     <div class="row" style="justify-content:flex-end"><button id="aeCancel" style="flex:0 0 auto">Cancel</button><button id="aeGo" class="primary" style="flex:0 0 auto">Add</button></div>
   </div></div>
-  <div id="foldersBox" hidden><div class="box">
-    <h3>Library folders</h3>
-    <div id="roots"></div>
-    <div class="row" style="justify-content:flex-end"><button id="addRoot" style="flex:0 0 auto">Add folder…</button><button id="foldersClose" style="flex:0 0 auto">Close</button></div>
-  </div></div>
-</section>
-<section id="secondView" hidden>
-  <div id="slSide">
-    <h2>Show me</h2>
-    <label class="opt"><input type="radio" name="slview" value="gems" checked> Overlooked gems</label>
-    <label class="opt"><input type="radio" name="slview" value="this_day"> On this day</label>
-    <label class="opt"><input type="radio" name="slview" value="period"> Rediscover a period</label>
-    <label class="opt"><input type="radio" name="slview" value="shortlist"> My shortlist <small id="slKept"></small></label>
-    <div id="slPeriod" hidden>
-      <div class="field"><span>Year</span><select id="slYear"><option value="">Any year</option></select></div>
-      <div class="field"><span>Date range</span><div class="dates"><input type="date" id="slFrom" title="From"><input type="date" id="slTo" title="To"></div></div>
-      <div class="field"><span>Shoot / trip</span><select id="slFolder"><option value="">Any shoot</option></select></div>
-    </div>
-    <div id="slCatBox">
-      <h2>Category</h2>
-      <div id="slCats"></div>
-    </div>
-    <h2>How it works</h2>
-    <div class="small">Photos you never exported, scored by how much they resemble the photos you <i>did</i> grade, plus a general appeal score. Blurry frames are skipped and only the best frame of each burst is shown. <b>Keep</b> adds a photo to your shortlist; <b>Dismiss</b> hides it for good. Both teach the scoring your taste.</div>
-  </div>
-  <div id="slMain">
-    <div id="slInfo"></div>
-    <div id="slGrid"></div>
-    <button id="slMore" hidden>Show 20 more</button>
-    <div id="slEmpty" hidden></div>
-  </div>
 </section>
 <section id="cullView" hidden>
   <div id="cuStart">
     <div class="cuCol">
       <h2>New cull</h2>
-      <label class="opt"><input type="radio" name="cuscope" value="folder" checked> A shoot</label>
-      <div class="field"><select id="cuFolder"></select></div>
-      <label class="opt"><input type="radio" name="cuscope" value="dates"> A date range</label>
+      <div class="small" style="margin-bottom:10px">To cull a shoot, open it in the <b>Library</b> and click <b>Cull this shoot</b>. Here you can cull across shoots:</div>
+      <label class="opt"><input type="radio" name="cuscope" value="dates" checked> A date range</label>
       <div class="field dates"><input type="date" id="cuFrom"><input type="date" id="cuTo"></div>
       <label class="opt"><input type="radio" name="cuscope" value="new"> New since last cull <small id="cuNewCount"></small></label>
-      <h2>Category</h2>
-      <div id="cuCats"></div>
       <div class="row" style="margin-top:14px"><button id="cuStartBtn" class="primary">Start culling</button></div>
       <div id="cuStartMsg" class="small"></div>
     </div>
@@ -573,7 +573,7 @@
       <div class="bar" id="cuBarWrap"><div id="cuBar"></div></div>
       <span id="cuCount" class="small"></span>
       <label class="small cuToggle"><input type="checkbox" id="cuUnsure"> Only unsure groups</label>
-      <button id="cuSendTop" title="Open this cull's picks in Grade">Send picks to Grade</button>
+      <button id="cuSendTop" title="Open this cull's picks in Grade">Grade picks</button>
       <button id="cuFinish" class="primary">Finish</button>
       <button id="cuBack" title="Back to the cull list (progress is saved)">Back</button>
     </div>
@@ -586,7 +586,7 @@
   <div id="cuDone" hidden>
     <h2>Cull finished</h2>
     <div id="cuSummary"></div>
-    <div class="row" style="max-width:420px"><button id="cuSend" class="primary">Send picks to grading</button><button id="cuAgain">Back to culls</button></div>
+    <div class="row" style="max-width:420px"><button id="cuSend" class="primary">Grade picks</button><button id="cuAgain">Back to culls</button></div>
     <div id="cuSecond"></div>
   </div>
   <div id="cuZoom" hidden>
@@ -599,33 +599,14 @@
   <div id="esSide">
     <h2>Essays</h2>
     <div id="esList" class="small">None yet.</div>
-    <h2>Start a new essay</h2>
-    <div class="field"><span>Name</span><input type="text" id="esName" placeholder="e.g. Lisbon streets"></div>
-    <div class="field"><span>Start from</span><select id="esSrc">
-      <option value="search">A search</option><option value="picks">My picks</option><option value="stars">My stars</option>
-      <option value="shortlist">Second look shortlist</option><option value="folder">A shoot / trip</option><option value="dates">A date range</option></select></div>
-    <div class="field" data-src="search"><input type="text" id="esQ" placeholder="Words, e.g. rain at night"></div>
-    <div class="field" data-src="search"><select id="esQFolder"><option value="">…in any shoot</option></select></div>
-    <div class="field" data-src="stars" hidden><select id="esStars"><option value="3">★★★ 3 or more</option><option value="4">★★★★ 4 or more</option><option value="5">★★★★★ 5</option><option value="1">★ 1 or more</option></select></div>
-    <div class="field" data-src="folder" hidden><select id="esFolder"></select></div>
-    <div class="field" data-src="folder" hidden><label class="chk"><input type="checkbox" id="esPickedOnly"> Only my picks from it</label></div>
-    <div class="field dates" data-src="dates" hidden><input type="date" id="esFrom"><input type="date" id="esTo"></div>
-    <div class="field"><span>Number of photos</span><input type="number" id="esTarget" min="2" max="200" value="20"></div>
-    <div class="field"><span>Theme words (optional, to steer)</span><input type="text" id="esTheme" placeholder="e.g. rain at night"></div>
-    <div class="field"><span>Colour</span><select id="esColour"><option value="mix">Mix colour and black &amp; white</option><option value="colour">Colour only</option><option value="bw">Black &amp; white only</option></select></div>
-    <div class="field"><span>At most from one shoot</span><select id="esPer"><option value="">No limit</option><option value="2">2</option><option value="3">3</option><option value="5">5</option></select></div>
-    <div class="field"><span>Look for photos not graded yet</span><select id="esLook"></select></div>
-    <div class="row"><button id="esCreate" class="primary">Create essay</button></div>
-    <div class="row"><button id="esAddSrc" hidden>Add these photos to the open essay</button></div>
-    <div id="esMsg" class="small"></div>
+    <div class="small" style="margin-top:14px;line-height:1.5">To make a new essay, go to the <b>Library</b>, choose photos (a selection, a shoot or a year), and click <b>Make an essay</b>. <b>Add to essay…</b> adds a selection to one of these.</div>
   </div>
   <div id="esMain">
-    <div id="esEmpty">Choose an essay on the left, or start a new one.</div>
+    <div id="esEmpty">Choose an essay on the left, or make a new one from the Library (Make an essay).</div>
     <div id="esWork" hidden>
       <div id="esTop">
         <input type="text" id="esTitle" title="Essay name">
         <span id="esCount" class="small"></span>
-        <button id="esTrim" title="Suggest which photos to leave out to reach the target">Trim to target…</button>
         <span class="small">Suggest order:</span>
         <button class="esSug" data-style="flow" title="Each photo leads into the next; varied pace">Visual flow</button>
         <button class="esSug" data-style="time" title="Chronological, grouped by place">Time &amp; place</button>
@@ -635,14 +616,14 @@
         <button id="esUndo" title="Undo (⌘Z)">Undo</button>
         <select id="esVersions" title="Saved versions"></select>
         <button id="esSaveV">Save version</button>
-        <button id="esPdf" title="A PDF contact sheet with order numbers and titles (works with drives unplugged)">Contact sheet PDF</button>
-        <button id="esExport" class="primary" title="Save the photos in order as 01_title.jpg">Export…</button>
+        <button id="esExport" class="primary" title="Export photos, book PDF, contact sheet or publish to your website">Output…</button>
         <button id="esDelete" title="Delete this essay (your photos are not touched)">Delete</button>
       </div>
       <div id="esNote" class="small"></div>
       <div id="esBoard"></div>
       <div id="esPanel">
-        <div class="seg" id="esPanelTabs"><button data-p="pairs" class="on">Pairs</button><button data-p="bench" title="Photos from your selection that weren't chosen">Bench</button><button data-p="replace" hidden>Replace</button><button data-p="fill">Fill the gap</button><button data-p="trim">Trim</button><button data-p="brief" title="Change the brief and choose again">Brief</button><button data-p="export">Export</button><button data-p="book" title="A print-ready book or zine PDF">Book PDF</button><button data-p="publish" title="Publish this essay to your WordPress website">Publish</button></div>
+        <div class="esPanelHead"><div class="seg" id="esPanelGroups"><button data-g="arrange" class="on">Arrange</button><button data-g="brief">Brief</button><button data-g="output">Output</button></div>
+          <div class="seg" id="esPanelTabs"><button data-p="pairs" class="on">Pairs</button><button data-p="bench" title="Photos from your selection that weren't chosen">Bench</button><button data-p="fill">Fill the gap</button><button data-p="replace" hidden>Replace</button><button data-p="export" title="The photos in order as 01_title.jpg">Export photos</button><button data-p="book" title="A print-ready book or zine PDF">Book PDF</button><button data-p="contact" title="A PDF contact sheet with numbers and titles">Contact sheet</button><button data-p="publish" title="Publish to your WordPress website">Publish</button><button data-p="brief" hidden>Brief</button></div></div>
         <div id="esPanelBody" class="small"></div>
       </div>
     </div>
@@ -659,12 +640,17 @@
 </div></div>
 <div id="lightbox" hidden><div class="box"><img id="lbImg" alt=""><div class="msg" id="lbMsg"></div><div class="meta" id="lbMeta"></div><div class="row" style="justify-content:flex-end"><button id="lbClose" style="flex:0">Close</button></div></div></div>
 <main id="gradeView">
-  <section id="film"><div class="hint">Tick photos to batch-export.</div><div id="thumbs"></div></section>
+  <section id="film">
+    <div class="filmHead"><select id="filmFilter" title="Show only some photos"><option value="">All photos</option><option value="todo">Not graded yet</option><option value="edited">Edited, not exported</option><option value="graded">Graded (exported)</option></select>
+      <button id="nextTodo" title="Go to the next photo that isn't graded yet">Next not graded ›</button></div>
+    <div class="hint">Tick photos to batch-export.</div><div id="thumbs"></div></section>
   <section id="center">
     <div id="stage">
       <div id="empty">Open a folder of photos (RAW or JPG) to start.<br><br>Click <b>Choose folder…</b> at the top right, or click any photo in the Library.</div>
       <img id="big" alt="" hidden draggable="false">
       <img id="bigTile" alt="" hidden draggable="false">
+      <img id="bigSplit" alt="" hidden draggable="false">
+      <div id="splitLine" hidden><span class="l">Before</span><span class="r">After</span></div>
       <div id="zoomBar" hidden>
         <button id="zFit" title="Fit the whole photo (0)">Fit</button>
         <button id="zOut" title="Zoom out (−)">−</button>
@@ -718,7 +704,7 @@
     <h2>Look</h2>
     <div id="lookname">Neutral</div>
     <div id="lookdesc"></div>
-    <div class="row"><button id="compare" title="Hold to see the original: no look, no crop (or hold B)">Hold: before</button></div>
+    <div class="row"><button id="compare" title="Hold to see the original: no look, no crop (or hold B)">Hold: before</button><button id="splitBtn" title="Before and after side by side on the photo: drag the line">Split before / after</button></div>
 
     <h2>Crop &amp; straighten</h2>
     <div class="row"><button id="cropBtn" title="C">Crop &amp; straighten</button><button id="cropResetSaved" title="Back to the full, unrotated photo">Reset</button></div>
@@ -738,7 +724,9 @@
       <canvas id="curve" width="520" height="520"></canvas>
       <div class="small">Click to add a point · drag to move · double-click (or drag off the graph) to remove</div>
     </div>
-    <div class="row"><button id="reset">Reset sliders and curve</button></div>
+    <div class="row"><button id="grUndo" title="Undo (⌘Z)">↶ Undo</button><button id="grRedo" title="Redo (⇧⌘Z)">↷ Redo</button><button id="reset">Reset all</button></div>
+    <div class="row"><button id="grCopy" title="Copy this photo's look, sliders and curve (⌘C)">Copy grade</button><button id="grPaste" title="Give this photo the copied grade (⌘V)" disabled>Paste grade</button></div>
+    <div class="small">Double-click a slider to reset just that one.</div>
     <div class="row"><button id="copyGrade" title="Give the ticked photos this look, sliders and curve (each keeps its own crop)" disabled>Copy this grade to ticked (0)</button></div>
     <div class="small">Each photo remembers its own look, sliders and curve.</div>
 
@@ -798,6 +786,8 @@ function buildSliders() {
     $("sliders").appendChild(d);
     const inp = d.querySelector("input");
     inp.addEventListener("input", () => { S.adjust[key] = parseFloat(inp.value); showVal(key); scheduleRender(); });
+    inp.addEventListener("dblclick", () => { S.adjust[key] = defaults()[key]; syncSliders(); scheduleRender(); });   // just this one back
+    d.querySelector("label").addEventListener("dblclick", () => { S.adjust[key] = defaults()[key]; syncSliders(); scheduleRender(); });
   }
   syncSliders();
 }
@@ -914,7 +904,7 @@ $("curve").addEventListener("dblclick", (e) => {
 $("curvePreset").onchange = () => { const v = $("curvePreset").value; if (v) curveSet(CURVE_PRESETS[v].map(p => [...p])); $("curvePreset").value = ""; };
 
 async function loadState(st) {
-  S.photos = st.photos; S.looks = st.looks; S.edited = new Set(st.edited || []);
+  S.photos = st.photos; S.looks = st.looks; S.edited = new Set(st.edited || []); S.exported = new Set(st.exported || []);
   $("backLib").hidden = !(st.collection && S.fromLib);
   if (st.collection) {
     S.folder = null;
@@ -929,7 +919,7 @@ async function loadState(st) {
   $("thumbs").innerHTML = "";
   S.ticked.clear(); updateTicked();
   for (const name of S.photos) {
-    const t = document.createElement("div"); t.className = "thumb" + (S.edited.has(name) ? " edited" : ""); t.dataset.name = name;
+    const t = document.createElement("div"); t.dataset.name = name; thumbStatus(t);
     t.innerHTML = `<img loading="lazy" src="/api/thumb?${q({ name })}"><input type="checkbox" title="Include in batch export"><div class="nm">${name}</div>`;
     t.querySelector("input").addEventListener("click", (e) => {
       e.stopPropagation(); e.target.checked ? S.ticked.add(name) : S.ticked.delete(name); updateTicked();
@@ -937,6 +927,7 @@ async function loadState(st) {
     t.addEventListener("click", () => select(name));
     $("thumbs").appendChild(t);
   }
+  filmFilter();
   if (S.photos.length) { select(S.photos.includes(S.current) ? S.current : S.photos[0]); }
   else if (st.folder) { $("empty").textContent = "No photos (RAW or JPG) in this folder."; }
 }
@@ -974,6 +965,46 @@ function applyGrade(g) {
   S.adjust = { ...defaults(), ...((g && g.adjust) || {}) };
   S.gradeKey = gradeKey(); syncSliders();
   document.querySelectorAll(".look").forEach(d => d.classList.toggle("active", d.dataset.id === S.look));
+  S.lastSaved = { look: S.look, adjust: JSON.parse(JSON.stringify(S.adjust)) };
+  grButtons();
+}
+// Undo / redo per photo: every remembered change is a step (⌘Z / ⇧⌘Z).
+S.hist = {};
+function grHist(name = S.current) { return S.hist[name] || (S.hist[name] = { undo: [], redo: [] }); }
+function grButtons() {
+  const h = S.current ? grHist() : { undo: [], redo: [] };
+  if ($("grUndo")) { $("grUndo").disabled = !h.undo.length; $("grRedo").disabled = !h.redo.length; }
+  if ($("grPaste")) $("grPaste").disabled = !grClip();
+}
+function grSet(state) {                      // show a grade and remember it, without making a new history step
+  S.look = state.look; S.adjust = { ...defaults(), ...JSON.parse(JSON.stringify(state.adjust)) };
+  S.gradeKey = gradeKey(); S.lastSaved = { look: S.look, adjust: JSON.parse(JSON.stringify(S.adjust)) };
+  syncSliders(); showLookInfo();
+  document.querySelectorAll(".look").forEach(d => d.classList.toggle("active", d.dataset.id === S.look));
+  api("/api/grade", esJSON({ name: S.current, look: S.look, adjust: S.adjust })).then(r => r.json()).then(r => markEdited(S.current, !!r.grade)).catch(() => {});
+  renderBig(); grButtons();
+}
+function grUndo() {
+  if (!S.current) return; saveGradeNow();
+  const h = grHist(); if (!h.undo.length) return status("Nothing to undo.");
+  h.redo.push(S.lastSaved); grSet(h.undo.pop()); status("Undone.");
+}
+function grRedo() {
+  if (!S.current) return; saveGradeNow();
+  const h = grHist(); if (!h.redo.length) return status("Nothing to redo.");
+  h.undo.push(S.lastSaved); grSet(h.redo.pop()); status("Redone.");
+}
+function grClip() { try { return JSON.parse(localStorage.getItem("fls.gradeClip") || "null"); } catch (e) { return null; } }
+function grCopy() {
+  if (!S.current) return;
+  try { localStorage.setItem("fls.gradeClip", JSON.stringify({ look: S.look, adjust: S.adjust, from: S.current })); } catch (e) {}
+  status(`Copied this grade (${$("lookname").textContent}). Paste it on another photo with ⌘V or Paste grade.`); grButtons();
+}
+function grPaste() {
+  const c = grClip(); if (!c || !S.current) return;
+  saveGradeNow(); const h = grHist(); h.undo.push(S.lastSaved); h.redo = [];
+  grSet({ look: S.looks.some(l => l.id === c.look) || c.look === "neutral" ? c.look : "neutral", adjust: c.adjust });
+  status(`Pasted the grade from ${c.from || "the copied photo"}. Its crop stays its own.`);
 }
 function saveGradeSoon() {
   if (!S.current || gradeKey() === S.gradeKey) return;
@@ -984,14 +1015,24 @@ function saveGradeNow() {
   clearTimeout(gradeTimer);
   const g = gradePending; gradePending = null;
   if (!g) return;
-  if (g.name === S.current) S.gradeKey = JSON.stringify([g.look, g.adjust]);
+  if (g.name === S.current) {
+    S.gradeKey = JSON.stringify([g.look, g.adjust]);
+    if (S.lastSaved) { const h = grHist(g.name); h.undo.push(S.lastSaved); if (h.undo.length > 100) h.undo.shift(); h.redo = []; }
+    S.lastSaved = { look: g.look, adjust: g.adjust }; grButtons();
+  }
   api("/api/grade", esJSON(g)).then(r => r.json()).then(r => markEdited(g.name, !!r.grade))
     .catch(e => status("Couldn't remember this grade: " + e.message, true));
 }
 function markEdited(name, on) {
   on ? S.edited.add(name) : S.edited.delete(name);
   const t = document.querySelector(`.thumb[data-name="${CSS.escape(name)}"]`);
-  if (t) t.classList.toggle("edited", on);
+  if (t) thumbStatus(t);
+  if ($("filmFilter").value) filmFilter();
+}
+function thumbStatus(t) {                    // same words as the Library: graded (exported) / edited (not yet)
+  const n = t.dataset.name, exp = S.exported && S.exported.has(n);
+  t.className = "thumb" + (exp ? " exported" : S.edited.has(n) ? " edited" : "") + (n === S.current ? " active" : "");
+  t.title = exp ? "Graded: exported" + (S.edited.has(n) ? " (and its grade is remembered here)" : "") : S.edited.has(n) ? "Edited here, not exported yet" : "";
 }
 function afterFirstRender() {               // the big preview is up: now the extras, without competing with it
   if (S.stripFor === S.current) return;
@@ -1037,7 +1078,7 @@ function renderBig(before = false) {
   img.onload = () => {
     if (seq !== renderSeq) return;
     $("big").src = img.src; $("busy").textContent = "";
-    if (before) { $("bigTile").hidden = true; } else { S.afterSrc = img.src; if (!GZ.fit) { GZ.tile = null; layoutBig(); } afterFirstRender(); setTimeout(() => curveHistogram(img), 0); }
+    if (before) { $("bigTile").hidden = true; } else { S.afterSrc = img.src; if (!GZ.fit) { GZ.tile = null; layoutBig(); } afterFirstRender(); setTimeout(() => curveHistogram(img), 0); splitLoad(); }
   };
   img.onerror = () => { if (seq === renderSeq) { $("busy").textContent = "render failed"; if (!before) afterFirstRender(); } };
   img.src = "/api/render?" + q({ ...params, edge: 1600, t: seq });
@@ -1059,6 +1100,7 @@ async function exportNames(names, own = false) {
       if (j.error) return status("Export failed: " + j.error, true);
       if (j.done < j.total) { status(`Exporting ${j.done + 1}/${j.total}: ${j.current}`); return setTimeout(poll, 800); }
       status(`Done. Saved ${j.total} JPG(s), e.g. ${j.outputs[0]}`);
+      names.forEach(n => S.exported.add(n)); document.querySelectorAll(".thumb").forEach(thumbStatus);   // now graded
     };
     poll();
   } catch (e) { status(e.message, true); }
@@ -1079,7 +1121,7 @@ $("copyGrade").onclick = async () => {
   if (!names.length) return status("Tick other photos first.");
   try {
     const r = await (await api("/api/grade/copy", esJSON({ names, look: S.look, adjust: S.adjust }))).json();
-    S.edited = new Set(r.edited); document.querySelectorAll(".thumb").forEach(t => t.classList.toggle("edited", S.edited.has(t.dataset.name)));
+    S.edited = new Set(r.edited); document.querySelectorAll(".thumb").forEach(thumbStatus);
     status(`Gave ${r.copied} photo(s) this grade. Each keeps its own crop.`);
   } catch (e) { status(e.message, true); }
 };
@@ -1137,26 +1179,23 @@ document.addEventListener("keyup", e => { if (e.key === "b" && bDown) showBefore
 
 
 // --- Library -------------------------------------------------------------------------
-const CATS = ["street", "travel", "portrait", "misc"];
 const L = { offset: 0, total: 0, seq: 0, polling: false, photos: [], sel: new Set(), last: null, view: null, side: false, orig: false, shoots: [], hover: null };
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function setTab(tab) {
-  const lib = tab === "lib", second = tab === "second", grade = tab === "grade", cullT = tab === "cull", essT = tab === "essay";
-  $("libView").hidden = !lib; $("secondView").hidden = !second; $("gradeView").hidden = !grade; $("cullView").hidden = !cullT;
+  const lib = tab === "lib", grade = tab === "grade", cullT = tab === "cull", essT = tab === "essay";
+  $("libView").hidden = !lib; $("gradeView").hidden = !grade; $("cullView").hidden = !cullT;
   $("essayView").hidden = !essT; $("tabEssay").classList.toggle("on", essT);
   if (essT) esOpen();
   $("folderBar").hidden = !grade;
-  $("tabLib").classList.toggle("on", lib); $("tabSecond").classList.toggle("on", second);
+  $("tabLib").classList.toggle("on", lib);
   $("tabGrade").classList.toggle("on", grade); $("tabCull").classList.toggle("on", cullT);
   if (lib) { libRefresh(); loadLib(); }    // marks / grades may have changed; a scan after an export updates "Graded"
-  if (second) { slOpen(); if (SL.loaded) slLoad(); }
   if (cullT) { if (!CU.sid) cuOpenStart(); else if (!$("cuRun").hidden) cuRefreshMarks(); }
 }
 $("tabCull").onclick = () => setTab("cull");
 $("tabEssay").onclick = () => setTab("essay");
 $("tabLib").onclick = () => setTab("lib");
-$("tabSecond").onclick = () => setTab("second");
 $("tabGrade").onclick = () => setTab("grade");
 
 function fillSelect(sel, values, keep) {
@@ -1516,7 +1555,8 @@ $("lbEssay").onclick = async () => {
   $("brName").value = "Best of " + $("lbTitle").textContent.replace(/^Worth a second look · |^On this day · /, "");
   $("brMsg").textContent = "";
   const looks = [{ id: "neutral", name: "Neutral (no look)" }, ...(S.looks || [])];
-  $("brLook").innerHTML = looks.map(l => `<option value="${l.id}" ${l.id === "leica-m9" ? "selected" : ""}>${esc(l.name)}</option>`).join("");
+  $("brLook").innerHTML = looks.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join("");
+  api("/api/settings").then(r => r.json()).then(st => { $("brLook").value = st.default_look; }).catch(() => {});
   $("brFrom").textContent = `Choosing from ${src.label}…`;
   $("briefBox").hidden = false; $("brName").focus(); $("brName").select();
   try {
@@ -1739,7 +1779,7 @@ function lbCloseViewer() {
 $("brVClose").onclick = lbCloseViewer;
 
 document.addEventListener("keydown", (e) => {
-  if ($("libView").hidden || typing(e) || !$("foldersBox").hidden || !$("briefBox").hidden || !$("addEsBox").hidden) return;
+  if ($("libView").hidden || typing(e) || !$("setBox").hidden || !$("keysBox").hidden || !$("briefBox").hidden || !$("addEsBox").hidden) return;
   const k = e.key, inView = L.view != null;
   if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === "a" && !inView) { e.preventDefault(); return $("lbAll").click(); }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1796,92 +1836,7 @@ $("libq").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeo
 ["lbWhere", "lbMode", "fFrom", "fTo", "fCamera", "fGraded", "fFlag", "fStars"].forEach(id => $(id).addEventListener("change", () => { L.sel.clear(); $("lbNote").textContent = ""; runSearch(); }));
 $("lbView").onchange = () => { document.querySelectorAll("#grid .cell").forEach(c => { const r = L.photos[+c.dataset.i]; if (r) c.querySelector("img").src = lbThumb(r); }); };
 $("lbSize").oninput = () => $("grid").style.setProperty("--cs", $("lbSize").value + "px");
-$("showFolders").onclick = () => { $("foldersBox").hidden = false; };
-$("foldersClose").onclick = () => { $("foldersBox").hidden = true; };
-$("foldersBox").onclick = (e) => { if (e.target.id === "foldersBox") $("foldersBox").hidden = true; };
-
-// --- Second look ------------------------------------------------------------------------
-const SL = { view: "gems", cats: new Set(["street", "travel"]), offset: 0, total: 0, seq: 0, loaded: false };
-function slView() { return document.querySelector('input[name="slview"]:checked').value; }
-async function slOpen() {
-  try {
-    const st = await (await api("/api/second/state")).json();
-    $("slKept").textContent = st.counts.keep ? `(${st.counts.keep})` : "";
-    if (!SL.loaded) {
-      fillSelect($("slYear"), st.years, true);
-      $("slFolder").innerHTML = `<option value="">Any shoot</option>` +
-        st.folders.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join("");
-      SL.loaded = true; slLoad();
-    }
-  } catch (e) { $("slInfo").textContent = e.message; }
-}
-function slBuildCats() {
-  $("slCats").innerHTML = "";
-  for (const c of CATS) {
-    const l = document.createElement("label"); l.className = "chk";
-    l.innerHTML = `<input type="checkbox" ${SL.cats.has(c) ? "checked" : ""}> ${c[0].toUpperCase() + c.slice(1)}`;
-    l.querySelector("input").onchange = (e) => { e.target.checked ? SL.cats.add(c) : SL.cats.delete(c); slLoad(); };
-    $("slCats").appendChild(l);
-  }
-}
-async function slLoad(more = false) {
-  const view = slView(), seq = ++SL.seq;
-  $("slPeriod").hidden = view !== "period";
-  $("slCatBox").hidden = view === "shortlist";
-  if (!more) { SL.offset = 0; $("slGrid").innerHTML = ""; $("slInfo").textContent = "Finding photos…"; }
-  const slow = setTimeout(() => { if (seq === SL.seq && !more) $("slInfo").textContent =
-    "Working out your taste from the photos you graded — the first time takes a few seconds…"; }, 1500);
-  const p = { view, cats: [...SL.cats].join(","), offset: SL.offset, limit: 20,
-              year: $("slYear").value, date_from: $("slFrom").value, date_to: $("slTo").value, folder_id: $("slFolder").value || 0 };
-  let res;
-  try { res = await (await api("/api/second/list?" + q(p))).json(); }
-  catch (e) { if (seq === SL.seq) $("slInfo").textContent = "Couldn't load suggestions: " + e.message; return; }
-  finally { clearTimeout(slow); }
-  if (seq !== SL.seq) return;
-  for (const r of res.results) $("slGrid").appendChild(slCard(r));
-  SL.offset += res.results.length; SL.total = res.total;
-  $("slMore").hidden = SL.offset >= SL.total;
-  const label = { gems: "overlooked photos, best first", this_day: "photos from this time of year, newest year first",
-                  period: "overlooked photos in this period, best first", shortlist: "photos on your shortlist" }[view];
-  $("slInfo").innerHTML = `<b>${SL.total.toLocaleString()}</b> ${label}` + (res.note ? ` · ${esc(res.note)}` : "");
-  $("slEmpty").hidden = SL.total > 0;
-  $("slEmpty").textContent = { shortlist: "Nothing kept yet. Press Keep on a suggestion to add it here.",
-    this_day: res.note || "No photos from this time of year.", period: "No overlooked photos in this period — try another range or tick more categories.",
-    gems: "No suggestions. Scan your folders in the Library tab first." }[view];
-}
-function slCard(r) {
-  const d = document.createElement("div"); d.className = "card";
-  const when = r.time ? new Date(r.time).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "";
-  d.innerHTML = `<div class="pic"><img loading="lazy" src="/api/library/thumb/${r.id}" alt="">${r.online ? "" : `<span class="off">Drive offline</span>`}</div>
-    <div class="meta">${esc(when)} · ${esc(r.folder)}</div>
-    <div class="why">${esc(r.reasons.length ? r.reasons.join(" · ") : "matches your taste")}</div>
-    <div class="acts"><button class="keep">Keep</button><button class="dis">Dismiss</button><button class="open">Open</button></div>`;
-  const keep = d.querySelector(".keep"), dis = d.querySelector(".dis");
-  const show = (dec) => {
-    r.decision = dec;
-    keep.classList.toggle("kept", dec === "keep"); keep.textContent = dec === "keep" ? "Kept ✓" : "Keep";
-    d.classList.toggle("dismissed", dec === "dismiss"); dis.textContent = dec === "dismiss" ? "Undo" : "Dismiss";
-  };
-  const decide = async (dec) => {
-    const prev = r.decision; show(dec);
-    try {
-      const res = await (await api("/api/second/decide/" + r.id, { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision: dec }) })).json();
-      $("slKept").textContent = res.counts.keep ? `(${res.counts.keep})` : "";
-    } catch (e) { show(prev); alert(e.message); }
-  };
-  keep.onclick = () => decide(r.decision === "keep" ? null : "keep");
-  dis.onclick = () => decide(r.decision === "dismiss" ? null : "dismiss");
-  d.querySelector(".open").onclick = () => openPhoto(r);
-  d.querySelector(".pic").onclick = () => openPhoto(r);
-  d.querySelector(".pic").title = r.name;
-  show(r.decision);
-  return d;
-}
-document.querySelectorAll('input[name="slview"]').forEach(i => i.onchange = () => slLoad());
-["slYear", "slFrom", "slTo", "slFolder"].forEach(id => $(id).addEventListener("change", () => slLoad()));
-$("slMore").onclick = () => slLoad(true);
-slBuildCats();
+$("showFolders").onclick = () => openSettings("setFolders");
 
 // --- Crop & straighten -----------------------------------------------------------------
 // Geometry mirrors filmlook/geometry.py: flips / 90° turns -> fine rotation (clockwise, the
@@ -2240,24 +2195,12 @@ document.addEventListener("keydown", (e) => {
 });
 
 // --- Cull -------------------------------------------------------------------------------------
-const CU = { sid: null, groups: [], frames: {}, list: [], gi: 0, fi: 0, cats: new Set(["street", "travel"]), zoom: null, busy: false };
-function cuBuildCats() {
-  $("cuCats").innerHTML = "";
-  for (const c of CATS) {
-    const l = document.createElement("label"); l.className = "chk";
-    l.innerHTML = `<input type="checkbox" ${CU.cats.has(c) ? "checked" : ""}> ${c[0].toUpperCase() + c.slice(1)}`;
-    l.querySelector("input").onchange = (e) => { e.target.checked ? CU.cats.add(c) : CU.cats.delete(c); };
-    $("cuCats").appendChild(l);
-  }
-}
+const CU = { sid: null, groups: [], frames: {}, list: [], gi: 0, fi: 0, zoom: null, busy: false };
 async function cuOpenStart() {
   CU.sid = null; CU.from = null;
   $("cuStart").hidden = false; $("cuRun").hidden = true; $("cuDone").hidden = true; $("cuZoom").hidden = true;
   try {
     const st = await (await api("/api/cull/state")).json();
-    const cur = $("cuFolder").value;
-    $("cuFolder").innerHTML = st.shoots.map(f => `<option value="${f.id}">${esc(f.name)} (${f.photos})</option>`).join("");
-    if (cur) $("cuFolder").value = cur;
     $("cuNewCount").textContent = `(${st.new_since_last} photos)`;
     const L2 = st.learning, pct = (x) => Math.round(100 * x) + "%";
     const hist = L2.history.slice(-8).map(h => `<span title="${esc(h.label)} · ${h.groups} groups">${pct(h.agreement)}</span>`).join(" → ");
@@ -2284,9 +2227,8 @@ async function cuOpenStart() {
 }
 $("cuStartBtn").onclick = async () => {
   const mode = document.querySelector('input[name="cuscope"]:checked').value;
-  const scope = { categories: [...CU.cats] };
+  const scope = { categories: [] };
   let label = "";
-  if (mode === "folder") { scope.folder_id = +$("cuFolder").value; label = $("cuFolder").selectedOptions[0]?.textContent.replace(/ \(\d+\)$/, "") || "Shoot"; }
   if (mode === "dates") { scope.date_from = $("cuFrom").value; scope.date_to = $("cuTo").value; label = `${scope.date_from || "…"} to ${scope.date_to || "…"}`; }
   if (mode === "new") { scope.new = true; label = "New since last cull"; }
   $("cuStartMsg").textContent = "Grouping frames and ranking each group…";
@@ -2572,7 +2514,6 @@ document.addEventListener("keydown", (e) => {
   else if (k === "ArrowDown") { e.preventDefault(); cuNext(1); }
   else if (k === "z" || k === "Z") { e.preventDefault(); cuZoomKey(); }
 });
-cuBuildCats();
 
 // --- Grade: variable zoom and pan --------------------------------------------------------
 // The photo is laid out explicitly: `scale` is screen pixels per full-resolution pixel of the
@@ -2610,6 +2551,7 @@ function layoutBig(schedule = true) {   // schedule=false: just place things (e.
   const lo = Math.log(fs), hi = Math.log(MAX_ZOOM);
   $("zSlider").value = Math.round(1000 * (Math.log(GZ.scale) - lo) / Math.max(hi - lo, 1e-6));
   $("zoomBar").hidden = !S.current || CR.on;
+  splitPlace();
   if (!schedule) return;
   clearTimeout(GZ.timer);
   if (zoomed) GZ.timer = setTimeout(requestTile, 220);
@@ -2692,19 +2634,7 @@ document.addEventListener("keydown", (e) => {
 // --- Essays -----------------------------------------------------------------------------------
 const ES = { id: null, photos: [], trans: [], view: "strip", undo: [], panel: "pairs", gap: null, setup: false };
 const esJSON = (body) => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-async function esOpen() {
-  if (!ES.setup) {
-    ES.setup = true;
-    try {
-      const st = await (await api("/api/cull/state")).json();
-      const opts = st.shoots.map(f => `<option value="${f.id}">${esc(f.name)} (${f.photos})</option>`).join("");
-      $("esFolder").innerHTML = opts; $("esQFolder").innerHTML = `<option value="">…in any shoot</option>` + opts;
-    } catch (e) {}
-    const looks = [{ id: "neutral", name: "Neutral (no look)" }, ...(S.looks || [])];
-    $("esLook").innerHTML = looks.map(l => `<option value="${l.id}" ${l.id === "leica-m9" ? "selected" : ""}>${esc(l.name)}</option>`).join("");
-  }
-  esList();
-}
+async function esOpen() { esList(); }
 async function esList() {
   const rows = await (await api("/api/essays")).json();
   $("esList").innerHTML = rows.length ? "" : "None yet.";
@@ -2715,35 +2645,6 @@ async function esList() {
     $("esList").appendChild(d);
   }
 }
-function esSource() {
-  const t = $("esSrc").value, src = { type: t };
-  if (t === "search") { src.q = $("esQ").value.trim(); src.folder_id = +$("esQFolder").value || null; src.categories = null; src.limit = 80; src.min = 30; }
-  if (t === "stars") src.min = +$("esStars").value;
-  if (t === "folder") { src.folder_id = +$("esFolder").value; src.picked_only = $("esPickedOnly").checked; }
-  if (t === "dates") { src.date_from = $("esFrom").value; src.date_to = $("esTo").value; }
-  return src;
-}
-$("esSrc").onchange = () => document.querySelectorAll("#esSide [data-src]").forEach(el => el.hidden = el.dataset.src !== $("esSrc").value);
-$("esCreate").onclick = async () => {
-  const src = esSource();
-  if (src.type === "search" && !src.q) return $("esMsg").textContent = "Type some words to search for.";
-  $("esMsg").textContent = "Gathering photos and looking at each one… (the first time takes a little while)";
-  try {
-    const r = await (await api("/api/essays", esJSON({ name: $("esName").value || (src.q ? `“${src.q}”` : "Untitled essay"),
-      source: src, target: +$("esTarget").value || 20, look: $("esLook").value,
-      brief: { theme: $("esTheme").value.trim(), colour: $("esColour").value, per_shoot: +$("esPer").value || null } }))).json();
-    $("esMsg").textContent = ""; await esLoad(r.id);
-    $("esNote").textContent = `Chose ${ES.photos.length} of ${r.pool} photos, in a suggested order.` + (r.note ? " " + r.note : "") + " The rest are on the Bench.";
-  } catch (e) { $("esMsg").textContent = e.message; }
-};
-$("esAddSrc").onclick = async () => {
-  if (!ES.id) return;
-  esPushUndo();
-  try {
-    const r = await (await api(`/api/essays/${ES.id}/add`, esJSON({ source: esSource() }))).json();
-    $("esMsg").textContent = `Added ${r.added} photo(s).`; await esLoad(ES.id, true);
-  } catch (e) { $("esMsg").textContent = e.message; }
-};
 async function esLoad(id, keepUndo = false) {
   $("esNote").textContent = "Loading…";
   const e = await (await api("/api/essays/" + id)).json();
@@ -2751,7 +2652,7 @@ async function esLoad(id, keepUndo = false) {
   Object.assign(ES, { id, name: e.name, target: e.target, look: e.look, photos: e.photos, versions: e.versions, gap: null,
                       brief: e.brief, pool: e.pool });
   if (ES.panel === "replace") ES.panel = "bench";
-  $("esEmpty").hidden = true; $("esWork").hidden = false; $("esAddSrc").hidden = false;
+  $("esEmpty").hidden = true; $("esWork").hidden = false;
   $("esTitle").value = e.name;
   $("esVersions").innerHTML = `<option value="">Versions (${e.versions.length})</option>` +
     e.versions.map(v => `<option value="${v.id}">${esc(v.name)} · ${esc(v.created.slice(5, 16))}</option>`).join("");
@@ -2761,7 +2662,6 @@ async function esLoad(id, keepUndo = false) {
 function esCount() {
   const n = ES.photos.length, t = ES.target;
   $("esCount").textContent = `${n} photo${n === 1 ? "" : "s"}` + (t ? ` · target ${t}` + (n > t ? ` (${n - t} over)` : "") : "");
-  $("esTrim").disabled = !t || n <= t;
 }
 function esSnapshot() { return JSON.stringify(ES.photos.map(p => ({ id: p.id, locked: p.locked, title: p.title }))); }
 function esPushUndo() { ES.undo.push({ snap: esSnapshot(), photos: JSON.parse(JSON.stringify(ES.photos)), brief: JSON.stringify(ES.brief || null) }); if (ES.undo.length > 50) ES.undo.shift(); }
@@ -2912,14 +2812,24 @@ $("esVersions").onchange = async () => {
 $("esDelete").onclick = async () => {
   if (!confirm(`Delete the essay “${ES.name}”? Your photos are not touched.`)) return;
   await api("/api/essays/" + ES.id, { method: "DELETE" });
-  ES.id = null; $("esWork").hidden = true; $("esEmpty").hidden = false; $("esAddSrc").hidden = true; esList();
+  ES.id = null; $("esWork").hidden = true; $("esEmpty").hidden = false; esList();
 };
-$("esTrim").onclick = () => esPanel("trim");
+// The bottom panel in three groups: Arrange (pairs, bench, fill the gap) · Brief · Output (export, book, contact sheet, publish).
+const ES_GROUPS = { arrange: ["pairs", "bench", "fill", "replace"], brief: ["brief"], output: ["export", "book", "contact", "publish"] };
+const esGroupOf = (p) => Object.keys(ES_GROUPS).find(g => ES_GROUPS[g].includes(p)) || "arrange";
+ES.lastIn = { arrange: "pairs", brief: "brief", output: "export" };
 document.querySelectorAll("#esPanelTabs button").forEach(b => b.onclick = () => esPanel(b.dataset.p));
+document.querySelectorAll("#esPanelGroups button").forEach(b => b.onclick = () => esPanel(ES.lastIn[b.dataset.g]));
 async function esPanel(which) {
+  if (which === "trim") which = "brief";
   ES.panel = which;
-  $("esPanel").classList.toggle("tall", which === "publish" || which === "book" || which === "brief");
-  document.querySelectorAll("#esPanelTabs button").forEach(b => b.classList.toggle("on", b.dataset.p === which));
+  const g = esGroupOf(which); ES.lastIn[g] = which === "replace" ? "bench" : which;
+  $("esPanel").classList.toggle("tall", g !== "arrange");
+  document.querySelectorAll("#esPanelGroups button").forEach(b => b.classList.toggle("on", b.dataset.g === g));
+  document.querySelectorAll("#esPanelTabs button").forEach(b => {
+    b.classList.toggle("on", b.dataset.p === which);
+    b.hidden = !ES_GROUPS[g].includes(b.dataset.p) || g === "brief" || (b.dataset.p === "replace" && which !== "replace");
+  });
   // A fresh box per request: an older, slower request then writes into a box no longer shown.
   const P = document.createElement("div"); P.style.display = "contents"; P.textContent = "Looking…";
   $("esPanelBody").replaceChildren(P);
@@ -2967,30 +2877,19 @@ async function esPanel(which) {
       esBookPanel(P);
     } else if (which === "publish") {
       await esPublishPanel(P);
-    } else {
-      if (!ES.target || ES.photos.length <= ES.target) { P.textContent = `Already at or under the target (${ES.target || "none"}).`; return; }
-      const lo = await (await api(`/api/essays/${ES.id}/leaveout?` + q({ target: ES.target }))).json();
-      P.innerHTML = "";
-      const all = document.createElement("div"); all.className = "esCand";
-      all.innerHTML = `<div class="why">To reach ${ES.target}, leave out these ${lo.length}.</div><div class="acts"><button class="primary">Remove all ${lo.length}</button></div>`;
-      all.querySelector("button").onclick = () => { esPushUndo(); const out = new Set(lo.map(x => x.photo_id)); ES.photos = ES.photos.filter(p => !out.has(p.id)); esRender(); esSave(); esPanel("trim"); };
-      P.appendChild(all);
-      for (const x of lo) {
-        const d = document.createElement("div"); d.className = "esCand";
-        d.innerHTML = `<div class="acts"><button>Remove</button></div>${thumb(x.photo_id)}<div class="why">#${num(x.photo_id)} — ${esc(x.reason)}${x.like ? ` (#${num(x.like)})` : ""}</div>`;
-        d.querySelector("button").onclick = () => { esPushUndo(); ES.photos = ES.photos.filter(p => p.id !== x.photo_id); esRender(); esSave(); d.remove(); };
-        P.appendChild(d);
-      }
+    } else if (which === "contact") {
+      P.innerHTML = `<div class="esExp"><div>A PDF contact sheet: every photo with its number and title, 12 to a page. Good for checking the sequence on paper or sharing a draft. Works with the drives unplugged.</div>
+        <div class="esRow"><button id="esPdfGo" class="primary">Make contact sheet PDF</button></div><div id="esPdfMsg" class="small"></div></div>`;
+      $("esPdfGo").onclick = async () => {
+        $("esPdfMsg").textContent = "Making the contact sheet…";
+        try { const r = await (await api(`/api/essays/${ES.id}/pdf`, { method: "POST" })).json(); $("esPdfMsg").textContent = "Saved and opened: " + r.path; }
+        catch (e) { $("esPdfMsg").textContent = e.message; }
+      };
     }
   } catch (e) { P.textContent = e.message; }
 }
 // Export: numbered JPGs (graded photos keep their grade; others get the essay's look + crop).
 $("esExport").onclick = () => esPanel("export");
-$("esPdf").onclick = async () => {
-  $("esNote").textContent = "Making the contact sheet…";
-  try { const r = await (await api(`/api/essays/${ES.id}/pdf`, { method: "POST" })).json(); $("esNote").textContent = "Contact sheet saved and opened: " + r.path; }
-  catch (e) { $("esNote").textContent = e.message; }
-};
 async function esExportPanel(P) {
   if (ES.job && ES.job.essay === ES.id) return esJobView(P);
   const plan = await (await api(`/api/essays/${ES.id}/plan`)).json();
@@ -3003,11 +2902,11 @@ async function esExportPanel(P) {
       <select id="esExLook">${looks.map(l => `<option value="${l.id}" ${l.id === ES.look ? "selected" : ""}>${esc(l.name)}</option>`).join("")}</select>` : ""}</div>
     <div class="esRow">Size: <select id="esExSize"><option value="small">Small – 1080 px (Instagram)</option><option value="web" selected>Web – 2048 px</option>
       <option value="large">Large – 3000 px</option><option value="full">Full size (print)</option></select>
-      <label><input type="checkbox" id="esExPdf" checked> also a PDF contact sheet</label>
       <button id="esExGo" class="primary">Export</button></div>
     ${off.length ? `<div class="warn">Needs ${esc(off.join(", "))}, which isn't plugged in. You can start anyway: it will wait for the drive.</div>` : ""}
     <div class="small">Goes to a new folder in Pictures › Film Look Studio Essays. Your originals are never changed.${raw ? " Ungraded photos take about 15 s each at full quality." : ""}</div>
   </div>`;
+  api("/api/settings").then(r => r.json()).then(st => { if ($("esExSize")) $("esExSize").value = st.export_size; }).catch(() => {});
   const lk = $("esExLook");
   if (lk) lk.onchange = async () => { ES.look = lk.value; await api("/api/essays/" + ES.id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ look: lk.value }) }); };
   $("esExGo").onclick = async () => {
@@ -3015,7 +2914,7 @@ async function esExportPanel(P) {
     const locked = {}, titles = {};
     ES.photos.forEach(p => { locked[p.id] = p.locked; titles[p.id] = p.title || ""; });
     await api(`/api/essays/${ES.id}/order`, esJSON({ order: ES.photos.map(p => p.id), locked, titles }));
-    const r = await (await api(`/api/essays/${ES.id}/export`, esJSON({ size: $("esExSize").value, pdf: $("esExPdf").checked }))).json();
+    const r = await (await api(`/api/essays/${ES.id}/export`, esJSON({ size: $("esExSize").value, pdf: false }))).json();
     ES.job = { id: r.job, essay: ES.id }; esJobView(P);
   };
 }
@@ -3144,7 +3043,10 @@ async function esBookJob(P) {
 // Publish to WordPress. Part 1: connecting (website, username, application password in the Keychain).
 async function esPublishPanel(P) {
   const st = await (await api("/api/publish/settings")).json();
-  if (!st.site || !st.has_password || ES.pubEdit) return esPublishSettings(P, st);
+  if (!st.site || !st.has_password) {
+    P.innerHTML = `<div class="esExp"><div>Connect your WordPress website first: ⚙ Settings → Website.</div><div class="esRow"><button id="pubOpenSet" class="primary">Open Settings</button></div></div>`;
+    $("pubOpenSet").onclick = () => openSettings("setPub"); return;
+  }
   P.innerHTML = `<div class="esExp"><div>Checking the connection to ${esc(st.site)}…</div></div>`;
   try {
     const t = await (await api("/api/publish/test", { method: "POST" })).json();
@@ -3155,12 +3057,12 @@ async function esPublishPanel(P) {
       <div class="esRow"><button id="pubEdit">Change settings</button><button id="pubForget">Disconnect</button></div></div>
       <div id="pubForm"></div>`;
     esPublishForm($("pubForm"), t);
-    $("pubEdit").onclick = () => { ES.pubEdit = true; esPanel("publish"); };
+    $("pubEdit").onclick = () => openSettings("setPub");
     $("pubForget").onclick = async () => { if (!confirm("Disconnect from your website? The saved application password is removed from this Mac (it stays valid in WordPress until you revoke it there).")) return;
       await api("/api/publish/forget", { method: "POST" }); esPanel("publish"); };
   } catch (e) {
     P.innerHTML = `<div class="esExp"><div class="warn">${esc(e.message)}</div><div class="esRow"><button id="pubEdit">Change settings</button><button id="pubRetry">Try again</button></div></div>`;
-    $("pubEdit").onclick = () => { ES.pubEdit = true; esPanel("publish"); };
+    $("pubEdit").onclick = () => openSettings("setPub");
     $("pubRetry").onclick = () => esPanel("publish");
   }
 }
@@ -3235,7 +3137,7 @@ async function esPublishJob() {
   if ($("pbStop")) $("pbStop").onclick = () => api(`/api/jobs/${job.id}/cancel`, { method: "POST" });
   if (!j.finished) setTimeout(esPublishJob, 1500); else if (j.result) ES.pubJob = null;
 }
-function esPublishSettings(P, st) {
+function esPublishSettings(P, st, after = () => esPanel("publish")) {
   P.innerHTML = `<div class="esExp">
     <div><b>Connect to your WordPress website</b></div>
     <div class="esRow">Website <input type="text" id="pubSite" value="${esc(st.site || "andrewchewcc.com")}" style="width:200px">
@@ -3249,10 +3151,10 @@ function esPublishSettings(P, st) {
     $("pubMsg").textContent = "Saving and checking…";
     try {
       const t = await (await api("/api/publish/settings", esJSON({ site: $("pubSite").value, user: $("pubUser").value, password: $("pubPass").value || null }))).json();
-      ES.pubEdit = false; $("pubPass").value = ""; esPanel("publish");
+      $("pubPass").value = ""; after();
     } catch (e) { $("pubMsg").textContent = e.message; }
   };
-  if ($("pubCancel")) $("pubCancel").onclick = () => { ES.pubEdit = false; esPanel("publish"); };
+  if ($("pubCancel")) $("pubCancel").onclick = () => after();
 }
 function esBriefPanel(P) {
   const b = ES.brief || { count: ES.photos.length, theme: "", colour: "mix", per_shoot: null };
@@ -3319,6 +3221,159 @@ function esSideBySide(a, b) {
   esRender(); esSave(); $("esNote").textContent = `#${ES.photos.findIndex(p => p.id === a) + 1} and #${ES.photos.findIndex(p => p.id === b) + 1} face each other on a spread.`;
 }
 
+
+// Grade comfort: buttons and keys for undo / redo / copy / paste, the photo-list filter,
+// "Next not graded", and the before/after split.
+$("grUndo").onclick = grUndo; $("grRedo").onclick = grRedo; $("grCopy").onclick = grCopy; $("grPaste").onclick = grPaste;
+document.addEventListener("keydown", (e) => {
+  if ($("gradeView").hidden || typing(e) || (typeof CR !== "undefined" && CR.on) || !(e.metaKey || e.ctrlKey)) return;
+  const k = e.key.toLowerCase();
+  if (k === "z") { e.preventDefault(); e.shiftKey ? grRedo() : grUndo(); }
+  else if (k === "c" && !String(window.getSelection())) { e.preventDefault(); grCopy(); }
+  else if (k === "v") { e.preventDefault(); grPaste(); }
+});
+function filmFilter() {
+  const f = $("filmFilter").value;
+  document.querySelectorAll(".thumb").forEach(t => {
+    const n = t.dataset.name, exp = S.exported && S.exported.has(n), ed = S.edited && S.edited.has(n);
+    t.hidden = f === "todo" ? (exp || ed) : f === "edited" ? (!ed || exp) : f === "graded" ? !exp : false;
+  });
+}
+$("filmFilter").onchange = filmFilter;
+$("nextTodo").onclick = () => {
+  const names = S.photos, i = names.indexOf(S.current);
+  const todo = (n) => !(S.exported && S.exported.has(n)) && !(S.edited && S.edited.has(n));
+  const next = names.slice(i + 1).find(todo) || names.slice(0, Math.max(0, i)).find(todo);
+  if (!next) return status("Every photo here is graded or edited.");
+  select(next); const t = document.querySelector(`.thumb[data-name="${CSS.escape(next)}"]`); if (t) t.scrollIntoView({ block: "nearest" });
+};
+S.split = false; S.splitAt = 0.5;
+function splitPlace() {
+  const on = S.split && GZ.fit && !$("big").hidden && !(typeof CR !== "undefined" && CR.on) && !bDown;
+  $("bigSplit").hidden = $("splitLine").hidden = !on;
+  if (!on) return;
+  const b = $("big").style, l = parseFloat(b.left), t = parseFloat(b.top), w = parseFloat(b.width), h = parseFloat(b.height);
+  Object.assign($("bigSplit").style, { left: b.left, top: b.top, width: b.width, height: b.height,
+    clipPath: `inset(0 ${(1 - S.splitAt) * 100}% 0 0)` });
+  Object.assign($("splitLine").style, { left: l + S.splitAt * w - 1 + "px", top: t + "px", height: h + "px" });
+}
+function splitLoad() {                       // the photo with no look and no changes, but with its crop
+  if (!S.split || !S.current) return;
+  const name = S.current, src = "/api/render?" + q({ name, look: "neutral", crop: "saved", edge: 1600, k: S.editKey || 0 });
+  if ($("bigSplit").dataset.src === src) return splitPlace();
+  const im = new Image();
+  im.onload = () => { if (S.current === name) { $("bigSplit").src = src; $("bigSplit").dataset.src = src; splitPlace(); } };
+  im.src = src;
+}
+$("splitBtn").onclick = () => {
+  S.split = !S.split; $("splitBtn").classList.toggle("on", S.split);
+  if (S.split && !GZ.fit) status("Split works on the whole photo: zoom back to Fit to see it.");
+  S.split ? splitLoad() : splitPlace();
+};
+$("splitLine").addEventListener("pointerdown", (e) => {
+  e.preventDefault(); e.stopPropagation(); $("splitLine").setPointerCapture(e.pointerId);
+  const move = (ev) => { const b = $("big").getBoundingClientRect();
+    S.splitAt = Math.min(1, Math.max(0, (ev.clientX - b.left) / b.width)); splitPlace(); };
+  const up = () => { $("splitLine").removeEventListener("pointermove", move); $("splitLine").removeEventListener("pointerup", up); };
+  $("splitLine").addEventListener("pointermove", move); $("splitLine").addEventListener("pointerup", up);
+});
+
+// --- Settings · activity · shortcuts --------------------------------------------------------------
+const fmtBytes = (b) => b >= 1024 ** 3 ? (b / 1024 ** 3).toFixed(1) + " GB" : Math.round(b / 1024 ** 2) + " MB";
+async function openSettings(anchor) {
+  $("setBox").hidden = false;
+  loadLib();                                  // folders + drives
+  const st = await (await api("/api/settings")).json();
+  const looks = [{ id: "neutral", name: "Neutral (no look)" }, ...(S.looks || [])];
+  $("setLook").innerHTML = looks.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join("");
+  $("setLook").value = st.default_look; $("setSize").value = st.export_size; $("setQuality").value = st.export_quality;
+  setPubRender(); setStorage(st); setDrives(st);
+  if (anchor && $(anchor)) $(anchor).scrollIntoView({ block: "start" });
+}
+async function saveSetting(changes) { try { await api("/api/settings", esJSON({ changes })); } catch (e) { alert(e.message); } }
+$("setLook").onchange = () => saveSetting({ default_look: $("setLook").value });
+$("setSize").onchange = () => saveSetting({ export_size: $("setSize").value });
+$("setQuality").onchange = () => saveSetting({ export_quality: +$("setQuality").value });
+$("setBtn").onclick = () => openSettings();
+$("setClose").onclick = () => { $("setBox").hidden = true; };
+$("setBox").onclick = (e) => { if (e.target.id === "setBox") $("setBox").hidden = true; };
+$("setScan").onclick = () => { $("setBox").hidden = true; setTab("lib"); $("scanBtn").click(); };
+async function setPubRender() {
+  const P = $("setPub"), st = await (await api("/api/publish/settings")).json();
+  if (!st.site || !st.has_password) return esPublishSettings(P, st, setPubRender);
+  P.innerHTML = `<div>Checking ${esc(st.site)}…</div>`;
+  let line;
+  try { const t = await (await api("/api/publish/test", { method: "POST" })).json(); line = `✓ Connected to <b>${esc(st.site.replace("https://", ""))}</b> as <b>${esc(t.name)}</b>.`; }
+  catch (e) { line = `<span class="warn">${esc(e.message)}</span>`; }
+  P.innerHTML = `<div>${line}</div><div class="row"><button id="spChange">Change</button><button id="spForget">Disconnect</button></div>`;
+  $("spChange").onclick = () => esPublishSettings(P, st, setPubRender);
+  $("spForget").onclick = async () => { if (!confirm("Disconnect from your website? The saved application password is removed from this Mac (revoke it in WordPress to cancel it completely).")) return;
+    await api("/api/publish/forget", { method: "POST" }); setPubRender(); };
+}
+async function setStorage(st) {
+  const g = await (await api("/api/settings/storage")).json(), limit = g.cache_limit_gb;
+  $("setStorage").innerHTML = `
+    <div class="stRow"><span>Previews for Grade: <b>${fmtBytes(g.previews)}</b> · kept under
+      <select id="setLimit">${[2, 4, 8, 16, 32].map(v => `<option value="${v}" ${+limit === v ? "selected" : ""}>${v} GB</option>`).join("")}</select>
+      (older ones are re-made in a second or two when opened)</span><button data-c="previews">Trim now</button></div>
+    <div class="stRow"><span>Large views for Cull and the Library viewer: <b>${fmtBytes(g.views)}</b></span><button data-c="views">Clear</button></div>
+    <div class="stRow"><span>Thumbnails: <b>${fmtBytes(g.thumbs + g.essay_thumbs)}</b> · library database: <b>${fmtBytes(g.database)}</b> (your work — kept)</span></div>
+    ${g.old_backups ? `<div class="stRow"><span>Old safety copies of the database (${esc(g.old_backup_names.join(", "))}): <b>${fmtBytes(g.old_backups)}</b></span><button data-c="old_backups">Remove</button></div>` : ""}`;
+  $("setLimit").onchange = async () => { await saveSetting({ cache_limit_gb: +$("setLimit").value }); setTimeout(() => setStorage(), 1500); };
+  $("setStorage").querySelectorAll("[data-c]").forEach(b => b.onclick = async () => {
+    if (b.dataset.c === "old_backups" && !confirm("Remove the old safety copies of the library database? (Your current library is not affected.)")) return;
+    b.disabled = true; b.textContent = "Working…";
+    try { const r = await (await api("/api/settings/clean", esJSON({ what: b.dataset.c }))).json(); setStorage(); status(`Freed ${fmtBytes(r.freed)}.`); }
+    catch (e) { alert(e.message); }
+  });
+}
+async function setDrives(st) {
+  const ds = await (await api("/api/settings/drives")).json();
+  $("setDrive").innerHTML = ds.length ? ds.map(d => `<option value="${d.id}">${esc(d.name)}${d.free != null ? ` (${fmtBytes(d.free)} free)` : ""}</option>`).join("") : `<option value="">No drive plugged in</option>`;
+  $("setBackup").disabled = !ds.length;
+  const s2 = st || await (await api("/api/settings")).json();
+  $("setBackupMsg").textContent = s2.last_backup ? `Last backup: ${s2.last_backup.replace("T", " ")} → ${s2.last_backup_path}` : "No backup yet.";
+}
+$("setBackup").onclick = async () => {
+  $("setBackupMsg").textContent = "Backing up…"; $("setBackup").disabled = true;
+  try { const r = await (await api("/api/settings/backup", esJSON({ drive_id: +$("setDrive").value }))).json();
+        $("setBackupMsg").textContent = `Backed up (${fmtBytes(r.size)}) to ${r.path}`; }
+  catch (e) { $("setBackupMsg").textContent = e.message; }
+  finally { $("setBackup").disabled = false; }
+};
+// Activity: one place for everything running in the background.
+let actTimer = null;
+async function actPoll() {
+  clearTimeout(actTimer);
+  let items = [];
+  try { items = await (await api("/api/activity")).json(); } catch (e) {}
+  const running = items.filter(i => !i.finished);
+  $("actBtn").hidden = !items.length;
+  $("actBtn").textContent = running.length ? `⟳ ${running.length} running` : "✓ Done";
+  if (!$("actPop").hidden) actRender(items);
+  actTimer = setTimeout(actPoll, running.length ? 2000 : 10000);
+}
+function actRender(items) {
+  $("actPop").innerHTML = items.length ? items.map(i => `<div class="it"><div><b>${esc(i.label)}</b></div>
+      ${i.error ? `<div class="warn">${esc(i.error)}</div>` : i.waiting && i.waiting.length ? `<div class="sub">Waiting for ${esc(i.waiting.join(", "))} to be plugged in</div>`
+        : i.finished ? `<div class="sub">Done.</div>` : `<progress max="${i.total || 1}" value="${i.done}"></progress><div class="sub">${esc(i.current || "")}</div>`}
+      ${!i.finished && i.cancel ? `<button data-id="${i.id}">Cancel</button>` : ""}</div>`).join("") : "Nothing running.";
+  $("actPop").querySelectorAll("button[data-id]").forEach(b => b.onclick = () =>
+    api(b.dataset.id === "scan" ? "/api/library/pause" : `/api/jobs/${b.dataset.id}/cancel`, { method: "POST" }).then(actPoll));
+}
+$("actBtn").onclick = async () => { $("actPop").hidden = !$("actPop").hidden; actPoll(); };
+document.addEventListener("click", (e) => { if (!$("actPop").hidden && !e.target.closest("#actPop") && e.target.id !== "actBtn") $("actPop").hidden = true; });
+const _apiBase = api;                       // start watching as soon as anything is started
+api = async (path, opts = {}) => { const r = await _apiBase(path, opts); if (opts.method === "POST" && /export|book|upload|scan/.test(path)) setTimeout(actPoll, 300); return r; };
+actPoll();
+// Shortcuts overlay
+$("keysBtn").onclick = () => { $("keysBox").hidden = false; };
+$("keysClose").onclick = () => { $("keysBox").hidden = true; };
+$("keysBox").onclick = (e) => { if (e.target.id === "keysBox") $("keysBox").hidden = true; };
+document.addEventListener("keydown", (e) => {
+  if (e.key === "?" && !typing(e)) { e.preventDefault(); $("keysBox").hidden = !$("keysBox").hidden; }
+  else if (e.key === "Escape") { $("keysBox").hidden = true; $("setBox").hidden = true; $("actPop").hidden = true; }
+});
 
 buildSliders();
 api("/api/state").then(r => r.json()).then(st => {
