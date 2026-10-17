@@ -56,7 +56,10 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   brief with variety, B&W via `is_mono`, theme words steer; Library → Make an essay / Add to essay…). Essays tab: strip / contact sheet / spreads (page 1 alone on the right), drag, lock,
   undo, versions. `essay_out.py`: PDF contact sheet (thumbnails, works offline) and numbered export
   (01_title.jpg: graded JPG resized, else RAW + essay look + crop via `engine.render_full`) into a
-  new folder under ~/Pictures/Film Look Studio Essays; waits while a drive is offline.
+  new folder under ~/Pictures/Film Look Studio Essays; waits while a drive is offline. `essay_book.py`:
+  print-ready book PDF (A4 / 8x10, portrait / landscape; border or full-bleed; cover, captions, page
+  numbers, index, 3 mm bleed with TrimBox) following the spreads, 300 dpi, streamed page by page
+  (own tiny PDF writer, one JPEG per page). Library also shows a new-shoot notice (`scan.new_shoots`).
 - PyTorch model calls must go through `vision` (one at a time: concurrent MPS use segfaults).
 - The app's open folder / collection is global server state: test on another port (e.g. 8766).
 - Library CLI: `./studio library add|scan|status|search|folders`.

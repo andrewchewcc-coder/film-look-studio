@@ -355,6 +355,16 @@ class RootIn(BaseModel):
     path: str
 
 
+@app.get("/api/library/new")
+def library_new():
+    """New (or changed) shoots on plugged-in drives, for the Library's "new shoot" notice."""
+    from .library import scan
+    lib = _lib()
+    if lib.job["running"]:
+        return {"shoots": [], "scanning": True}
+    return {"shoots": scan.new_shoots(lib.con()), "scanning": False}
+
+
 @app.post("/api/library/roots")
 def library_add_root(body: RootIn):
     from .library import scan
@@ -1328,6 +1338,42 @@ def essay_export(eid: int, body: EssayExportIn):
     return {"job": job_id}
 
 
+class BookIn(BaseModel):
+    size: str = "a4-portrait"
+    layout: str = "border"
+    cover: bool = True
+    captions: bool = True
+    page_numbers: bool = True
+    index: bool = True
+    bleed: bool = False
+    cover_photo: int | None = None
+
+
+@app.post("/api/essays/{eid}/book")
+def essay_book(eid: int, body: BookIn):
+    """A print-ready book / zine PDF (background job; waits for offline drives)."""
+    from .library import essay_book as eb
+    _essay_row(eid)
+    if body.size not in eb.SIZES:
+        raise HTTPException(400, "unknown page size")
+    job_id = uuid.uuid4().hex[:8]
+    job = jobs[job_id] = {"total": 0, "done": 0, "current": "", "waiting": [], "outputs": [], "folder": None,
+                          "pdf": None, "error": None, "finished": False, "cancel": False}
+
+    def work():
+        try:
+            eb.make_book(_lib().con(), eid, size=body.size, layout=body.layout, cover=body.cover,
+                         captions=body.captions, page_numbers=body.page_numbers, index=body.index,
+                         bleed=body.bleed, cover_photo=body.cover_photo, job=job, cancelled=lambda: job["cancel"])
+        except Exception as e:
+            job["error"] = str(e)
+        job["current"] = ""
+        job["finished"] = True
+
+    threading.Thread(target=work, daemon=True).start()
+    return {"job": job_id}
+
+
 @app.post("/api/jobs/{job_id}/cancel")
 def job_cancel(job_id: str):
     if job_id not in jobs:
@@ -1371,6 +1417,13 @@ class RevealIn(BaseModel):
 @app.post("/api/essays/reveal")
 def essay_reveal(body: RevealIn):
     _reveal(body.path)
+    return {"ok": True}
+
+
+@app.post("/api/essays/open")
+def essay_open(body: RevealIn):
+    """Open a PDF the app made (e.g. the book) in Preview."""
+    _reveal(body.path, open_file=True)
     return {"ok": True}
 
 

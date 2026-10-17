@@ -367,3 +367,25 @@ def test_browse_reveal_and_forget_deleted(tmp_path, monkeypatch):
     assert browse.forget_deleted(con, folder["id"]) == 1
     assert [p["name"] for p in browse.photos(con, folder["id"])] == ["A.dng"]
     assert (photos / "A.dng").exists() and (photos / "A-IG.jpg").exists()
+
+
+def test_new_shoots_notice(tmp_path, monkeypatch):
+    base = tmp_path / "photos"
+    shoot = base / "2025 01 01 Test"
+    shoot.mkdir(parents=True)
+    (shoot / "A.dng").write_bytes(b"raw-a" * 1000)
+    (shoot / "A.on1").write_text("{}")
+    monkeypatch.setattr(scan, "read_exif", lambda paths: {})
+    monkeypatch.setattr(scan.drives, "_volume_info", lambda mount: ("TEST-UUID", "Test"))
+    con = db.connect(tmp_path / "lib.db")
+    scan.add_root(con, base)
+    assert [s["name"] for s in scan.new_shoots(con)] == ["2025 01 01 Test"]       # added, not scanned yet
+    scan.scan(con)
+    assert scan.new_shoots(con) == []                                             # up to date
+    (base / "2025 02 02 New").mkdir()
+    for n in ("B.dng", "C.dng"):
+        (base / "2025 02 02 New" / n).write_bytes(n.encode() * 900)
+    (shoot / "D.dng").write_bytes(b"raw-d" * 1000)                                # one more in the old shoot
+    found = {s["name"]: s for s in scan.new_shoots(con)}
+    assert found["2025 02 02 New"]["new"] and found["2025 02 02 New"]["photos"] == 2
+    assert not found["2025 01 01 Test"]["new"] and found["2025 01 01 Test"]["change"] == 1

@@ -156,6 +156,38 @@ def list_roots(con):
     return out
 
 
+def new_shoots(con):
+    """Shoots on plugged-in drives that the library hasn't seen (or that gained or lost photos
+    since the last scan). Only lists folders and counts files — reads nothing else, writes nothing.
+    Returns [{"shoot", "name", "drive", "photos", "new": bool, "change"}], newest folder name first."""
+    known = defaultdict(int)
+    for r in con.execute("""SELECT fo.drive_id, fo.rel_path, COUNT(f.id) FROM folders fo
+                            LEFT JOIN files f ON f.folder_id = fo.id AND f.missing = 0 AND f.kind != 'onphoto'
+                            GROUP BY fo.id"""):
+        known[(r[0], shoot_of(r[1]))] += r[2]
+    seen_shoot = {(d, shoot_of(p)) for d, p in con.execute("SELECT drive_id, rel_path FROM folders")}
+    out, mounts = [], drives.online_mounts(con)
+    for root in list_roots(con):
+        if not root["online"] or root["drive_id"] not in mounts:
+            continue
+        mount = Path(mounts[root["drive_id"]])
+        on_disk = defaultdict(int)
+        for d, media, _ in walk(root["path"]):
+            n = sum(1 for e in media if MEDIA_KINDS[os.path.splitext(e.name)[1].lower()] != "onphoto")
+            if n:
+                on_disk[shoot_of(str(Path(d).relative_to(mount)))] += n
+        for shoot, n in on_disk.items():
+            key = (root["drive_id"], shoot)
+            if key not in seen_shoot:
+                out.append({"shoot": shoot, "name": PurePath(shoot).name, "drive": root["drive"], "photos": n,
+                            "new": True, "change": n})
+            elif n != known.get(key, 0):
+                out.append({"shoot": shoot, "name": PurePath(shoot).name, "drive": root["drive"], "photos": n,
+                            "new": False, "change": n - known.get(key, 0)})
+    out.sort(key=lambda x: x["name"], reverse=True)
+    return out
+
+
 # --- reading files ------------------------------------------------------------
 
 def walk(root):

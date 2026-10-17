@@ -32,6 +32,8 @@ original, **S** side by side), P / X / U and 0–5 to mark. **Show in Finder** o
 selected photos' originals and ON1 sidecars selected (one shoot at a time) so you can delete them
 there yourself — the app never deletes. Afterwards **Scan for new photos** and the app offers to
 remove them from the library. Drives can be unplugged: thumbnails stay on the iMac.
+When a new shoot (or new photos in one) turns up on a plugged-in drive, a banner offers **Scan now**, then
+**Cull this shoot** once it's ready.
 
 ### Second look (rediscover photos you never graded)
 In the Library sidebar, **Show → Worth a second look** lists photos you haven't picked, rejected or graded
@@ -61,6 +63,9 @@ drag, lock, the order styles (Visual flow, Time & place, Day → night, Calm →
 undo (⌘Z) and versions. **Contact sheet PDF** and **Export…** save to Pictures › Film Look Studio Essays
 as 01_title.jpg…: exported photos keep their grade, photos graded in the app use that grade, others get
 the essay's look; all with their crop. Drives can be unplugged while you arrange; export waits for them.
+**Book PDF** (bottom panel) makes a print-ready zine or book: A4 or 8 × 10 in, portrait or landscape; one photo
+per page with a white border or full-bleed; optional cover, captions, page numbers, index page and 3 mm bleed
+for online printers. Pages follow the Spreads view (page 1 alone on the right, then facing pairs).
 
 ### Browser app (sliders)
 ```bash

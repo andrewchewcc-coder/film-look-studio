@@ -128,3 +128,20 @@ def test_choose_from_a_brief(monkeypatch):
     assert {x["id"] for x in r["chosen"]} == {5, 7} and "Only 2" in r["note"]
     r = essay.choose(None, list(pool), {"count": 2}, keep=[6])
     assert [x["id"] for x in r["chosen"]][0] == 6 and "you locked it" in r["chosen"][0]["reasons"]
+
+
+def test_book_pdf_writer_makes_valid_pages(tmp_path):
+    from PIL import Image
+    from filmlook.library import essay_book
+    p = tmp_path / "book.pdf"
+    w = essay_book.PdfWriter(p)
+    for colour in ("white", "red", "blue"):
+        w.add_page(Image.new("RGB", (300, 400), colour), 8.0, 10.0, trim_in=0.1)
+    w.close()
+    data = p.read_bytes()
+    assert data.startswith(b"%PDF-1.4") and data.rstrip().endswith(b"%%EOF")
+    assert data.count(b"/Type /Page ") == 3 and b"/Count 3" in data
+    assert b"/MediaBox [0 0 576.000 720.000]" in data and b"/TrimBox [7.200 7.200 568.800 712.800]" in data
+    xref = int(data.rsplit(b"startxref", 1)[1].split()[0])
+    assert data[xref:xref + 4] == b"xref"                           # the index points where it should
+    assert set(essay_book.SIZES) == {"a4-portrait", "a4-landscape", "8x10-portrait", "8x10-landscape"}

@@ -147,6 +147,11 @@
   #lbTitle { font-size: 15px; font-weight: 600; }
   #lbNote { min-height: 16px; margin: 4px 0 8px; }
   .selInfo { color: var(--accent); }
+  #lbNew { background: #1e1a10; border: 1px solid #5a4a1e; border-radius: 6px; padding: 9px 12px; margin: 8px 0 4px; font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  #lbNew[hidden] { display: none; }
+  #lbNew b { color: var(--accent); font-weight: 600; }
+  #lbNew button { padding: 3px 10px; font-size: 12px; }
+  #lbNew .grow { flex: 1; min-width: 200px; }
   .selInfo button { padding: 1px 7px !important; font-size: 12px !important; margin-left: 4px; }
   #lbNote button { padding: 2px 8px; font-size: 12px; margin-left: 6px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--cs, 180px), 1fr)); gap: 8px; }
@@ -468,6 +473,7 @@
       <button id="lbAll">Select all</button>
       <button id="lbFinder" title="Open Finder with the selected photos' files selected (one shoot at a time)">Show in Finder</button>
     </div>
+    <div id="lbNew" hidden></div>
     <div id="lbNote" class="small"></div>
     <div id="grid" class="grid"></div>
     <button id="more" hidden>Show more</button>
@@ -633,7 +639,7 @@
       <div id="esNote" class="small"></div>
       <div id="esBoard"></div>
       <div id="esPanel">
-        <div class="seg" id="esPanelTabs"><button data-p="pairs" class="on">Pairs</button><button data-p="bench" title="Photos from your selection that weren't chosen">Bench</button><button data-p="replace" hidden>Replace</button><button data-p="fill">Fill the gap</button><button data-p="trim">Trim</button><button data-p="brief" title="Change the brief and choose again">Brief</button><button data-p="export">Export</button></div>
+        <div class="seg" id="esPanelTabs"><button data-p="pairs" class="on">Pairs</button><button data-p="bench" title="Photos from your selection that weren't chosen">Bench</button><button data-p="replace" hidden>Replace</button><button data-p="fill">Fill the gap</button><button data-p="trim">Trim</button><button data-p="brief" title="Change the brief and choose again">Brief</button><button data-p="export">Export</button><button data-p="book" title="A print-ready book or zine PDF">Book PDF</button></div>
         <div id="esPanelBody" class="small"></div>
       </div>
     </div>
@@ -1212,7 +1218,7 @@ async function pollJob() {
     while (true) {
       const st = await (await api("/api/library/state")).json();
       showJob(st.job);
-      if (!st.job.running) { await loadLib(); runSearch(); break; }
+      if (!st.job.running) { await loadLib(); runSearch(); lbAfterScan(); break; }
       await new Promise(r => setTimeout(r, 1000));
     }
   } finally { L.polling = false; }
@@ -1552,6 +1558,55 @@ $("brGo").onclick = async () => {
   } catch (e) { $("brMsg").textContent = e.message; }
   finally { $("brGo").disabled = false; }
 };
+// "New shoot" notice: spots new shoot folders (or new photos in one) on plugged-in drives.
+const NEW = { pending: [], ready: [] };
+function newSeen() { try { return JSON.parse(localStorage.getItem("fls.newDismissed") || "[]"); } catch (e) { return []; } }
+function newKey(x) { return `${x.drive}|${x.shoot}|${x.photos}`; }
+async function lbCheckNew() {
+  if (NEW.ready.length) return lbNewShow();
+  try {
+    const r = await (await api("/api/library/new")).json();
+    if (r.scanning) return;
+    const dismissed = new Set(newSeen());
+    NEW.found = r.shoots.filter(x => !dismissed.has(newKey(x)));
+  } catch (e) { NEW.found = []; }
+  lbNewShow();
+}
+function lbNewShow() {
+  const box = $("lbNew");
+  if (NEW.ready.length) {
+    const names = NEW.ready.map(n => `<b>${esc(n)}</b>`).join(", ");
+    box.innerHTML = `<span class="grow">${names} ${NEW.ready.length === 1 ? "is" : "are"} scanned and ready to cull.</span>
+      ${NEW.ready.length === 1 ? `<button class="primary" id="nwCull">Cull this shoot</button><button id="nwShow">Show it</button>` : ""}<button id="nwOk">OK</button>`;
+    box.hidden = false;
+    const go = (cull) => { const sh = L.shoots.find(x => x.name.trim() === NEW.ready[0].trim()); NEW.ready = []; box.hidden = true;
+      if (!sh) return; $("lbMode").value = ""; $("lbWhere").value = "f:" + sh.id; setTab("lib"); runSearch().then(() => { if (cull) setTimeout(() => $("lbCull").click(), 400); }); };
+    if ($("nwCull")) { $("nwCull").onclick = () => go(true); $("nwShow").onclick = () => go(false); }
+    $("nwOk").onclick = () => { NEW.ready = []; box.hidden = true; lbCheckNew(); };
+    return;
+  }
+  const f = NEW.found || [];
+  if (!f.length) { box.hidden = true; return; }
+  const one = f[0], more = f.length - 1;
+  const what = one.new ? `New shoot: <b>${esc(one.name)}</b> — ${one.photos} photo${one.photos === 1 ? "" : "s"} on ${esc(one.drive)}`
+    : `<b>${esc(one.name)}</b> has ${one.change > 0 ? `${one.change} new photo${one.change === 1 ? "" : "s"}` : `${-one.change} photo${one.change === -1 ? "" : "s"} fewer on the drive`}`;
+  box.innerHTML = `<span class="grow">${what}${more ? ` (and ${more} more)` : ""}.</span>
+    <button class="primary" id="nwScan">Scan now</button><button id="nwLater" title="Don't mention ${more ? "these" : "this"} again until something changes">Not now</button>`;
+  box.hidden = false;
+  $("nwScan").onclick = async () => {
+    NEW.pending = f.map(x => x.name); box.hidden = true;
+    showJob(await (await api("/api/library/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).json());
+  };
+  $("nwLater").onclick = () => {
+    try { localStorage.setItem("fls.newDismissed", JSON.stringify([...newSeen(), ...f.map(newKey)].slice(-200))); } catch (e) {}
+    NEW.found = []; box.hidden = true;
+  };
+}
+function lbAfterScan() {                     // a scan finished: the shoots it was for are ready
+  if (NEW.pending.length) { NEW.ready = NEW.pending; NEW.pending = []; }
+  lbCheckNew();
+}
+setInterval(() => { if (!document.hidden && !L.polling) lbCheckNew(); }, 60000);
 $("lbAll").onclick = () => { L.sel = new Set(L.photos.map(r => r.id)); document.querySelectorAll("#grid .cell").forEach(c => c.classList.add("sel")); lbCount(); };
 $("lbFinder").onclick = () => lbFinder(L.photos.filter(r => L.sel.has(r.id)));
 async function lbFinder(rs) {
@@ -2891,6 +2946,8 @@ async function esPanel(which) {
       await esReplacePanel(P);
     } else if (which === "brief") {
       esBriefPanel(P);
+    } else if (which === "book") {
+      esBookPanel(P);
     } else {
       if (!ES.target || ES.photos.length <= ES.target) { P.textContent = `Already at or under the target (${ES.target || "none"}).`; return; }
       const lo = await (await api(`/api/essays/${ES.id}/leaveout?` + q({ target: ES.target }))).json();
@@ -3020,6 +3077,51 @@ async function esReplacePanel(P) {
     P.appendChild(d);
   }
 }
+// Book PDF: print-ready pages following the spreads (page 1 alone on the right), at 300 dpi.
+function esBookPanel(P) {
+  if (ES.bookJob && ES.bookJob.essay === ES.id) return esBookJob(P);
+  const opts = ES.photos.map((p, k) => `<option value="${p.id}">#${k + 1} ${esc(p.title || p.name)}</option>`).join("");
+  P.innerHTML = `<div class="esExp">
+    <div class="esRow">Page size <select id="bkSize"><option value="a4-portrait">A4 portrait</option><option value="a4-landscape">A4 landscape</option>
+      <option value="8x10-portrait">8 × 10 in portrait</option><option value="8x10-landscape">8 × 10 in landscape</option></select>
+      Photos <select id="bkLayout"><option value="border">One per page, white border</option><option value="full">Full-bleed (fill the page)</option></select></div>
+    <div class="esRow"><label><input type="checkbox" id="bkCover" checked> Cover</label> <select id="bkCoverPhoto" title="Cover photo">${opts}</select>
+      <label><input type="checkbox" id="bkCaptions" checked> Captions (your titles)</label>
+      <label><input type="checkbox" id="bkNumbers" checked> Page numbers</label>
+      <label><input type="checkbox" id="bkIndex" checked> Index page</label>
+      <label title="Adds 3 mm on every side, as online book printers ask"><input type="checkbox" id="bkBleed"> 3 mm bleed (online printers)</label></div>
+    <div class="esRow"><button id="bkGo" class="primary">Make book PDF</button></div>
+    <div class="small">Pages follow your Spreads view: page 1 alone on the right, then facing pairs. Photos at full print quality from your graded versions; ungraded ones get your Grade-tab grade or the essay's look. About 1 second per graded photo, ~15 s per ungraded RAW. Saved in Pictures › Film Look Studio Essays.</div>
+  </div>`;
+  $("bkGo").onclick = async () => {
+    clearTimeout(esSaveTimer);
+    const locked = {}, titles = {};
+    ES.photos.forEach(p => { locked[p.id] = p.locked; titles[p.id] = p.title || ""; });
+    await api(`/api/essays/${ES.id}/order`, esJSON({ order: ES.photos.map(p => p.id), locked, titles }));
+    const body = { size: $("bkSize").value, layout: $("bkLayout").value, cover: $("bkCover").checked, captions: $("bkCaptions").checked,
+                   page_numbers: $("bkNumbers").checked, index: $("bkIndex").checked, bleed: $("bkBleed").checked, cover_photo: +$("bkCoverPhoto").value };
+    const r = await (await api(`/api/essays/${ES.id}/book`, esJSON(body))).json();
+    ES.bookJob = { id: r.job, essay: ES.id }; esBookJob(P);
+  };
+}
+async function esBookJob(P) {
+  const job = ES.bookJob; if (!job) return;
+  let j; try { j = await (await api("/api/jobs/" + job.id)).json(); } catch (e) { ES.bookJob = null; return; }
+  if (ES.panel !== "book" || ES.id !== job.essay) { if (!j.finished) setTimeout(() => esBookJob(P), 1500); else ES.bookJob = null; return; }
+  let html;
+  if (j.error) html = `<div class="warn">The book stopped: ${esc(j.error)}</div>`;
+  else if (j.waiting && j.waiting.length) html = `<div class="warn">Waiting for ${esc(j.waiting.join(", "))} — plug it in and the book carries on by itself.</div>`;
+  else if (!j.finished) html = `<div>Making the book… ${esc(j.current || "")}</div><progress max="${j.total || 1}" value="${j.done}"></progress>`;
+  else html = `<div>${j.pdf ? "Book ready: " + esc(j.pdf.split("/").pop()) : "Cancelled."}</div>`;
+  P.innerHTML = `<div class="esExp">${html}<div class="esRow">
+    ${!j.finished ? `<button id="bkStop">Cancel</button>` : `<button id="bkAgain">Make another</button>`}
+    ${j.pdf ? `<button id="bkOpen" class="primary">Open the PDF</button><button id="bkShow">Show in Finder</button>` : ""}</div></div>`;
+  if ($("bkStop")) $("bkStop").onclick = () => api(`/api/jobs/${job.id}/cancel`, { method: "POST" });
+  if ($("bkAgain")) $("bkAgain").onclick = () => { ES.bookJob = null; esPanel("book"); };
+  if ($("bkShow")) $("bkShow").onclick = () => api("/api/essays/reveal", esJSON({ path: j.pdf }));
+  if ($("bkOpen")) $("bkOpen").onclick = () => api("/api/essays/open", esJSON({ path: j.pdf }));
+  if (!j.finished) setTimeout(() => esBookJob(P), 1500);
+}
 function esBriefPanel(P) {
   const b = ES.brief || { count: ES.photos.length, theme: "", colour: "mix", per_shoot: null };
   const locked = ES.photos.filter(p => p.locked).length;
@@ -3091,7 +3193,7 @@ api("/api/state").then(r => r.json()).then(st => {
   loadState(st);
   const inGrade = st.folder || st.collection;
   if (inGrade) setTab("grade");            // don't wait for the library to load
-  loadLib().then(lib => { if (!inGrade) setTab(lib.roots.length ? "lib" : "grade"); });
+  loadLib().then(lib => { if (!inGrade) setTab(lib.roots.length ? "lib" : "grade"); lbCheckNew(); });
 });
 </script>
 </body>
