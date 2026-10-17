@@ -579,6 +579,191 @@ def browse_forget_deleted(folder_id: int):
     return {"removed": browse.forget_deleted(_lib().con(), folder_id)}
 
 
+# --- Publish to WordPress -----------------------------------------------------------------------
+
+@app.get("/api/publish/settings")
+def publish_settings():
+    from . import publish
+    st = publish.load_settings()
+    return {"site": st.get("site", ""), "user": st.get("user", ""), "has_password": bool(publish.get_password(st))}
+
+
+class PublishSettingsIn(BaseModel):
+    site: str
+    user: str
+    password: str | None = None
+
+
+@app.post("/api/publish/settings")
+def publish_save(body: PublishSettingsIn):
+    """Save the website + username (and the application password into the Keychain), then test."""
+    from . import publish
+    try:
+        st = publish.save_settings(body.site, body.user, body.password)
+        return {"site": st["site"], "user": st["user"], **publish.test_connection(st)}
+    except (ValueError, RuntimeError, publish.WPError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/publish/test")
+def publish_test():
+    from . import publish
+    try:
+        return publish.test_connection()
+    except publish.WPError as e:
+        raise HTTPException(400, str(e))
+
+
+PUBLISH_DEFAULTS = {"title": "", "category": None, "intro": "", "closing": "", "cover": None, "captions": True,
+                    "size": 2048, "strip_gps": True, "post_id": None, "link": None, "uploaded": None}
+
+
+@app.get("/api/essays/{eid}/publish")
+def essay_publish_get(eid: int):
+    """This essay's post details for WordPress (saved with the essay)."""
+    e = _essay_row(eid)
+    src = json.loads(e["source"] or "{}")
+    pub = {**PUBLISH_DEFAULTS, "title": e["name"], **(src.get("publish") or {})}
+    return pub
+
+
+class PublishDetailsIn(BaseModel):
+    details: dict
+
+
+@app.post("/api/essays/{eid}/publish")
+def essay_publish_save(eid: int, body: PublishDetailsIn):
+    c = _lib().con()
+    e = _essay_row(eid)
+    src = json.loads(e["source"] or "{}")
+    keep = {k: v for k, v in body.details.items() if k in PUBLISH_DEFAULTS and k not in ("post_id", "link", "uploaded")}
+    src["publish"] = {**PUBLISH_DEFAULTS, **(src.get("publish") or {}), **keep}
+    c.execute("UPDATE essays SET source=?, updated_at=datetime('now') WHERE id=?", (json.dumps(src), eid))
+    c.commit()
+    return src["publish"]
+
+
+@app.get("/api/essays/{eid}/preview")
+def essay_publish_preview(eid: int):
+    """A local preview of the WordPress post: title, write-up, then a fade slideshow with
+    thumbnails (like your existing essays' Visual Portfolio slider), captions, closing text."""
+    import html as H
+    from fastapi.responses import HTMLResponse
+    c, es = _lib().con(), _essay()
+    e = _essay_row(eid)
+    pub = essay_publish_get(eid)
+    its = es.items(c, eid)
+    cats = {}
+    try:
+        from . import publish
+        cats = {x["id"]: x["name"] for x in publish.test_connection()["categories"]}
+    except Exception:
+        pass
+    slides = []
+    for it in its:
+        pid = it["photo_id"]
+        graded = c.execute("SELECT 1 FROM files WHERE photo_id=? AND role='export' AND kind='jpg' AND missing=0", (pid,)).fetchone()
+        src = f"/api/browse/graded/{pid}" if graded else f"/api/cull/view/{pid}"
+        slides.append((src, f"/api/essays/thumb/{pid}", (it["title"] or "") if pub["captions"] else ""))
+    cover = pub.get("cover") or (its[0]["photo_id"] if its else None)
+    para = lambda t: "".join(f"<p>{H.escape(x.strip())}</p>" for x in (t or "").split("\n\n") if x.strip())
+    cat = cats.get(pub.get("category"), "")
+    slide_html = "".join(f'<figure class="s{" on" if k == 0 else ""}"><img src="{a}" alt="{H.escape(t)}" loading="lazy">'
+                         f'{f"<figcaption>{H.escape(t)}</figcaption>" if t else ""}</figure>' for k, (a, _, t) in enumerate(slides))
+    thumbs = "".join(f'<img src="{b}" data-k="{k}" alt="">' for k, (_, b, _) in enumerate(slides))
+    page = f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Preview · {H.escape(pub['title'] or e['name'])}</title><style>
+body{{margin:0;background:#fff;color:#334155;font:17px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif}}
+.bar{{background:#111;color:#ddd;font-size:13px;padding:8px 16px;text-align:center}}
+.bar b{{color:#e0b34a}} header{{border-bottom:1px solid #e5e7eb;padding:18px 24px;font-weight:600;color:#1e293b;font-size:22px}}
+main{{max-width:1200px;margin:0 auto;padding:40px 24px 80px}} .cat{{color:#046bd2;font-size:14px}}
+h1{{color:#1e293b;font-size:36px;font-weight:600;margin:6px 0 18px;line-height:1.25}} .intro p,.closing p{{max-width:760px}}
+.show{{position:relative;background:#fafafa;margin:28px 0 10px;aspect-ratio:3/2}}
+.show figure{{position:absolute;inset:0;margin:0;opacity:0;transition:opacity .3s;display:flex;flex-direction:column;align-items:center;justify-content:center}}
+.show figure.on{{opacity:1}} .show img{{max-width:100%;max-height:calc(100% - 30px);object-fit:contain}}
+.show figcaption{{font-size:14px;color:#64748b;padding-top:6px}}
+.dots{{text-align:center;margin:8px 0}} .dots span{{display:inline-block;width:8px;height:8px;border-radius:50%;background:#cbd5e1;margin:0 3px;cursor:pointer}} .dots span.on{{background:#1e293b}}
+.thumbs{{display:flex;gap:10px;overflow-x:auto;padding:6px 0}} .thumbs img{{height:70px;cursor:pointer;opacity:.6}} .thumbs img.on{{opacity:1;outline:2px solid #1e293b}}
+.grid{{margin-top:60px;border-top:1px solid #e5e7eb;padding-top:20px;font-size:14px;color:#64748b}}
+.grid .card{{display:inline-block;width:230px;margin:10px 14px 0 0;vertical-align:top;border-radius:6px;overflow:hidden;box-shadow:0 1px 4px #0002}}
+.grid .card img{{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}} .grid .card div{{padding:8px 10px;color:#1e293b;font-weight:600}}
+</style></head><body>
+<div class="bar"><b>Preview</b> — roughly how the post will look on your site (your theme decides the exact fonts and spacing). Nothing has been uploaded.</div>
+<header>Andrew Chew CC</header>
+<main><div class="cat">{H.escape(cat)}</div><h1>{H.escape(pub['title'] or e['name'])}</h1>
+<div class="intro">{para(pub['intro']) or '<p style="color:#94a3b8"><i>(No write-up yet.)</i></p>'}</div>
+<div class="show">{slide_html}</div><div class="dots">{"".join(f'<span data-k="{k}"></span>' for k in range(len(slides)))}</div>
+<div class="thumbs">{thumbs}</div>
+<div class="closing">{para(pub['closing'])}</div>
+<div class="grid">How it appears on the {H.escape(cat or "gallery")} page:<br>
+<div class="card"><img src="{f"/api/essays/thumb/{cover}" if cover else ""}" alt=""><div>{H.escape(pub['title'] or e['name'])}</div></div></div>
+</main><script>
+const S=[...document.querySelectorAll('.show figure')],D=[...document.querySelectorAll('.dots span')],T=[...document.querySelectorAll('.thumbs img')];let k=0,t;
+function go(n){{k=(n+S.length)%S.length;S.forEach((s,i)=>s.classList.toggle('on',i===k));D.forEach((s,i)=>s.classList.toggle('on',i===k));T.forEach((s,i)=>s.classList.toggle('on',i===k));
+const B=document.querySelector('.thumbs');if(T[k])B.scrollLeft=T[k].offsetLeft-B.offsetLeft-B.clientWidth/2+T[k].clientWidth/2;clearTimeout(t);t=setTimeout(()=>go(k+1),6000)}}
+D.concat(T).forEach(el=>el.onclick=()=>go(+el.dataset.k));document.onkeydown=e=>{{if(e.key==='ArrowRight')go(k+1);if(e.key==='ArrowLeft')go(k-1)}};if(S.length)go(0);
+</script></body></html>"""
+    return HTMLResponse(page)
+
+
+@app.post("/api/essays/{eid}/upload")
+def essay_upload(eid: int):
+    """Upload as draft: web-size photos to the Media Library + a DRAFT post (background job).
+    Nothing on the site is edited or deleted; you publish the draft in WordPress yourself."""
+    from . import publish
+    _essay_row(eid)
+    job_id = uuid.uuid4().hex[:8]
+    job = jobs[job_id] = {"total": 0, "done": 0, "current": "", "waiting": [], "uploaded": [], "result": None,
+                          "error": None, "note": None, "finished": False, "cancel": False}
+
+    def work():
+        try:
+            job["result"] = publish.upload_essay(_lib().con(), eid, job=job, cancelled=lambda: job["cancel"])
+        except Exception as e:
+            job["error"] = str(e)
+            if job["uploaded"]:
+                job["note"] = (f"{len(job['uploaded'])} photo(s) had already been uploaded to your Media Library; "
+                               "no post was created. You can delete them in WordPress → Media, or just try again.")
+        job["current"] = ""
+        job["finished"] = True
+
+    threading.Thread(target=work, daemon=True).start()
+    return {"job": job_id}
+
+
+class PublishPhotosIn(BaseModel):
+    name: str
+    photo_ids: list[int] = []
+    view: dict | None = None
+    look: str = "leica-m9"
+
+
+@app.post("/api/publish/from_photos")
+def publish_from_photos(body: PublishPhotosIn):
+    """Library → Publish…: an essay with all these photos, in shooting order, ready to publish."""
+    c, es = _lib().con(), _essay()
+    ids = body.photo_ids or (_view_ids(c, body.view) if body.view else [])
+    if not ids:
+        raise HTTPException(400, "Select some photos first.")
+    times = {r[0]: r[1] or "" for r in c.execute(
+        f"SELECT id, capture_time FROM photos WHERE id IN ({','.join('?' * len(ids))})", ids)}
+    ids = sorted(dict.fromkeys(ids), key=lambda i: times.get(i, ""))
+    try:
+        eid, _ = es.create_from_brief(c, body.name.strip() or "Untitled", ids, {"count": len(ids)}, body.look,
+                                      origin={"type": "library-publish"})
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    es.set_order(c, eid, ids)                  # shooting order, as in the shoot
+    return {"id": eid, "count": len(ids)}
+
+
+@app.post("/api/publish/forget")
+def publish_forget():
+    from . import publish
+    publish.forget()
+    return {"ok": True}
+
+
 # --- Second look: overlooked photos ------------------------------------------------------
 
 @app.get("/api/second/state")

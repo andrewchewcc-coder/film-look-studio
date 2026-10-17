@@ -11,8 +11,9 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
 ## Code map
 
 - `filmlook/raw.py` – RAW decode (rawpy/LibRaw) to linear sRGB, auto exposure metering. Grade's auto exposure
-  (`engine._auto_gain`, METER_VERSION 2) = meter, but never brighter than the camera's embedded preview
-  (dark scenes were lifted up to 4x and blew out); cached previews re-meter once when the version changes.
+  (`engine._auto_gain`, METER_VERSION 4) matches the camera's embedded preview (median), else the meter.
+  `pipeline.base` brightens with g·x/(1+(g−1)x): mid-tones lifted, the sensor's white stays white (a plain
+  gain + shoulder blew out skies). Cached previews re-meter once when METER_VERSION changes.
 - `filmlook/dng.py` – DNG lens corrections LibRaw skips (WarpRectilinear, FixVignetteRadial, DefaultCrop).
 - `filmlook/pipeline.py` – the grade: base render → per-pixel look → grain/vignette. Tone: S-curve,
   shadows/highlights, black/white, then `tone.curve` (look) and `tone.user_curve` (Grade tab's curve;
@@ -60,6 +61,11 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   print-ready book PDF (A4 / 8x10, portrait / landscape; border or full-bleed; cover, captions, page
   numbers, index, 3 mm bleed with TrimBox) following the spreads, 300 dpi, streamed page by page
   (own tiny PDF writer, one JPEG per page). Library also shows a new-shoot notice (`scan.new_shoots`).
+- `filmlook/publish.py` – WordPress publishing (REST API + Application Password in the macOS Keychain; site/user
+  in LIBRARY_DIR/publish.json). Essays → Publish tab: post details saved in essays.source.publish, local
+  preview, Upload as draft = web JPGs (GPS stripped) to the Media Library + a DRAFT post copying the
+  site's essay layout (Spectra container + Visual Portfolio fade slider, `VP_SETTINGS`). Only ever adds
+  media and drafts; never edits or deletes site content.
 - PyTorch model calls must go through `vision` (one at a time: concurrent MPS use segfaults).
 - The app's open folder / collection is global server state: test on another port (e.g. 8766).
 - Library CLI: `./studio library add|scan|status|search|folders`.

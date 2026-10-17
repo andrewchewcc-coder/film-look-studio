@@ -67,6 +67,14 @@ the essay's look; all with their crop. Drives can be unplugged while you arrange
 per page with a white border or full-bleed; optional cover, captions, page numbers, index page and 3 mm bleed
 for online printers. Pages follow the Spreads view (page 1 alone on the right, then facing pairs).
 
+### Publish to your WordPress site
+Essays → **Publish**: connect once (website, WordPress username, an Application Password from WordPress →
+Users → Profile; kept in your Mac's Keychain). Fill in title, gallery (category), cover, write-up, captions,
+photo size and GPS removal, click **Preview**, then **Upload as draft**: the photos go to your Media Library and
+a draft post is created in the same slideshow layout as your existing essays. Check it in WordPress and press
+Publish there. The app never edits or deletes anything on your site. Library → **Publish…** turns a shoot or
+selection into an essay first.
+
 ### Browser app (sliders)
 ```bash
 ./studio serve ~/Pictures/2026-10-street-walk

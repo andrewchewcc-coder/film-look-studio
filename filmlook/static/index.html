@@ -377,6 +377,8 @@
   .esPage .pn { position: absolute; bottom: 5px; font-size: 10px; color: #777; }
   .esPage.left .pn { left: 8px; } .esPage.right .pn { right: 8px; }
   .esSpreadWhy { grid-column: 1 / -1; text-align: center; font-size: 11px; color: var(--muted); padding-top: 4px; }
+  #esPanel.tall { height: 58%; }
+  #esPanel.tall #esPanelBody { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
   #esPanel { border-top: 1px solid var(--line); height: 250px; display: flex; flex-direction: column; flex: 0 0 auto; }
   #esPanelTabs { margin: 8px 14px; align-self: flex-start; }
   #esPanelBody { flex: 1; overflow-x: auto; overflow-y: auto; padding: 0 14px 10px; display: flex; gap: 12px; align-items: flex-start; }
@@ -468,6 +470,7 @@
       <span id="lbCount" class="small"></span>
       <button id="lbEssay" title="Make a photo essay, zine or book from these photos: the app chooses the best ones to your brief">Make an essay</button>
       <button id="lbAddEssay" hidden title="Add the selected photos to an essay you already have">Add to essay…</button>
+      <button id="lbPublish" title="Publish these photos to your WordPress website (as an essay, in shooting order)">Publish…</button>
       <button id="lbGrade" hidden title="Open these photos in Grade">Grade picks</button>
       <button id="lbCull" class="primary" hidden title="Go through this shoot with the app's help: similar frames grouped, a suggested pick for each">Cull this shoot</button>
       <button id="lbAll">Select all</button>
@@ -639,7 +642,7 @@
       <div id="esNote" class="small"></div>
       <div id="esBoard"></div>
       <div id="esPanel">
-        <div class="seg" id="esPanelTabs"><button data-p="pairs" class="on">Pairs</button><button data-p="bench" title="Photos from your selection that weren't chosen">Bench</button><button data-p="replace" hidden>Replace</button><button data-p="fill">Fill the gap</button><button data-p="trim">Trim</button><button data-p="brief" title="Change the brief and choose again">Brief</button><button data-p="export">Export</button><button data-p="book" title="A print-ready book or zine PDF">Book PDF</button></div>
+        <div class="seg" id="esPanelTabs"><button data-p="pairs" class="on">Pairs</button><button data-p="bench" title="Photos from your selection that weren't chosen">Bench</button><button data-p="replace" hidden>Replace</button><button data-p="fill">Fill the gap</button><button data-p="trim">Trim</button><button data-p="brief" title="Change the brief and choose again">Brief</button><button data-p="export">Export</button><button data-p="book" title="A print-ready book or zine PDF">Book PDF</button><button data-p="publish" title="Publish this essay to your WordPress website">Publish</button></div>
         <div id="esPanelBody" class="small"></div>
       </div>
     </div>
@@ -1523,6 +1526,19 @@ $("lbEssay").onclick = async () => {
   } catch (e) {}
 };
 $("brCancel").onclick = () => { $("briefBox").hidden = true; };
+$("lbPublish").onclick = async () => {
+  const src = lbEssaySource();
+  const n = src.photo_ids ? src.photo_ids.length : (await (await api("/api/essays/count", esJSON({ name: "", ...src }))).json()).count;
+  if (!n) return $("lbNote").textContent = "Nothing to publish here.";
+  const name = prompt(`Publish ${n} photo${n === 1 ? "" : "s"} (${src.label}). They become an essay in shooting order, which you can reorder before uploading.\n\nTitle:`,
+    $("lbTitle").textContent.replace(/^Worth a second look · |^On this day · /, ""));
+  if (!name) return;
+  $("lbNote").textContent = "Preparing…";
+  try {
+    const r = await (await api("/api/publish/from_photos", esJSON({ name, ...src }))).json();
+    $("lbNote").textContent = ""; setTab("essay"); await esLoad(r.id); esPanel("publish");
+  } catch (e) { $("lbNote").textContent = e.message; }
+};
 $("lbAddEssay").onclick = async () => {
   const ids = L.photos.filter(r => L.sel.has(r.id)).map(r => r.id); if (!ids.length) return;
   const rows = await (await api("/api/essays")).json();
@@ -2902,6 +2918,7 @@ $("esTrim").onclick = () => esPanel("trim");
 document.querySelectorAll("#esPanelTabs button").forEach(b => b.onclick = () => esPanel(b.dataset.p));
 async function esPanel(which) {
   ES.panel = which;
+  $("esPanel").classList.toggle("tall", which === "publish" || which === "book" || which === "brief");
   document.querySelectorAll("#esPanelTabs button").forEach(b => b.classList.toggle("on", b.dataset.p === which));
   // A fresh box per request: an older, slower request then writes into a box no longer shown.
   const P = document.createElement("div"); P.style.display = "contents"; P.textContent = "Looking…";
@@ -2948,6 +2965,8 @@ async function esPanel(which) {
       esBriefPanel(P);
     } else if (which === "book") {
       esBookPanel(P);
+    } else if (which === "publish") {
+      await esPublishPanel(P);
     } else {
       if (!ES.target || ES.photos.length <= ES.target) { P.textContent = `Already at or under the target (${ES.target || "none"}).`; return; }
       const lo = await (await api(`/api/essays/${ES.id}/leaveout?` + q({ target: ES.target }))).json();
@@ -3121,6 +3140,119 @@ async function esBookJob(P) {
   if ($("bkShow")) $("bkShow").onclick = () => api("/api/essays/reveal", esJSON({ path: j.pdf }));
   if ($("bkOpen")) $("bkOpen").onclick = () => api("/api/essays/open", esJSON({ path: j.pdf }));
   if (!j.finished) setTimeout(() => esBookJob(P), 1500);
+}
+// Publish to WordPress. Part 1: connecting (website, username, application password in the Keychain).
+async function esPublishPanel(P) {
+  const st = await (await api("/api/publish/settings")).json();
+  if (!st.site || !st.has_password || ES.pubEdit) return esPublishSettings(P, st);
+  P.innerHTML = `<div class="esExp"><div>Checking the connection to ${esc(st.site)}…</div></div>`;
+  try {
+    const t = await (await api("/api/publish/test", { method: "POST" })).json();
+    ES.pubConn = t;
+    P.innerHTML = `<div class="esExp">
+      <div>✓ Connected to <b>${esc(st.site.replace("https://", ""))}</b> as <b>${esc(t.name)}</b>.
+        ${t.can_upload && t.can_post ? "" : `<span class="warn">This account can't ${!t.can_upload ? "upload photos" : "create posts"} — use an Administrator or Editor account.</span>`}</div>
+      <div class="esRow"><button id="pubEdit">Change settings</button><button id="pubForget">Disconnect</button></div></div>
+      <div id="pubForm"></div>`;
+    esPublishForm($("pubForm"), t);
+    $("pubEdit").onclick = () => { ES.pubEdit = true; esPanel("publish"); };
+    $("pubForget").onclick = async () => { if (!confirm("Disconnect from your website? The saved application password is removed from this Mac (it stays valid in WordPress until you revoke it there).")) return;
+      await api("/api/publish/forget", { method: "POST" }); esPanel("publish"); };
+  } catch (e) {
+    P.innerHTML = `<div class="esExp"><div class="warn">${esc(e.message)}</div><div class="esRow"><button id="pubEdit">Change settings</button><button id="pubRetry">Try again</button></div></div>`;
+    $("pubEdit").onclick = () => { ES.pubEdit = true; esPanel("publish"); };
+    $("pubRetry").onclick = () => esPanel("publish");
+  }
+}
+// Part 2: the post — title, gallery (category), cover, write-up, captions, web size, GPS.
+async function esPublishForm(F, conn) {
+  const d = await (await api(`/api/essays/${ES.id}/publish`)).json();
+  const cats = conn.categories, street = cats.find(c => /street/i.test(c.name));
+  const cat = d.category || (street ? street.id : cats[0] && cats[0].id);
+  const photoOpts = ES.photos.map((p, k) => `<option value="${p.id}">#${k + 1} ${esc(p.title || p.name)}</option>`).join("");
+  const n = ES.photos.length, titled = ES.photos.filter(p => p.title).length;
+  F.innerHTML = `<div class="esExp" style="max-width:820px">
+    ${d.post_id ? `<div class="warn">Already uploaded as a draft${d.uploaded ? " on " + esc(d.uploaded.slice(0, 16)) : ""} — <a href="${esc(d.link || "#")}" target="_blank">open it in WordPress</a>. Uploading again makes a new draft.</div>` : ""}
+    <div class="esRow">Title <input type="text" id="pbTitle" value="${esc(d.title || ES.name)}" style="width:300px">
+      Gallery <select id="pbCat">${cats.map(c => `<option value="${c.id}" ${c.id === cat ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
+      Cover <select id="pbCover">${photoOpts}</select></div>
+    <div>Write-up (shown above the photos)</div>
+    <textarea id="pbIntro" rows="4" style="width:100%;background:#0f0f0f;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px;font:inherit" placeholder="A few lines about the essay: where, when, what it's about. Ask Claude in the chat if you'd like help writing it.">${esc(d.intro || "")}</textarea>
+    <div>Closing text (optional, shown after the photos)</div>
+    <textarea id="pbClosing" rows="2" style="width:100%;background:#0f0f0f;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px;font:inherit">${esc(d.closing || "")}</textarea>
+    <div class="esRow"><label><input type="checkbox" id="pbCaptions" ${d.captions ? "checked" : ""}> Captions from your photo titles (${titled} of ${n} have one)</label>
+      Photo size <select id="pbSize"><option value="1600">1600 px</option><option value="2048">2048 px (recommended)</option><option value="2560">2560 px</option></select>
+      <label title="Your photos record where you stood. This removes it from the uploaded copies (camera and lens details stay)."><input type="checkbox" id="pbGps" ${d.strip_gps ? "checked" : ""}> Remove GPS location</label></div>
+    <div class="esRow"><button id="pbPreview">Preview</button><button id="pbUpload" class="primary">Upload as draft…</button><span id="pbSaved" class="small"></span></div>
+    <div class="small">${n} photos, in the essay's order. Preview opens in a new browser tab. Nothing is sent to your website until you press Upload as draft and confirm.</div>
+    <div id="pbJob"></div>
+  </div>`;
+  $("pbCover").value = d.cover || (ES.photos[0] && ES.photos[0].id); $("pbSize").value = String(d.size || 2048);
+  let t = null;
+  const save = () => { clearTimeout(t); t = setTimeout(async () => {
+    const details = { title: $("pbTitle").value, category: +$("pbCat").value, cover: +$("pbCover").value, intro: $("pbIntro").value,
+                      closing: $("pbClosing").value, captions: $("pbCaptions").checked, size: +$("pbSize").value, strip_gps: $("pbGps").checked };
+    try { await api(`/api/essays/${ES.id}/publish`, esJSON({ details })); $("pbSaved").textContent = "Saved."; } catch (e) { $("pbSaved").textContent = e.message; }
+  }, 500); };
+  F.querySelectorAll("input, select, textarea").forEach(el => el.addEventListener(el.tagName === "TEXTAREA" || el.type === "text" ? "input" : "change", save));
+  $("pbPreview").onclick = async (ev) => {
+    clearTimeout(esSaveTimer);                // the essay's latest order, titles and post details first
+    const locked = {}, titles = {};
+    ES.photos.forEach(p => { locked[p.id] = p.locked; titles[p.id] = p.title || ""; });
+    await api(`/api/essays/${ES.id}/order`, esJSON({ order: ES.photos.map(p => p.id), locked, titles }));
+    const details = { title: $("pbTitle").value, category: +$("pbCat").value, cover: +$("pbCover").value, intro: $("pbIntro").value,
+                      closing: $("pbClosing").value, captions: $("pbCaptions").checked, size: +$("pbSize").value, strip_gps: $("pbGps").checked };
+    await api(`/api/essays/${ES.id}/publish`, esJSON({ details }));
+    if (!(ev && ev.noOpen)) window.open(`/api/essays/${ES.id}/preview`, "_blank");
+  };
+  $("pbUpload").onclick = async () => {
+    await $("pbPreview").onclick.call(null, { noOpen: true }).catch(() => {});
+    const catName = $("pbCat").selectedOptions[0].textContent, site = (conn.site || "your website");
+    const msg = `Upload “${$("pbTitle").value}” to your website as a DRAFT?\n\n` +
+      `• ${n} photos at ${$("pbSize").value} px go into your WordPress Media Library` + ($("pbGps").checked ? " (GPS location removed)" : "") + `\n` +
+      `• a draft post in the “${catName}” gallery, with your write-up, the cover image and the slideshow\n\n` +
+      `It stays private until you publish it in WordPress. Nothing existing on your site is changed.`;
+    if (!confirm(msg)) return;
+    const r = await (await api(`/api/essays/${ES.id}/upload`, { method: "POST" })).json();
+    ES.pubJob = { id: r.job, essay: ES.id }; esPublishJob();
+  };
+  if (ES.pubJob && ES.pubJob.essay === ES.id) esPublishJob();
+}
+async function esPublishJob() {
+  const job = ES.pubJob, box = $("pbJob"); if (!job || !box) return;
+  let j; try { j = await (await api("/api/jobs/" + job.id)).json(); } catch (e) { ES.pubJob = null; return; }
+  if (ES.panel !== "publish" || ES.id !== job.essay) { if (!j.finished) setTimeout(esPublishJob, 1500); return; }
+  let html;
+  if (j.error) html = `<div class="warn">Upload stopped: ${esc(j.error)}</div>${j.note ? `<div class="small">${esc(j.note)}</div>` : ""}`;
+  else if (j.waiting && j.waiting.length) html = `<div class="warn">Waiting for ${esc(j.waiting.join(", "))} — plug it in and the upload carries on.</div>`;
+  else if (!j.finished) html = `<div>${esc(j.current || "Starting…")}</div><progress max="${j.total || 1}" value="${j.done}" style="width:320px"></progress>`;
+  else if (j.result) html = `<div>✓ Draft created on your website. It's private until you publish it.</div>
+      <div class="esRow"><a href="${esc(j.result.edit)}" target="_blank"><button class="primary">Open the draft in WordPress</button></a>
+      <a href="${esc(j.result.preview)}" target="_blank"><button>Preview on your site</button></a></div>
+      <div class="small">Check it with your real theme, then press Publish in WordPress. It will then appear on your gallery page.</div>`;
+  else html = `<div>Cancelled.${j.note ? " " + esc(j.note) : ""}</div>`;
+  box.innerHTML = `<div class="esExp" style="margin-top:10px">${html}${!j.finished ? `<div class="esRow"><button id="pbStop">Cancel</button></div>` : ""}</div>`;
+  if ($("pbStop")) $("pbStop").onclick = () => api(`/api/jobs/${job.id}/cancel`, { method: "POST" });
+  if (!j.finished) setTimeout(esPublishJob, 1500); else if (j.result) ES.pubJob = null;
+}
+function esPublishSettings(P, st) {
+  P.innerHTML = `<div class="esExp">
+    <div><b>Connect to your WordPress website</b></div>
+    <div class="esRow">Website <input type="text" id="pubSite" value="${esc(st.site || "andrewchewcc.com")}" style="width:200px">
+      WordPress username <input type="text" id="pubUser" value="${esc(st.user || "")}" style="width:150px" autocomplete="off"></div>
+    <div class="esRow">Application password <input type="password" id="pubPass" placeholder="${st.has_password ? "saved — leave empty to keep it" : "xxxx xxxx xxxx xxxx xxxx xxxx"}" style="width:260px" autocomplete="off">
+      <button id="pubSave" class="primary">Save and test</button>${st.site && st.has_password ? `<button id="pubCancel">Cancel</button>` : ""}</div>
+    <div class="small">Create it in WordPress: Users → Profile → Application Passwords, name it “Film Look Studio”, copy it here.
+      It's kept in your Mac's Keychain, and you can revoke it in WordPress any time. Your normal WordPress password is never used.</div>
+    <div id="pubMsg" class="small"></div></div>`;
+  $("pubSave").onclick = async () => {
+    $("pubMsg").textContent = "Saving and checking…";
+    try {
+      const t = await (await api("/api/publish/settings", esJSON({ site: $("pubSite").value, user: $("pubUser").value, password: $("pubPass").value || null }))).json();
+      ES.pubEdit = false; $("pubPass").value = ""; esPanel("publish");
+    } catch (e) { $("pubMsg").textContent = e.message; }
+  };
+  if ($("pubCancel")) $("pubCancel").onclick = () => { ES.pubEdit = false; esPanel("publish"); };
 }
 function esBriefPanel(P) {
   const b = ES.brief || { count: ES.photos.length, theme: "", colour: "mix", per_shoot: null };

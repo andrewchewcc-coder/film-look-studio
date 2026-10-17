@@ -93,11 +93,18 @@ def apply_curve(d, points):
 def base(linear, gain, exposure=0.0, display=False):
     """`display=True` for already-finished images (JPG): no shoulder or contrast boost, so with
     no exposure change the result is the original image."""
-    x = linear * np.float32(gain * 2.0 ** exposure)
+    g = float(gain * 2.0 ** exposure)
     if display and exposure <= 0:
-        return srgb_encode(np.clip(x, 0, 1)).astype(np.float32)
-    k = 0.7  # highlight shoulder: linear below k, smooth roll-off to 1.0 above
-    x = np.where(x < k, x, k + (1 - k) * (1 - np.exp(-(x - k) / (1 - k))))
+        return srgb_encode(np.clip(linear * np.float32(g), 0, 1)).astype(np.float32)
+    x = np.clip(linear, 0, 1)
+    if g > 1:
+        # Brighten like a camera does: lift the mid-tones (slope g in the shadows) while the sensor's
+        # brightest value stays white, so bright skies keep their clouds instead of being pushed
+        # past white and squeezed back (which flattened them).
+        x = g * x / (1 + (g - 1) * x)
+    else:
+        x = x * g
+    x = np.asarray(x, np.float32)
     if display:
         return srgb_encode(x).astype(np.float32)
     return _scurve(srgb_encode(x), 1.08, 0.45)

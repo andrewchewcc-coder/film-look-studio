@@ -45,7 +45,7 @@ def preview_linear(path, edge=PREVIEW_EDGE):
         return _preview_linear(path, edge, key, mkey)
 
 
-METER_VERSION = 2      # 2: never brighter than the camera's own rendering
+METER_VERSION = 4      # 2: never brighter than the camera; 3/4: match the camera with the white-keeping base
 
 
 def _camera_gain(path, lin):
@@ -72,12 +72,12 @@ def _camera_gain(path, lin):
 
 
 def _auto_gain(path, lin):
-    """Auto exposure for the Grade tab: our meter, but never brighter than the camera's own
-    rendering. The meter alone lifts night and deep-shade scenes towards mid-grey (up to 4x),
-    which blows out lamps and bright areas the camera kept."""
-    gain = raw.meter(lin)
+    """Auto exposure for the Grade tab: as bright as the camera's own rendering (the exposure you
+    chose when shooting), so Grade starts where the Library view is. The base keeps the sensor's
+    white as white, so matching the camera no longer blows out skies. Without a usable camera
+    preview, our meter decides."""
     cam = _camera_gain(path, lin)
-    return float(min(gain, cam)) if cam else gain
+    return float(cam) if cam else raw.meter(lin)
 
 
 def _preview_linear(path, edge, key, mkey):
