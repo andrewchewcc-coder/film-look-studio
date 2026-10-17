@@ -74,14 +74,27 @@ def _resize(im, edge):
     return im
 
 
+def _own_recipe(src):
+    """The grade you set for this photo in the Grade tab (not exported yet), as a recipe; or None."""
+    from .. import edits, recipes
+    g = edits.get_grade(src)
+    if not g:
+        return None
+    try:
+        base = recipes.load_look(g["look"])
+    except KeyError:
+        base = recipes.load_look(None)
+    return recipes.apply_adjust(base, g["adjust"])
+
+
 def export_one(item, recipe, edge, dst, quality=92):
     """Write one photo to `dst`. Graded JPGs are resized; RAWs are rendered with look + crop."""
     from .. import edits, engine
     src = Path(item["src"])
     if item["kind"] == "graded":
         im = ImageOps.exif_transpose(Image.open(src)).convert("RGB")
-    else:
-        im = Image.fromarray(engine.render_full(src, recipe, geom=edits.get(src)))
+    else:                                     # your Grade-tab grade if you made one, else the essay's look
+        im = Image.fromarray(engine.render_full(src, _own_recipe(src) or recipe, geom=edits.get(src)))
     _resize(im, edge).save(dst, "JPEG", quality=quality, subsampling=0, icc_profile=engine._SRGB_ICC)
     engine.copy_metadata(src, dst)
     return dst

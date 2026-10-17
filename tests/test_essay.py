@@ -100,3 +100,31 @@ def test_export_names_and_folders(tmp_path, monkeypatch):
     monkeypatch.setattr(essay_out, "OUT_DIR", tmp_path)
     a, b = essay_out.new_folder("Lisbon: streets"), essay_out.new_folder("Lisbon: streets")
     assert a.name == "Lisbon streets" and b.name == "Lisbon streets 2"     # never overwrites
+
+
+def test_choose_from_a_brief(monkeypatch):
+    import numpy as np
+    from filmlook.library import essay
+
+    def v(*xs):
+        a = np.array(xs, dtype=np.float32); return a / np.linalg.norm(a)
+    pool = {   # id: (z, folder, mono, vec)
+        1: (2.0, 1, False, v(1, 0, 0, 0)), 2: (1.9, 1, False, v(1, .02, 0, 0)),     # 2 = near-copy of 1
+        3: (1.5, 1, False, v(0, 1, 0, 0)), 4: (1.2, 1, False, v(0, 0, 1, 0)),
+        5: (1.0, 2, True, v(0, 0, 0, 1)), 6: (0.2, 3, False, v(.5, .5, .5, .5)), 7: (-1.0, 3, True, v(0, .3, 0, 1)),
+    }
+    info = {i: {"z": z, "fit": 0.0, "mono": m, "folder": f, "shoot": f"shoot {f}", "graded": True,
+                "flag": None, "rating": 0, "scale": None, "vec": vec} for i, (z, f, m, vec) in pool.items()}
+    monkeypatch.setattr(essay, "_pool_info", lambda con, ids, theme: {i: dict(info[i]) for i in ids})
+    r = essay.choose(None, list(pool), {"count": 3})
+    got = [x["id"] for x in r["chosen"]]
+    assert got[0] == 1 and 2 not in got                          # best first, never its near-copy
+    bench = {x["id"]: x for x in r["bench"]}
+    assert bench[2]["reason"].startswith("almost the same") and bench[2]["like_no"] == 1
+    r = essay.choose(None, list(pool), {"count": 4, "per_shoot": 2})
+    from collections import Counter
+    assert max(Counter(info[x["id"]]["folder"] for x in r["chosen"]).values()) <= 2
+    r = essay.choose(None, list(pool), {"count": 4, "colour": "bw"})
+    assert {x["id"] for x in r["chosen"]} == {5, 7} and "Only 2" in r["note"]
+    r = essay.choose(None, list(pool), {"count": 2}, keep=[6])
+    assert [x["id"] for x in r["chosen"]][0] == 6 and "you locked it" in r["chosen"][0]["reasons"]

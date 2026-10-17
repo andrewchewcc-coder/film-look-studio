@@ -1,0 +1,52 @@
+{
+  "name": "Leica M9 (CCD warmth)",
+  "extends": "leica-m9",
+  "description": "Kodak CCD: thick painterly colour with a strong warm-magenta cast, brick reds, blushing skin, gentle highlight roll-off, fine textured shadows.",
+  "tone": {
+    "contrast": 1.15,
+    "pivot": 0.5,
+    "shadows": -0.15,
+    "highlights": -0.28,
+    "white": 0.97
+  },
+  "color": {
+    "saturation": 1.12,
+    "temp": 10,
+    "tint": 13,
+    "hsl": {
+      "red": {
+        "hue": 4,
+        "sat": 0.22,
+        "lum": -0.15
+      },
+      "orange": {
+        "hue": -7,
+        "sat": 0.12
+      },
+      "magenta": {
+        "sat": 0.15
+      },
+      "purple": {
+        "hue": 10
+      }
+    },
+    "split": {
+      "shadows": {
+        "hue": 330,
+        "amount": 0.28
+      },
+      "midtones": {
+        "hue": 345,
+        "amount": 0.14
+      },
+      "highlights": {
+        "hue": 55,
+        "amount": 0.2
+      }
+    }
+  },
+  "grain": {
+    "amount": 0.12,
+    "size": 0.7
+  }
+}

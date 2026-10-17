@@ -1,0 +1,59 @@
+{
+  "name": "Classic Chrome (print)",
+  "extends": "classic-chrome",
+  "description": "1970s-80s magazine print: restrained colour with honest reds and yellows, steep midtone contrast, steel-blue skies and slate midtones, dry matte shadows.",
+  "tone": {
+    "contrast": 1.28,
+    "pivot": 0.45,
+    "shadows": -0.2,
+    "highlights": -0.15,
+    "black": 0.03,
+    "white": 0.98
+  },
+  "color": {
+    "saturation": 0.82,
+    "hsl": {
+      "red": {
+        "hue": 3,
+        "sat": -0.05,
+        "lum": -0.1
+      },
+      "orange": {
+        "hue": -2,
+        "sat": -0.05
+      },
+      "yellow": {
+        "hue": -4,
+        "sat": 0.05
+      },
+      "green": {
+        "hue": -8,
+        "sat": -0.45,
+        "lum": -0.2
+      },
+      "aqua": {
+        "hue": -8,
+        "sat": -0.15
+      },
+      "blue": {
+        "hue": -18,
+        "sat": -0.22,
+        "lum": -0.15
+      }
+    },
+    "split": {
+      "shadows": {
+        "hue": 210,
+        "amount": 0.25
+      },
+      "midtones": {
+        "hue": 205,
+        "amount": 0.1
+      },
+      "highlights": {
+        "hue": 75,
+        "amount": 0.12
+      }
+    }
+  }
+}

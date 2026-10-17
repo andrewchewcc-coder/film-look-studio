@@ -1,0 +1,52 @@
+{
+  "name": "Meyerowitz (lyrical)",
+  "extends": "joel-meyerowitz",
+  "description": "Large-format colour negative: low-medium contrast, delicate highlights, pastel blues, peach highlights, terracotta warmth.",
+  "exposure": 0.2,
+  "tone": {
+    "contrast": 0.85,
+    "shadows": 0.2,
+    "highlights": -0.25,
+    "black": 0.02,
+    "white": 0.97
+  },
+  "color": {
+    "saturation": 0.92,
+    "vibrance": 0.05,
+    "temp": 8,
+    "hsl": {
+      "red": {
+        "hue": 8,
+        "sat": -0.1
+      },
+      "orange": {
+        "hue": -2,
+        "sat": -0.05,
+        "lum": 0.08
+      },
+      "green": {
+        "hue": -5,
+        "sat": -0.3
+      },
+      "aqua": {
+        "sat": -0.2,
+        "lum": 0.1
+      },
+      "blue": {
+        "hue": -8,
+        "sat": -0.3,
+        "lum": 0.12
+      }
+    },
+    "split": {
+      "shadows": {
+        "hue": 220,
+        "amount": 0.15
+      },
+      "highlights": {
+        "hue": 45,
+        "amount": 0.25
+      }
+    }
+  }
+}

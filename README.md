@@ -34,11 +34,10 @@ there yourself — the app never deletes. Afterwards **Scan for new photos** and
 remove them from the library. Drives can be unplugged: thumbnails stay on the iMac.
 
 ### Second look (rediscover photos you never graded)
-In the **Second look** tab: *Overlooked gems* (best ungraded photos across the library), *On this
-day* (this date in past years) and *Rediscover a period* (a year, dates or a trip). Blurry frames are
-skipped and each burst shows only its best frame. Each photo says why it was picked. **Keep** adds it
-to your shortlist, **Dismiss** hides it, **Open** grades it; your choices are remembered and teach the
-scoring your taste.
+In the Library sidebar, **Show → Worth a second look** lists photos you haven't picked, rejected or graded
+that deserve another look, best first with reasons, for one shoot, a year or everything. **Show → On this
+day** shows photos from today's date in past years. Press **N** (or Not now) to stop a suggestion. After a
+cull, the summary also lists frames worth a second look and rejects worth another look.
 
 ### Cull (from hundreds of frames to your picks)
 In the **Cull** tab choose a shoot, dates, or "new since last cull". Frames of the same scene are grouped;
@@ -51,13 +50,17 @@ it matched you. Picks, rejects and stars are the same everywhere: change them in
 (hover a photo: ✓ ✕ ↺ ★, or P / X / U / 1–5) or with Keep in Second look. Rejects are only a flag.
 
 ### Essays (sequence a photo essay, zine or exhibition)
-In the **Essays** tab start an essay from a search, your picks or stars, the Second look shortlist, a
-shoot or a date range, with a target length. See it as a strip (with the reason for each transition),
-a contact sheet (add titles) or two-page spreads; drag to reorder, lock photos, and ask for an order
-(Visual flow, Time & place, Day → night, Calm → intense). The panel suggests pairs that rhyme, photos to
-fill a gap and which to leave out. Undo with ⌘Z and save versions. **Contact sheet PDF** and **Export…**
-save to Pictures › Film Look Studio Essays as 01_title.jpg…: graded photos keep their grade, the others
-get the essay's look and their crop. Drives can be unplugged while you arrange; export waits for them.
+Start from the **Library**: select photos (or set up a view, e.g. 2026 + Graded) and click **Make an essay**.
+Give a brief: title, number of photos, optional theme words (they steer the choice), colour / B&W / mix,
+and at most N per shoot. The app chooses the best photos with variety (your picks, stars, grades and taste;
+no near-copies) and lays them out in a suggested order; hover a photo to see why it was chosen. The rest
+wait on the **Bench** (with why not): Add them, or Swap. **⇄** on a photo suggests replacements from the
+bench; the **Brief** tab re-chooses (locked photos stay). **Add to essay…** in the Library adds a selection.
+In the Essays tab: strip (with the reason for each transition), contact sheet (titles) or two-page spreads;
+drag, lock, the order styles (Visual flow, Time & place, Day → night, Calm → intense), pairs, Fill the gap,
+undo (⌘Z) and versions. **Contact sheet PDF** and **Export…** save to Pictures › Film Look Studio Essays
+as 01_title.jpg…: exported photos keep their grade, photos graded in the app use that grade, others get
+the essay's look; all with their crop. Drives can be unplugged while you arrange; export waits for them.
 
 ### Browser app (sliders)
 ```bash
@@ -78,6 +81,8 @@ get the essay's look and their crop. Drives can be unplugged while you arrange; 
   exact settings.
 - **Match a reference photo**: upload any image whose colour or tone you love.
 - **Download LUT**: a `.cube` file for ON1 Photo RAW (grain and vignette aren't part of a LUT).
+Adjust has Highlights, Shadows, Whites and Blacks sliders and a **tone curve** (click to add a point, drag to
+move, double-click to remove; presets such as Gentle S or Faded film). Hold **B** (or Hold: before) for the original.
 
 ### With Claude Code (AI help, plain English)
 Open this folder in the **Code** tab of the Claude desktop app (choose the local folder),

@@ -269,6 +269,18 @@ def start_session(con, scope, label):
     return sid
 
 
+def shoot_session(con, folder_id):
+    """The most recent cull of this shoot (any categories), unfinished ones first, or None."""
+    best = None
+    for r in con.execute("SELECT id, scope, finished_at FROM cull_sessions ORDER BY id DESC"):
+        sc = json.loads(r["scope"] or "{}")
+        if sc.get("folder_id") == folder_id and not sc.get("date_from") and not sc.get("new"):
+            if r["finished_at"] is None:
+                return r["id"]
+            best = best or r["id"]
+    return best
+
+
 def mark(con, session_id, photo_id, action, value=None):
     """pick / reject / unmark / rate (value 0-5; 0 clears). Saved immediately, logged."""
     from . import marks
@@ -325,6 +337,84 @@ def session_picks(con, session_id):
         picked = {x[0] for x in con.execute(f"SELECT photo_id FROM marks WHERE flag='pick' AND photo_id IN ({qs})", ids)}
         out += [i for i in ids if i in picked]
     return out
+
+
+# --- after a cull: photos worth a second look ------------------------------------------------
+
+SECOND_DIFFERENT = 0.85      # a frame below this similarity to the group's pick is "a different moment"
+SECOND_NOT_DUP = 0.90        # a reject at or above this similarity to a pick was just the twin you didn't choose
+
+
+def second_look(con, session_id, limit=15, n_rejects=5):
+    """Frames from this cull you didn't decide on that deserve another look (and a few rejects
+    that scored very highly), best first, each with reasons. Skips frames you dismissed, frames
+    already graded, soft or badly exposed ones, and the near-twins of a frame you picked."""
+    from .secondlook import _scores
+    groups = [json.loads(r[0]) for r in con.execute(
+        "SELECT photo_ids FROM cull_groups WHERE session_id=? ORDER BY idx", (session_id,))]
+    ids = [i for g in groups for i in g]
+    if not ids:
+        return {"unmarked": [], "rejects": []}
+    frames = {f["id"]: f for f in load_frames(con, ids)}
+    qs = ",".join("?" * len(ids))
+    flag = {r[0]: r[1] for r in con.execute(f"SELECT photo_id, flag FROM marks WHERE photo_id IN ({qs})", ids)}
+    dismissed = {r[0] for r in con.execute(f"SELECT photo_id FROM picks WHERE decision='dismiss' AND photo_id IN ({qs})", ids)}
+    d = _scores(con)
+    score = lambda i: float(d["total"][d["index"][i]]) if d and i in d["index"] else frames[i]["taste"]
+    vec = lambda i: frames[i]["vec"]
+    picks = [i for i in ids if flag.get(i) == "pick" and i in frames and vec(i) is not None]
+    P = np.stack([vec(i) for i in picks]) if picks else None
+    all_scores = [score(i) for i in ids if i in frames]
+    floor, high = float(np.percentile(all_scores, 25)), float(np.percentile(all_scores, 80))
+
+    def reasons(i, first):
+        out = [first] if first else []
+        fr = frames[i]
+        out += [r for r in single_reasons(fr, None) if r not in ("single frame", "like your picks")]
+        if d and i in d["index"]:
+            k = d["index"][i]
+            tz = d["tag_z"][k]
+            out += [d["tags"][j] for j in np.argsort(-tz)[:1] if tz[j] >= 1.5]
+            if d["similar"][k]:
+                n = int(d["similar"][k])
+                out.append(f"similar to {n} photo{'s' if n != 1 else ''} you graded")
+            elif d["taste"][k] > 1.0:
+                out.append("matches your taste")
+        if P is not None and vec(i) is not None and float((P @ vec(i)).max()) < 0.75:
+            out.append("nothing like it among your picks")
+        return out
+
+    unmarked, rejects = [], []
+    for g in groups:
+        g = [i for i in g if i in frames]
+        gpicks = [i for i in g if flag.get(i) == "pick"]
+        cand = []
+        for i in g:
+            fr = frames[i]
+            if i in dismissed or fr["graded"] or vec(i) is None:
+                continue
+            if flag.get(i) is None:
+                if fr["verdict"] in ("blurry", "motion", "too_dark", "too_bright") or score(i) < floor:
+                    continue
+                if gpicks:
+                    if max(float(vec(p) @ vec(i)) for p in gpicks) >= SECOND_DIFFERENT:
+                        continue                      # the twin of the frame you chose
+                    first = "a different moment from the frame you picked here"
+                else:
+                    first = "you didn't decide on this group" if len(g) > 1 else "the only frame of this scene, undecided"
+                cand.append((score(i), i, first))
+            elif flag.get(i) == "reject" and score(i) >= high:
+                if P is not None and float((P @ vec(i)).max()) >= SECOND_NOT_DUP:
+                    continue
+                rejects.append({"id": i, "score": round(score(i), 3),
+                                "reasons": reasons(i, "scored among the best in this shoot")})
+        kept = []                                     # one frame per moment: the best, plus clearly different ones
+        for sc, i, first in sorted(cand, reverse=True):
+            if all(float(vec(i) @ vec(k)) < SECOND_DIFFERENT for k in kept):
+                kept.append(i)
+                unmarked.append({"id": i, "score": round(sc, 3), "reasons": reasons(i, first)})
+    unmarked.sort(key=lambda x: -x["score"]); rejects.sort(key=lambda x: -x["score"])
+    return {"unmarked": unmarked[:limit], "rejects": rejects[:n_rejects]}
 
 
 # --- learning from your culls ----------------------------------------------------------------

@@ -65,7 +65,8 @@ def get_state():
     coll = state["collection"]
     return {"folder": str(state["folder"]) if state["folder"] and not coll else "",
             "collection": coll["label"] if coll else None,
-            "photos": [p.name for p in _photos()], "looks": recipes.list_looks()}
+            "photos": [p.name for p in _photos()], "looks": recipes.list_looks(),
+            "edited": edits.edited_names(_photos())}
 
 
 class FolderIn(BaseModel):
@@ -116,6 +117,43 @@ def render(name: str, look: str = "neutral", adjust: str = "{}", edge: int = 140
     return _jpeg(engine.render_preview(p, _recipe(look, adjust), edge=min(edge, engine.PREVIEW_EDGE), geom=g))
 
 
+_warm_queue = []
+_warm_lock = threading.Lock()
+
+
+class WarmIn(BaseModel):
+    names: list[str]
+
+
+@app.post("/api/warm")
+def warm(body: WarmIn):
+    """Decode the next photos in the background, so clicking them shows the preview at once."""
+    paths = []
+    for n in body.names[:4]:
+        try:
+            paths.append(_photo(n))
+        except HTTPException:
+            pass
+    with _warm_lock:
+        _warm_queue[:] = paths                # only the latest request matters
+        start = not getattr(warm, "running", False)
+        warm.running = True
+    if start:
+        def work():
+            while True:
+                with _warm_lock:
+                    if not _warm_queue:
+                        warm.running = False
+                        return
+                    p = _warm_queue.pop(0)
+                try:
+                    engine.preview_linear(p)
+                except Exception:
+                    pass
+        threading.Thread(target=work, daemon=True).start()
+    return {"ok": True}
+
+
 class CopyRatioIn(BaseModel):
     source: str
     names: list[str]
@@ -155,7 +193,43 @@ def render_region(name: str, look: str = "neutral", adjust: str = "{}", x: float
 def get_edit(name: str):
     p = _photo(name)
     w, h = raw.full_size(p)
-    return {"geometry": edits.get(p), "full_size": [w, h]}
+    return {"geometry": edits.get(p), "full_size": [w, h], "grade": edits.get_grade(p)}
+
+
+class GradeIn(BaseModel):
+    name: str
+    look: str = "neutral"
+    adjust: dict = {}
+
+
+@app.post("/api/grade")
+def put_grade(body: GradeIn):
+    """Remember this photo's look and sliders (the Grade tab saves as you work)."""
+    return {"grade": edits.put_grade(_photo(body.name), body.look, body.adjust)}
+
+
+class GradeCopyIn(BaseModel):
+    names: list[str]
+    look: str = "neutral"
+    adjust: dict = {}
+
+
+@app.post("/api/grade/copy")
+def copy_grade(body: GradeCopyIn):
+    """Give the ticked photos this grade (their own crops are kept)."""
+    for n in body.names:
+        edits.put_grade(_photo(n), body.look, body.adjust)
+    return {"copied": len(body.names), "edited": get_state()["edited"]}
+
+
+def _saved_recipe(p, look=None, adjust=None):
+    """A photo's own remembered grade, else the look/adjust given (a deleted look falls back to neutral)."""
+    g = edits.get_grade(p)
+    look, adjust = (g["look"], g["adjust"]) if g else (look or "neutral", adjust or {})
+    try:
+        return _recipe(look, adjust)
+    except HTTPException:
+        return _recipe("neutral", adjust)
 
 
 class EditIn(BaseModel):
@@ -177,12 +251,14 @@ class ExportIn(BaseModel):
     look: str = "neutral"
     adjust: dict = {}
     quality: int = 95
+    own: bool = False          # each photo with its own remembered grade (batch export)
 
 
 @app.post("/api/export")
 def export(body: ExportIn):
     recipe = _recipe(body.look, body.adjust)
     files = [_photo(n) for n in body.names]
+    recipes_for = {p: (_saved_recipe(p, body.look, body.adjust) if body.own else recipe) for p in files}
     job_id = uuid.uuid4().hex[:8]
     jobs[job_id] = {"total": len(files), "done": 0, "current": "", "outputs": [], "error": None}
 
@@ -191,7 +267,7 @@ def export(body: ExportIn):
         try:
             for p in files:
                 job["current"] = p.name
-                job["outputs"].append(str(engine.export(p, recipe, quality=body.quality, geom=edits.get(p))))
+                job["outputs"].append(str(engine.export(p, recipes_for[p], quality=body.quality, geom=edits.get(p))))
                 job["done"] += 1
         except Exception as e:  # report to the UI instead of dying silently
             job["error"] = str(e)
@@ -329,7 +405,8 @@ def library_search(q: str = "", cats: str = "street,travel", year: str = "", dat
     return search.search(_lib().con(), q, limit=min(limit, 3000), offset=offset, order=order,
                          categories=[c for c in cats.split(",") if c] or None, year=year or None,
                          date_from=date_from or None, date_to=date_to or None, camera=camera or None,
-                         graded=None if graded == "" else graded == "1", folder_id=folder_id or None,
+                         graded=None if graded == "" else "edited" if graded == "edited" else graded == "1",
+                         folder_id=folder_id or None,
                          flag=flag or None, stars=stars or None)
 
 
@@ -450,13 +527,27 @@ def browse_graded(photo_id: int):
         if path is None or not Path(path).exists():
             return browse_thumb(photo_id)          # drive offline: the small copy
         im = Image.open(path)
-        im.draft("RGB", (5000, 5000))
+        im.draft("RGB", (2400, 2400))       # decode at a reduced size: much faster
         im = ImageOps.exif_transpose(im).convert("RGB")
         im.thumbnail((2400, 2400), Image.LANCZOS)
         tmp = dst.with_name(f"{dst.stem}.{uuid.uuid4().hex[:6]}.tmp")
         im.save(tmp, "JPEG", quality=88)
         tmp.replace(dst)
     return FileResponse(dst, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+
+
+@app.get("/api/browse/graded_full/{photo_id}")
+def browse_graded_full(photo_id: int):
+    """The graded JPG itself, full size, for 100% zoom in the Library viewer."""
+    from .library import drives
+    c = _lib().con()
+    mounts = drives.online_mounts(c)
+    for r in c.execute("""SELECT drive_id, rel_path FROM files WHERE photo_id=? AND role='export' AND kind='jpg'
+                          AND missing=0 ORDER BY size DESC""", (photo_id,)):   # the largest (not an Instagram copy)
+        if r["drive_id"] in mounts and (Path(mounts[r["drive_id"]]) / r["rel_path"]).exists():
+            return FileResponse(Path(mounts[r["drive_id"]]) / r["rel_path"], media_type="image/jpeg",
+                                headers={"Cache-Control": "no-cache"})
+    raise HTTPException(409, "The graded JPG's drive is offline.")
 
 
 class IdsIn(BaseModel):
@@ -502,6 +593,26 @@ def second_list(view: str = "gems", cats: str = "street,travel", year: str = "",
     return secondlook.suggestions(_lib().con(), view, categories=[c for c in cats.split(",") if c] or None,
                                   year=year or None, date_from=date_from or None, date_to=date_to or None,
                                   folder_id=folder_id or None, offset=offset, limit=min(limit, 100))
+
+
+@app.get("/api/library/second")
+def library_second(mode: str = "second", year: str = "", date_from: str = "", date_to: str = "",
+                   folder_id: int = 0, offset: int = 0, limit: int = 120):
+    """The Library's Second look views: "second" (worth a second look) or "this_day", for one
+    shoot, a year, dates or everything. Results are Library photos plus the reasons."""
+    from .library import search, secondlook
+    c = _lib().con()
+    scoped = folder_id or year or date_from or date_to
+    view = "this_day" if mode == "this_day" else ("period" if scoped else "gems")
+    res = secondlook.suggestions(c, view, categories=None, year=year or None, date_from=date_from or None,
+                                 date_to=date_to or None, folder_id=folder_id or None, offset=offset,
+                                 limit=min(limit, 300), undecided=True)
+    out = []
+    for r in res["results"]:
+        ph = search.photo(c, r["id"])
+        if ph:
+            out.append({**ph, "reasons": r["reasons"]})
+    return {"total": res["total"], "results": out, "note": res["note"]}
 
 
 class DecideIn(BaseModel):
@@ -563,6 +674,32 @@ def cull_state():
            GROUP BY fo.id ORDER BY fo.rel_path DESC""")]
     new = len(cull.scope_photo_ids(c, {"new": True}))
     return {"sessions": sessions, "shoots": shoots, "new_since_last": new, "learning": cull.learning_info(c)}
+
+
+@app.get("/api/cull/for_shoot/{folder_id}")
+def cull_for_shoot(folder_id: int):
+    """This shoot's cull, if there is one: to resume or review it straight from the Library."""
+    c = _lib().con()
+    sid = _cull().shoot_session(c, folder_id)
+    if not sid:
+        return {"session": None}
+    s = c.execute("SELECT finished_at FROM cull_sessions WHERE id=?", (sid,)).fetchone()
+    g = c.execute("SELECT COUNT(*), COALESCE(SUM(done), 0) FROM cull_groups WHERE session_id=?", (sid,)).fetchone()
+    return {"session": sid, "finished": s["finished_at"], "groups": g[0], "done": g[1]}
+
+
+@app.get("/api/cull/second/{sid}")
+def cull_second(sid: int):
+    """After a cull: frames you didn't decide on that deserve another look, plus high-scoring rejects."""
+    c = _lib().con()
+    out = _cull().second_look(c, sid)
+    names = {r[0]: PurePath(r[1]).name for r in c.execute(
+        f"""SELECT p.id, f.rel_path FROM photos p JOIN files f ON f.id = p.primary_file_id
+            WHERE p.id IN ({','.join('?' * len(out['unmarked'] + out['rejects'])) or 'NULL'})""",
+        [x["id"] for x in out["unmarked"] + out["rejects"]])}
+    for x in out["unmarked"] + out["rejects"]:
+        x["name"] = names.get(x["id"], "")
+    return out
 
 
 class CullStartIn(BaseModel):
@@ -671,6 +808,11 @@ def cull_send(body: SendIn):
     ids = _cull().session_picks(c, body.session)
     if not ids:
         raise HTTPException(400, "No picks in this cull yet — press P on the frames you want.")
+    return _open_in_grade(ids, f"Picks · {s['label'] if s else 'cull'}")
+
+
+def _open_in_grade(ids, label):
+    """Open these library photos in Grade as a collection, in the order given."""
     paths, offline = [], 0
     for pid in ids:
         path, _, _ = _photo_file(pid)
@@ -679,9 +821,22 @@ def cull_send(body: SendIn):
         elif raw.is_raw(path) or raw.is_jpeg(path):
             paths.append(path)
     if not paths:
-        raise HTTPException(409, "The picks' drive is offline — plug it in to grade them.")
-    state["collection"] = {"label": f"Picks · {s['label'] if s else 'cull'}", "paths": paths}
+        raise HTTPException(409, "These photos' drive is offline — plug it in to grade them.")
+    state["collection"] = {"label": label, "paths": paths}
     return {**get_state(), "offline": offline}
+
+
+class LibGradeIn(BaseModel):
+    photo_ids: list[int]
+    label: str = "Selected"
+
+
+@app.post("/api/library/grade")
+def library_grade(body: LibGradeIn):
+    """Library → Grade: the picks of a shoot, or the photos you selected."""
+    if not body.photo_ids:
+        raise HTTPException(400, "Select some photos first.")
+    return _open_in_grade(body.photo_ids, body.label)
 
 
 @app.post("/api/cull/finish")
@@ -863,15 +1018,64 @@ class EssayNewIn(BaseModel):
     source: dict
     target: int = 20
     look: str = "leica-m9"
+    brief: dict = {}
 
 
 @app.post("/api/essays")
 def essays_new(body: EssayNewIn):
+    """From the Essays tab: gather the source's photos, then choose the best `target` to the brief."""
+    c, es = _lib().con(), _essay()
     try:
-        eid = _essay().create(_lib().con(), body.name.strip() or "Untitled essay", body.source, body.target, body.look)
+        ids = es.source_photo_ids(c, body.source)
+        if not ids:
+            raise ValueError("No photos match — try other words, or another source.")
+        eid, note = es.create_from_brief(c, body.name.strip() or "Untitled essay", ids,
+                                         {**body.brief, "count": body.target}, body.look, origin=body.source)
     except ValueError as e:
         raise HTTPException(400, str(e))
-    return {"id": eid}
+    return {"id": eid, "note": note, "pool": len(ids)}
+
+
+class EssayBriefIn(BaseModel):
+    name: str
+    photo_ids: list[int] = []
+    view: dict | None = None        # the Library's current filters, when nothing is selected
+    brief: dict = {}
+    look: str = "leica-m9"
+
+
+def _view_ids(c, v):
+    """Every photo in a Library view (not just the page on screen); with search words, the clear matches."""
+    from .library import search
+    text = (v.get("q") or "").strip()
+    graded = v.get("graded", "")
+    res = search.search(c, text, limit=100000, categories=None, year=v.get("year") or None,
+                        date_from=v.get("date_from") or None, date_to=v.get("date_to") or None,
+                        camera=v.get("camera") or None,
+                        graded=None if graded == "" else "edited" if graded == "edited" else graded == "1",
+                        folder_id=int(v["folder_id"]) if v.get("folder_id") else None, flag=v.get("flag") or None,
+                        stars=int(v.get("stars") or 0) or None, order="oldest")
+    rows = res["results"]
+    return [r["id"] for r in rows if not text or r.get("strong")]
+
+
+@app.post("/api/essays/brief")
+def essay_from_brief(body: EssayBriefIn):
+    """Library → Make an essay: choose the best N from a selection or view, in a suggested order."""
+    c = _lib().con()
+    ids = body.photo_ids or (_view_ids(c, body.view) if body.view else [])
+    try:
+        eid, note = _essay().create_from_brief(c, body.name.strip() or "Untitled essay", ids, body.brief, body.look)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"id": eid, "note": note, "pool": len(ids)}
+
+
+@app.post("/api/essays/count")
+def essay_pool_count(body: EssayBriefIn):
+    """How many photos a view holds (for the brief form)."""
+    c = _lib().con()
+    return {"count": len(body.photo_ids) if body.photo_ids else len(_view_ids(c, body.view or {}))}
 
 
 @app.get("/api/essays/{eid}")
@@ -886,6 +1090,7 @@ def essay_get(eid: int):
     info = {r["id"]: r for r in c.execute(f"""SELECT p.id, p.capture_time, f.rel_path, f.drive_id, f.missing FROM photos p
                                              JOIN files f ON f.id = p.primary_file_id
                                              WHERE p.id IN ({','.join('?' * len(ids)) or 'NULL'})""", ids)}
+    why = (json.loads(e["source"] or "{}").get("reasons") or {})
     photos = []
     for it in its:
         pid, r = it["photo_id"], info.get(it["photo_id"])
@@ -893,17 +1098,21 @@ def essay_get(eid: int):
         photos.append({"id": pid, "locked": bool(it["locked"]), "title": it["title"] or "",
                        "name": PurePath(r["rel_path"]).stem if r else str(pid), "time": r["capture_time"] if r else None,
                        "image": fv.get("image", "raw"), "online": bool(r and r["drive_id"] in mounts and not r["missing"]),
-                       "scale": (fv.get("pace") or {}).get("scale")})
+                       "scale": (fv.get("pace") or {}).get("scale"), "why": why.get(str(pid), [])})
     versions = [{"id": v["id"], "name": v["name"], "created": v["created_at"]}
                 for v in c.execute("SELECT id, name, created_at FROM essay_versions WHERE essay_id=? ORDER BY id DESC", (eid,))]
+    src = json.loads(e["source"] or "{}")
+    brief = src.get("brief") or {"count": e["target"] or len(photos), "theme": "", "colour": "mix", "per_shoot": None}
     return {"id": eid, "name": e["name"], "target": e["target"], "look": e["look"],
-            "source": json.loads(e["source"] or "{}"), "photos": photos, "versions": versions}
+            "source": {k: v for k, v in src.items() if k not in ("ids", "reasons")}, "brief": brief,
+            "pool": len(src.get("ids") or []), "photos": photos, "versions": versions}
 
 
 class EssayPatchIn(BaseModel):
     name: str | None = None
     target: int | None = None
     look: str | None = None
+    brief: dict | None = None
 
 
 @app.patch("/api/essays/{eid}")
@@ -914,6 +1123,10 @@ def essay_patch(eid: int, body: EssayPatchIn):
         v = getattr(body, k)
         if v is not None:
             c.execute(f"UPDATE essays SET {k}=?, updated_at=datetime('now') WHERE id=?", (v, eid))
+    if body.brief is not None:              # e.g. Undo after a re-choose
+        src = json.loads(c.execute("SELECT source FROM essays WHERE id=?", (eid,)).fetchone()[0] or "{}")
+        src["brief"] = body.brief
+        c.execute("UPDATE essays SET source=?, target=? WHERE id=?", (json.dumps(src), body.brief.get("count"), eid))
     c.commit()
     return {"ok": True}
 
@@ -955,6 +1168,11 @@ def essay_add(eid: int, body: AddIn):
             raise HTTPException(400, str(e))
     before = len(es.items(c, eid))
     es.add(c, eid, ids)
+    src = json.loads(c.execute("SELECT source FROM essays WHERE id=?", (eid,)).fetchone()[0] or "{}")
+    if src.get("type") == "photos":         # photos added by hand join the pool (and so the bench)
+        src["ids"] = list(dict.fromkeys(list(src.get("ids", [])) + ids))
+        c.execute("UPDATE essays SET source=? WHERE id=?", (json.dumps(src), eid))
+        c.commit()
     return {"added": len(es.items(c, eid)) - before}
 
 
@@ -998,6 +1216,46 @@ def pair_mark(body: PairMarkIn):
     except ValueError as e:
         raise HTTPException(400, str(e))
     return {"ok": True}
+
+
+def _with_names(c, rows):
+    ids = [r["id"] for r in rows]
+    names = {r[0]: PurePath(r[1]).stem for r in c.execute(
+        f"""SELECT p.id, f.rel_path FROM photos p JOIN files f ON f.id = p.primary_file_id
+            WHERE p.id IN ({','.join('?' * len(ids)) or 'NULL'})""", ids)}
+    return [{**r, "name": names.get(r["id"], "")} for r in rows]
+
+
+@app.get("/api/essays/{eid}/bench")
+def essay_bench(eid: int, limit: int = 60):
+    """Photos from the essay's pool that aren't in it, best first, with why not."""
+    _essay_row(eid)
+    c = _lib().con()
+    rows = _essay().bench(c, eid)
+    return {"total": len(rows), "results": _with_names(c, rows[:limit])}
+
+
+@app.get("/api/essays/{eid}/replace/{photo_id}")
+def essay_replace(eid: int, photo_id: int):
+    """Alternatives from the bench for one photo's spot."""
+    _essay_row(eid)
+    c = _lib().con()
+    return _with_names(c, _essay().replacements(c, eid, photo_id))
+
+
+class RechooseIn(BaseModel):
+    brief: dict
+
+
+@app.post("/api/essays/{eid}/rechoose")
+def essay_rechoose(eid: int, body: RechooseIn):
+    """Choose again with a changed brief; locked photos stay where they are."""
+    _essay_row(eid)
+    try:
+        note = _essay().rechoose(_lib().con(), eid, body.brief)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"note": note}
 
 
 @app.get("/api/essays/{eid}/leaveout")

@@ -5,6 +5,8 @@ import json
 import shutil
 import os
 import subprocess
+import threading
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -21,6 +23,7 @@ WORKERS = max(1, min(4, (os.cpu_count() or 2) - 1))
 
 _SRGB_ICC = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
 _mem_cache = {}
+_decode_locks = defaultdict(threading.Lock)   # one decode per photo, however many ask at once
 
 
 def _key(path, edge=PREVIEW_EDGE):
@@ -36,19 +39,64 @@ def preview_linear(path, edge=PREVIEW_EDGE):
     mkey = key + ("@big" if edge != PREVIEW_EDGE else "")
     if mkey in _mem_cache:
         return _mem_cache[mkey]
+    with _decode_locks[mkey]:
+        if mkey in _mem_cache:            # another request decoded it while we waited
+            return _mem_cache[mkey]
+        return _preview_linear(path, edge, key, mkey)
+
+
+METER_VERSION = 2      # 2: never brighter than the camera's own rendering
+
+
+def _camera_gain(path, lin):
+    """The gain at which our neutral render is as bright (median) as the camera's embedded preview,
+    i.e. the exposure you chose when shooting. None if there's no usable preview."""
+    from .library import scene
+    try:
+        cam = scene.upright_preview(path, "raw")
+    except Exception:
+        return None
+    if cam is None:
+        return None
+    cam.thumbnail((400, 400))
+    target = float(np.median(np.asarray(cam.convert("L"), np.float32) / 255))
+    if not 0.02 < target < 0.98:
+        return None
+    small = lin[::4, ::4]
+    lo, hi = np.log(0.2), np.log(8.0)
+    for _ in range(16):                       # brightness rises with gain: bisect in log space
+        mid = (lo + hi) / 2
+        med = float(np.median(pipeline.base(small, float(np.exp(mid))) @ np.array([0.2126, 0.7152, 0.0722], np.float32)))
+        lo, hi = (mid, hi) if med < target else (lo, mid)
+    return float(np.exp((lo + hi) / 2))
+
+
+def _auto_gain(path, lin):
+    """Auto exposure for the Grade tab: our meter, but never brighter than the camera's own
+    rendering. The meter alone lifts night and deep-shade scenes towards mid-grey (up to 4x),
+    which blows out lamps and bright areas the camera kept."""
+    gain = raw.meter(lin)
+    cam = _camera_gain(path, lin)
+    return float(min(gain, cam)) if cam else gain
+
+
+def _preview_linear(path, edge, key, mkey):
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     npy, meta = CACHE_DIR / f"{key}.npy", CACHE_DIR / f"{key}.json"
-    if npy.exists() and meta.exists():
-        lin = np.load(npy)
-        gain = json.loads(meta.read_text())["gain"]
+    m = json.loads(meta.read_text()) if npy.exists() and meta.exists() else None
+    if m is not None:
+        lin, gain = np.load(npy), m["gain"]
+        if edge == PREVIEW_EDGE and m.get("meter") != METER_VERSION and not raw.is_display_referred(path):
+            gain = _auto_gain(path, lin)              # metered with an older rule: re-check exposure
+            meta.write_text(json.dumps({**m, "gain": gain, "meter": METER_VERSION}))
     else:
         lin = raw.decode(path, max_edge=edge)
         if edge == PREVIEW_EDGE:
-            gain = 1.0 if raw.is_display_referred(path) else raw.meter(lin)
+            gain = 1.0 if raw.is_display_referred(path) else _auto_gain(path, lin)
         else:
             gain = preview_linear(path)[1]
         np.save(npy, lin)
-        meta.write_text(json.dumps({"gain": gain, "source": str(path)}))
+        meta.write_text(json.dumps({"gain": gain, "source": str(path), "meter": METER_VERSION}))
     if edge != PREVIEW_EDGE and len([k for k in _mem_cache if k.endswith("@big")]) >= 2:
         for k in [k for k in _mem_cache if k.endswith("@big")][:1]:   # keep memory in check
             _mem_cache.pop(k)
@@ -75,7 +123,29 @@ def render_preview(path, recipe, edge=None, geom=None):
         h, w = lin.shape[:2]
         s = edge / max(h, w)
         lin = raw.resize_float(lin, (max(1, round(w * s)), max(1, round(h * s))), Image.BILINEAR)
-    return to_image(pipeline.render(lin, recipe, gain, display=raw.is_display_referred(path)))
+    return to_image(render_threaded(lin, recipe, gain, display=raw.is_display_referred(path)))
+
+
+def render_threaded(lin, recipe, gain, display=False, y0=0, x0=0, full_size=None, match_src=None):
+    """pipeline.render split into strips over a few cores: the same picture, several times faster.
+    (x0, y0) / full_size place a tile within the whole frame. A reference match needs whole-image
+    statistics, so unless given they're measured once up front."""
+    h, w = lin.shape[:2]
+    full_size = full_size or (h, w)
+    if match_src is None and full_size == (h, w):
+        match_src = pipeline.match_source_stats(lin[::2, ::2], recipe, gain, display)
+    if h < 2 * WORKERS * 16:
+        return pipeline.render(lin, recipe, gain, y0=y0, x0=x0, full_size=full_size, match_src=match_src, display=display)
+    rows = -(-h // (WORKERS * 2))
+    out = np.empty((h, w, 3), dtype=np.float32)
+
+    def strip(r0):
+        out[r0:r0 + rows] = pipeline.render(lin[r0:r0 + rows], recipe, gain, y0=y0 + r0, x0=x0, full_size=full_size,
+                                            match_src=match_src, display=display)
+
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        list(pool.map(strip, range(0, h, rows)))
+    return out
 
 
 _full_cache = {"key": None, "img": None}   # one full-resolution decode (with its edit) for zooming
@@ -112,7 +182,13 @@ def render_region(path, recipe, geom, box, out_w):
     if recipe.get("match"):
         plin, _ = preview_linear(path)
         match_src = pipeline.match_source_stats(plin[::4, ::4], recipe, gain, display)
-    out = pipeline.render(tile, recipe, gain, y0=y0, x0=x0, full_size=(fh, fw), match_src=match_src, display=display)
+    if need < 0.75:
+        # Zoomed out: shrink first, then grade at the size shown (grain lands as on the preview);
+        # from about 100% up, every full-resolution pixel is graded so the tile matches the export.
+        tw, th = max(1, round(tile.shape[1] * need)), max(1, round(tile.shape[0] * need))
+        tile = raw.resize_float(tile, (tw, th), Image.BOX)
+        x0, y0, fh, fw = round(x0 * need), round(y0 * need), round(fh * need), round(fw * need)
+    out = render_threaded(tile, recipe, gain, display=display, y0=y0, x0=x0, full_size=(fh, fw), match_src=match_src)
     img = to_image(out)
     out_h = max(1, round(out_w * img.height / img.width))
     return img.resize((max(1, int(out_w)), out_h), Image.LANCZOS) if abs(img.width - out_w) > 1 else img

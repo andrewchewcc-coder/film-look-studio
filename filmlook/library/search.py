@@ -35,6 +35,10 @@ def query_vector(text):
     return v / np.linalg.norm(v)
 
 
+_EDITED = """EXISTS (SELECT 1 FROM files f2 JOIN grades g2 ON g2.drive_id = f2.drive_id AND g2.rel_path = f2.rel_path
+                      WHERE f2.photo_id = p.id)"""          # graded in the app (on any of the photo's files)
+
+
 def _filters(f):
     where, args = [], []
     cats = f.get("categories", DEFAULT_CATEGORIES)
@@ -49,8 +53,13 @@ def _filters(f):
         where.append("p.capture_time < date(?, '+1 day')"); args.append(f["date_to"])
     if f.get("camera"):
         where.append("p.camera = ?"); args.append(f["camera"])
-    if f.get("graded") is not None:
-        where.append("p.graded = ?"); args.append(1 if f["graded"] else 0)
+    g = f.get("graded")
+    if g == "edited":                         # graded in the app, not exported yet
+        where.append(f"p.graded = 0 AND {_EDITED}")
+    elif g is True:
+        where.append("p.graded = 1")
+    elif g is False:                          # neither exported nor graded in the app
+        where.append(f"p.graded = 0 AND NOT {_EDITED}")
     if f.get("folder_id"):
         where.append("p.folder_id = ?"); args.append(int(f["folder_id"]))
     if f.get("flag") in ("pick", "reject"):
@@ -66,7 +75,9 @@ SELECT = """SELECT p.id, p.thumb, p.capture_time, p.camera, p.lens, p.focal_leng
                    p.iso, p.rating, p.flag, p.graded, p.width, p.height, p.gps_lat, p.gps_lon,
                    COALESCE(fo.category, p.category, 'misc') AS category, fo.category IS NOT NULL AS category_set,
                    fo.rel_path AS folder, fo.id AS folder_id, f.rel_path, f.drive_id, f.kind, f.missing, d.name AS drive,
-                   m.flag AS mark, m.rating AS my_rating
+                   m.flag AS mark, m.rating AS my_rating,
+                   EXISTS (SELECT 1 FROM files f2 JOIN grades g2 ON g2.drive_id = f2.drive_id AND g2.rel_path = f2.rel_path
+                           WHERE f2.photo_id = p.id) AS grade_id
             FROM photos p
             JOIN files f ON f.id = p.primary_file_id
             JOIN folders fo ON fo.id = p.folder_id
@@ -85,7 +96,7 @@ def _shape(r, mounts, score=None):
             "deleted": mount is not None and bool(r["missing"]),
             "path": f"{mount}/{r['rel_path']}" if mount else None,
             "score": None if score is None else round(float(score), 4),
-            "mark": r["mark"], "my_rating": r["my_rating"]}
+            "mark": r["mark"], "my_rating": r["my_rating"], "edited": bool(r["grade_id"])}
 
 
 def search(con, text="", limit=200, offset=0, order="newest", **filters):

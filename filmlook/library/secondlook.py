@@ -111,7 +111,7 @@ def _compute_scores(con, key):
     other_folder = folder[:, None] != folder[graded][None, :]
     similar = ((sim >= SIMILAR_AT) & other_folder).sum(axis=1)
 
-    data = {"index": {r["id"]: i for i, r in enumerate(rows)}, "total": total, "taste": z(taste),
+    data = {"index": {r["id"]: i for i, r in enumerate(rows)}, "total": total, "taste": z(taste), "vec": whole,
             "appeal": z(appeal), "tag_z": tag_z, "tags": tag_names, "similar": similar}
     with _lock:
         _cache.update(key=key, data=data)
@@ -176,8 +176,9 @@ def _reasons(d, i, r, sharp_median):
 
 
 def suggestions(con, view="gems", categories=("street", "travel"), year=None, date_from=None, date_to=None,
-                folder_id=None, offset=0, limit=20, today=None):
-    """Return {total, results, note} for a view: gems, this_day, period, shortlist."""
+                folder_id=None, offset=0, limit=20, today=None, undecided=False):
+    """Return {total, results, note} for a view: gems, this_day, period, shortlist.
+    undecided=True leaves out photos you picked or graded in the app (the Library's "Worth a second look")."""
     d = _scores(con)
     if d is None:
         return {"total": 0, "results": [], "note": "Scan your folders first."}
@@ -188,10 +189,14 @@ def suggestions(con, view="gems", categories=("street", "travel"), year=None, da
         where.append(CANDIDATE)
         where.append("(pk.decision IS NULL OR pk.decision != 'dismiss')")
         where.append("COALESCE(m.flag, '') != 'reject'")      # rejected elsewhere: don't suggest
+        if undecided:
+            where.append("m.flag IS NULL")
+            where.append("""NOT EXISTS (SELECT 1 FROM files f2 JOIN grades g2 ON g2.drive_id = f2.drive_id
+                            AND g2.rel_path = f2.rel_path WHERE f2.photo_id = p.id)""")
     if categories and view != "shortlist":
         where.append(f"COALESCE(fo.category, p.category, 'misc') IN ({','.join('?' * len(categories))})")
         args += list(categories)
-    if view == "period":
+    if view in ("period", "this_day"):
         if folder_id:
             where.append("p.folder_id = ?"); args.append(int(folder_id))
         if year:
@@ -228,6 +233,13 @@ def suggestions(con, view="gems", categories=("street", "travel"), year=None, da
         if key not in best or d["total"][i] > d["total"][best[key][1]]:
             best[key] = (r, i)
     ranked = sorted(best.values(), key=lambda t: -d["total"][t[1]])
+    if undecided:                             # near-identical frames: keep only the best one
+        kept, out = [], []
+        for t in ranked:
+            v = d["vec"][t[1]]
+            if not kept or float(np.max(np.stack(kept) @ v)) < 0.90:
+                kept.append(v); out.append(t)
+        ranked = out
     if view == "gems":
         ranked = _spread_shoots(ranked, d["total"])
     if view == "this_day":

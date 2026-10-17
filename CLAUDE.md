@@ -10,19 +10,28 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
 
 ## Code map
 
-- `filmlook/raw.py` – RAW decode (rawpy/LibRaw) to linear sRGB, auto exposure metering.
+- `filmlook/raw.py` – RAW decode (rawpy/LibRaw) to linear sRGB, auto exposure metering. Grade's auto exposure
+  (`engine._auto_gain`, METER_VERSION 2) = meter, but never brighter than the camera's embedded preview
+  (dark scenes were lifted up to 4x and blew out); cached previews re-meter once when the version changes.
 - `filmlook/dng.py` – DNG lens corrections LibRaw skips (WarpRectilinear, FixVignetteRadial, DefaultCrop).
-- `filmlook/pipeline.py` – the grade: base render → per-pixel look → grain/vignette.
+- `filmlook/pipeline.py` – the grade: base render → per-pixel look → grain/vignette. Tone: S-curve,
+  shadows/highlights, black/white, then `tone.curve` (look) and `tone.user_curve` (Grade tab's curve;
+  monotone cubic, `curve_table`). `engine.render_threaded` splits renders over cores (identical output).
 - `filmlook/recipes.py` – JSON looks in `looks/` (built-in) and `looks/user/` (saved), `extends`, overrides.
 - `filmlook/engine.py` – cached previews, contact sheets, strip-based full-res export with EXIF copy.
 - `filmlook/lut.py` – bake a look to a 3D LUT (.cube export; also speeds up exports).
 - `filmlook/reference.py` – make a look from a reference image (OKLab statistics transfer).
 - `filmlook/geometry.py` – crop & straighten (flips/90° -> fine angle -> crop as fractions; slot for
   perspective). `filmlook/edits.py` stores edits in the library DB (`edits`, keyed drive + path),
-  never in the photo. Preview, thumbnails, export and the CLI all apply them.
+  never in the photo. Preview, thumbnails, export and the CLI all apply them. Grade-tab grades (look +
+  adjust incl. curve) are remembered per file in `grades` (`edits.get_grade/put_grade`); batch export
+  (`own`) and essay exports use them; the Library shows Edited (graded in app, not exported).
 - JPGs open in Grade too: `raw.decode` handles them and `pipeline.base(display=True)` keeps a
   neutral JPG unchanged (no auto exposure / contrast).
-- `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only): Library (search + browse in one, sidebar filters), Second look, Cull, Essays and Grade tabs.
+- `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only): Library (search + browse in one, sidebar filters; Show: Worth a
+  second look / On this day via `/api/library/second` → `secondlook.suggestions(undecided=True)`), Cull,
+  Essays and Grade tabs (the old Second look tab is hidden, code kept). Library → Cull this shoot /
+  Grade picks; Cull summary lists `cull.second_look` frames.
 - `filmlook/library/` – searchable archive. Database + thumbnails live in
   `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos).
   `db.py` schema (photos ← files, sidecars, embeddings; later features attach to `photos.id`),
@@ -43,7 +52,8 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   `essay.py` (photo essays: display image = newest graded export else library thumb; per-photo
   shape/colour/light/gesture/pace features; pairs (rhymes + contrasts, ranked per type, good/bad
   marks); sequence styles flow / time / mood with locked positions; fill-the-gap; leave-outs;
-  versions). Essays tab: strip / contact sheet / spreads (page 1 alone on the right), drag, lock,
+  versions; `choose` / `create_from_brief` / `bench` / `replacements` / `rechoose`: best-N from a pool to a
+  brief with variety, B&W via `is_mono`, theme words steer; Library → Make an essay / Add to essay…). Essays tab: strip / contact sheet / spreads (page 1 alone on the right), drag, lock,
   undo, versions. `essay_out.py`: PDF contact sheet (thumbnails, works offline) and numbered export
   (01_title.jpg: graded JPG resized, else RAW + essay look + crop via `engine.render_full`) into a
   new folder under ~/Pictures/Film Look Studio Essays; waits while a drive is offline.

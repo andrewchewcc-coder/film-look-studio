@@ -126,7 +126,8 @@ def save_user_look(look_id, recipe):
     return p
 
 
-ADJUST_KEYS = ("strength", "exposure", "warmth", "tint", "contrast", "saturation", "grain", "vignette", "tone")
+ADJUST_KEYS = ("strength", "exposure", "warmth", "tint", "contrast", "highlights", "shadows", "whites", "blacks",
+               "saturation", "grain", "vignette", "tone", "curve")
 
 
 def apply_adjust(recipe, adj):
@@ -134,16 +135,27 @@ def apply_adjust(recipe, adj):
 
     strength: absolute 0..1      exposure: +EV         warmth/tint: added to color.temp/tint
     contrast/saturation: +-fraction                     grain/vignette: added to amount
+    highlights/shadows: added to tone.highlights/shadows (-1..1; extremes clip / crush)
+    whites/blacks: added to tone.white/black (whites > 0 brighter, blacks > 0 faded/matte, < 0 crushed)
+    curve: [[x, y], ...] points of your tone curve, applied after the look's tone (tone.user_curve)
     tone: scales the split-tone strength (e.g. the gold of Tri-X Gold), -1..1
     """
     r = copy.deepcopy(recipe)
-    adj = {k: float(v) for k, v in (adj or {}).items() if k in ADJUST_KEYS and v not in (None, "")}
+    curve = (adj or {}).get("curve")
+    if isinstance(curve, list) and len(curve) >= 2:
+        r["tone"]["user_curve"] = [[float(x), float(y)] for x, y in curve]
+    adj = {k: float(v) for k, v in (adj or {}).items()
+           if k in ADJUST_KEYS and k != "curve" and v not in (None, "")}
     if "strength" in adj:
         r["strength"] = max(0.0, min(1.0, adj["strength"]))
     r["exposure"] = r.get("exposure", 0.0) + adj.get("exposure", 0.0)
     r["color"]["temp"] = r["color"].get("temp", 0.0) + adj.get("warmth", 0.0)
     r["color"]["tint"] = r["color"].get("tint", 0.0) + adj.get("tint", 0.0)
     r["tone"]["contrast"] = r["tone"].get("contrast", 1.0) * (1 + adj.get("contrast", 0.0))
+    r["tone"]["highlights"] = r["tone"].get("highlights", 0.0) + adj.get("highlights", 0.0)
+    r["tone"]["shadows"] = r["tone"].get("shadows", 0.0) + adj.get("shadows", 0.0)
+    r["tone"]["white"] = r["tone"].get("white", 1.0) + adj.get("whites", 0.0)
+    r["tone"]["black"] = r["tone"].get("black", 0.0) + adj.get("blacks", 0.0)
     r["color"]["saturation"] = r["color"].get("saturation", 1.0) * (1 + adj.get("saturation", 0.0))
     r["grain"]["amount"] = max(0.0, r["grain"].get("amount", 0.0) + adj.get("grain", 0.0))
     r["vignette"]["amount"] = r["vignette"].get("amount", 0.0) + adj.get("vignette", 0.0)

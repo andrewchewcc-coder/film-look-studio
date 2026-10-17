@@ -130,6 +130,16 @@ CREATE TABLE IF NOT EXISTS picks (
 
 -- Crop / straighten edits (non-destructive), keyed by the source file so they work for any
 -- folder opened in Grade, in the library or not. `geometry` is filmlook.geometry's JSON.
+-- Your Grade-tab work per photo file (look + slider/curve adjustments), like `edits` for crops.
+CREATE TABLE IF NOT EXISTS grades (
+    id         INTEGER PRIMARY KEY,
+    drive_id   INTEGER NOT NULL REFERENCES drives(id),
+    rel_path   TEXT NOT NULL,
+    look       TEXT NOT NULL,
+    adjust     TEXT NOT NULL,          -- JSON, as the Grade tab sends it
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (drive_id, rel_path)
+);
 CREATE TABLE IF NOT EXISTS edits (
     id         INTEGER PRIMARY KEY,
     drive_id   INTEGER NOT NULL REFERENCES drives(id),

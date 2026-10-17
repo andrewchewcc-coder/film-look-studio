@@ -107,3 +107,49 @@ def test_retrain_learns_from_cull_picks_and_records_history(tmp_path, monkeypatc
     assert cull.current_weights(con)["gesture"] > cull.DEFAULT_WEIGHTS["gesture"]
     hist = cull.learning_info(con)["history"]
     assert hist and hist[0]["groups"] == 30
+
+
+def test_shoot_session_finds_this_shoots_cull(tmp_path):
+    import json as _json
+    from filmlook.library import cull, db
+    con = db.connect(tmp_path / "lib.db")
+    add = lambda scope, done=None: con.execute("INSERT INTO cull_sessions (label, scope, weights, finished_at) VALUES ('x', ?, '{}', ?)",
+                                               (_json.dumps(scope), done)).lastrowid
+    assert cull.shoot_session(con, 5) is None
+    old = add({"folder_id": 5, "categories": ["street"]}, "2026-01-01")
+    add({"folder_id": 6})
+    add({"date_from": "2026-01-01", "folder_id": 5})                # a date cull isn't "this shoot"
+    assert cull.shoot_session(con, 5) == old                          # finished one, to review
+    open_ = add({"folder_id": 5, "categories": []})
+    assert cull.shoot_session(con, 5) == open_                         # an unfinished one wins
+
+
+def test_second_look_rules(tmp_path, monkeypatch):
+    import json as _json
+    import numpy as _np
+    from filmlook.library import cull, db, secondlook
+    con = db.connect(tmp_path / "lib.db")
+    con.execute("PRAGMA foreign_keys=OFF")
+    sid = con.execute("INSERT INTO cull_sessions (label, scope, weights) VALUES ('x', '{}', '{}')").lastrowid
+    groups = [[1, 2, 3], [4], [5, 6], [7], [8, 9]]
+    for k, g in enumerate(groups):
+        con.execute("INSERT INTO cull_groups (session_id, idx, photo_ids) VALUES (?,?,?)", (sid, k, _json.dumps(g)))
+    for pid, flag in [(1, "pick"), (6, "reject"), (7, "reject")]:
+        con.execute("INSERT INTO marks (photo_id, flag) VALUES (?,?)", (pid, flag))
+    def v(*xs):
+        a = _np.array(xs, dtype=_np.float32); return a / _np.linalg.norm(a)
+    vecs = {1: v(1, 0, 0), 2: v(1, .05, 0), 3: v(0, 1, 0), 4: v(0, 0, 1), 5: v(.3, .3, 1), 6: v(1, 0, .02), 7: v(0, .2, 1), 8: v(.5, .5, 0), 9: v(.5, .52, 0)}
+    score = {1: 2.0, 2: 1.9, 3: 2.2, 4: 2.1, 5: -1.0, 6: 2.5, 7: 2.4, 8: 2.3, 9: 2.25}
+    monkeypatch.setattr(cull, "load_frames", lambda con, ids: [
+        {"id": i, "vec": vecs[i], "graded": False, "verdict": "ok", "f": {}, "taste": 0.0, "sharpness": None} for i in ids])
+    monkeypatch.setattr(secondlook, "_scores", lambda con: None)
+    monkeypatch.setattr(cull, "load_frames", (lambda lf: lambda con, ids: [dict(x, taste=score[x["id"]]) for x in lf(con, ids)])(cull.load_frames))
+    out = cull.second_look(con, sid)
+    got = [x["id"] for x in out["unmarked"]]
+    assert 2 not in got                       # the twin of the frame you picked
+    assert {3, 4} <= set(got)                 # a different moment in a picked group; an undecided single
+    assert 8 in got and 9 not in got          # an undecided group: its best frame, not both twins
+    assert 5 not in got                       # among the shoot's weakest
+    assert [x["id"] for x in out["rejects"]] == [7]   # 6 is just the twin of pick 1
+    con.execute("INSERT INTO picks (photo_id, decision) VALUES (3, 'dismiss')")
+    assert 3 not in [x["id"] for x in cull.second_look(con, sid)["unmarked"]]   # "Not now" sticks

@@ -36,6 +36,58 @@ def _scurve(x, contrast, pivot):
     return np.where(x < pivot, lo, hi).astype(np.float32)
 
 
+_CURVE_GRID = np.linspace(0.0, 1.0, 1024, dtype=np.float32)
+_curve_cache = {}
+
+
+def curve_table(points):
+    """A tone curve through `points` ([[x, y], ...] in 0..1) as a 1024-step table, or None when
+    it is the straight line. Monotone cubic (Fritsch-Carlson), so it never overshoots between
+    points and tones never swap order; flat beyond the first and last point."""
+    pts = sorted((min(max(float(x), 0.0), 1.0), min(max(float(y), 0.0), 1.0)) for x, y in (points or []))
+    clean = []
+    for x, y in pts:
+        if clean and x - clean[-1][0] < 1e-4:
+            clean[-1] = (x, y)
+        else:
+            clean.append((x, y))
+    if len(clean) < 2 or all(abs(x - y) < 1e-4 for x, y in clean) and clean[0][0] < 1e-4 and clean[-1][0] > 1 - 1e-4:
+        return None
+    key = tuple(clean)
+    if key in _curve_cache:
+        return _curve_cache[key]
+    xs, ys = np.array([c[0] for c in clean]), np.array([c[1] for c in clean])
+    h, delta = np.diff(xs), np.diff(ys) / np.diff(xs)
+    m = np.empty_like(xs)
+    m[0], m[-1] = delta[0], delta[-1]
+    for k in range(1, len(xs) - 1):
+        if delta[k - 1] * delta[k] <= 0:
+            m[k] = 0.0
+        else:
+            w1, w2 = 2 * h[k] + h[k - 1], h[k] + 2 * h[k - 1]
+            m[k] = (w1 + w2) / (w1 / delta[k - 1] + w2 / delta[k])
+    for k in (0, len(xs) - 1):          # keep the end slopes from overshooting
+        d = delta[0] if k == 0 else delta[-1]
+        m[k] = 0.0 if d == 0 else np.sign(d) * min(abs(m[k]), 3 * abs(d))
+    g = _CURVE_GRID.astype(np.float64)
+    i = np.clip(np.searchsorted(xs, g) - 1, 0, len(xs) - 2)
+    t = np.clip((g - xs[i]) / h[i], 0, 1)
+    t2, t3 = t * t, t * t * t
+    out = ((2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h[i] * m[i]
+           + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h[i] * m[i + 1])
+    out = np.where(g < xs[0], ys[0], np.where(g > xs[-1], ys[-1], out))
+    table = np.clip(out, 0, 1).astype(np.float32)
+    if len(_curve_cache) > 64:
+        _curve_cache.clear()
+    _curve_cache[key] = table
+    return table
+
+
+def apply_curve(d, points):
+    table = curve_table(points)
+    return d if table is None else np.interp(d, _CURVE_GRID, table).astype(np.float32)
+
+
 # ---------------------------------------------------------------- stage A
 
 def base(linear, gain, exposure=0.0, display=False):
@@ -75,6 +127,9 @@ def look_lab(d, recipe):
         d = d + 2.4 * (sh * d * (1 - d) ** 3 + hl * d ** 3 * (1 - d))
     black, white = tone.get("black", 0.0), tone.get("white", 1.0)
     d = black + np.clip(d, 0, 1) * (white - black)
+    for key in ("curve", "user_curve"):    # the look's own curve, then yours from the Grade tab
+        if tone.get(key):
+            d = apply_curve(np.clip(d, 0, 1), tone[key])
 
     lab = linear_to_oklab(srgb_decode(d))
     if mono.get("enabled"):

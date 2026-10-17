@@ -112,3 +112,21 @@ def test_with_ratio_keeps_turns_and_angle():
     assert g["rot90"] == 90 and g["angle"] == 3.0 and g["aspect"] == "4:5"
     ow, oh = geometry.output_size(900, 600, g)
     assert abs(ow / oh - 0.8) < 0.01
+
+
+def test_grades_are_remembered_per_photo(tmp_path, monkeypatch):
+    from filmlook import edits
+    from filmlook.library import db
+    con = db.connect(tmp_path / "lib.db")
+    con.execute("PRAGMA foreign_keys=OFF")
+    monkeypatch.setattr(edits, "_where", lambda path, create=False: (con, 1, str(path)))
+    assert edits.is_plain("neutral", {"strength": 1, "exposure": 0, "curve": [[0, 0], [1, 1]]})
+    assert not edits.is_plain("neutral", {"curve": [[0, 0], [0.5, 0.6], [1, 1]]})
+    assert not edits.is_plain("leica-m9", {})
+    assert edits.get_grade("a.dng") is None
+    g = edits.put_grade("a.dng", "leica-m9", {"exposure": 0.3, "curve": [[0, 0.05], [1, 1]]})
+    assert g == {"look": "leica-m9", "adjust": {"exposure": 0.3, "curve": [[0, 0.05], [1, 1]]}}
+    assert edits.get_grade("b.dng") is None                        # each photo its own
+    edits.put_grade("a.dng", "classic-chrome", {})                 # change of mind replaces it
+    assert edits.get_grade("a.dng")["look"] == "classic-chrome"
+    assert edits.put_grade("a.dng", "neutral", {"strength": 1}) is None   # back to plain: forgotten

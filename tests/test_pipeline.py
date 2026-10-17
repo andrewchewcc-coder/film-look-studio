@@ -212,3 +212,35 @@ def test_a_zoomed_tile_matches_the_whole_frame():
     whole = pipeline.render(lin, r, gain=1.0)
     tile = pipeline.render(lin[30:80, 90:150], r, gain=1.0, y0=30, x0=90, full_size=(120, 180))
     assert np.abs(tile - whole[30:80, 90:150]).max() < 1e-5
+
+
+def test_tone_sliders_move_highlights_shadows_whites_blacks():
+    base = recipes.load_look(None)
+    ramp = np.linspace(0, 1, 101, dtype=np.float32).reshape(1, -1, 1).repeat(3, axis=2)
+    def out(adj):
+        return pipeline.look(ramp, recipes.apply_adjust(base, adj))[0, :, 1]
+    plain = out({})
+    assert out({"highlights": -0.6})[85] < plain[85] - 0.02          # bright tones come down
+    assert abs(out({"highlights": -0.6})[15] - plain[15]) < 0.01      # dark tones barely move
+    assert out({"shadows": 0.6})[20] > plain[20] + 0.02               # dark tones open up
+    assert abs(out({"shadows": 0.6})[90] - plain[90]) < 0.01
+    assert out({"blacks": 0.08})[0] > 0.05                            # faded, matte black
+    assert out({"whites": -0.1})[100] < 0.95                          # softer white
+    r = recipes.apply_adjust(recipes.load_look("classic-chrome"), {"shadows": 0.25, "blacks": 0.02})
+    assert r["tone"]["shadows"] == 0.0 and r["tone"]["black"] == 0.02  # added on top of the look
+
+
+def test_tone_curve_is_smooth_monotone_and_applied():
+    assert pipeline.curve_table([[0, 0], [1, 1]]) is None                     # straight line: nothing to do
+    s = pipeline.curve_table([[0, 0], [0.25, 0.18], [0.75, 0.84], [1, 1]])     # a gentle S
+    assert np.all(np.diff(s) >= -1e-6)                                         # tones never swap order
+    assert s[256] < 0.25 and s[767] > 0.75
+    lifted = pipeline.curve_table([[0, 0.08], [1, 1]])                         # faded film black
+    assert abs(lifted[0] - 0.08) < 1e-4
+    base = recipes.load_look(None)
+    ramp = np.linspace(0, 1, 101, dtype=np.float32).reshape(1, -1, 1).repeat(3, axis=2)
+    plain = pipeline.look(ramp, base)[0, :, 1]
+    curved = pipeline.look(ramp, recipes.apply_adjust(base, {"curve": [[0, 0], [0.5, 0.62], [1, 1]]}))[0, :, 1]
+    assert curved[50] > plain[50] + 0.05 and abs(curved[0] - plain[0]) < 0.01
+    t = lut.bake(recipes.apply_adjust(base, {"curve": [[0, 0], [0.5, 0.62], [1, 1]]}), size=17)
+    assert t[(8 * 17 + 8) * 17 + 8].mean() > 0.55                               # LUTs include your curve

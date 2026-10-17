@@ -253,6 +253,8 @@ def source_photo_ids(con, source):
     if t == "shortlist":
         return [r[0] for r in con.execute("""SELECT p.id FROM photos p JOIN marks m ON m.photo_id = p.id
                                              WHERE m.flag='pick' ORDER BY p.capture_time""")]
+    if t == "photos":                       # chosen in the Library (a selection or a whole view)
+        return [int(i) for i in source.get("ids", [])]
     if t in ("folder", "dates"):
         where, args = [], []
         if source.get("folder_id"):
@@ -359,6 +361,296 @@ def leave_out(con, photo_ids, target):
                   "weaker": "weaker than the rest (your taste, appeal and marks)"}[kind]
         out.append({"photo_id": worst, "reason": reason, "like": other})
     return out
+
+
+# --- choosing from a brief ("Best of 2026", 20 photos) ------------------------------------------
+
+MONO_SPREAD = 0.016          # colour spread below this = black & white (toned B&W included)
+_mono_cache = {}
+
+
+def is_mono(thumb_name):
+    """Is this display image black & white? 95th percentile of colour distance from the photo's own
+    average tint, so a warm-toned B&W (Tri-X Gold) still counts as B&W but a dull colour scene doesn't."""
+    if not thumb_name:
+        return False
+    if thumb_name not in _mono_cache:
+        from .. import color
+        try:
+            im = Image.open(ESSAY_THUMBS / thumb_name).convert("RGB")
+        except OSError:
+            return False
+        im.thumbnail((200, 200))
+        lab = color.linear_to_oklab(color.srgb_decode(np.asarray(im, np.float32) / 255))
+        a, b = lab[..., 1].ravel(), lab[..., 2].ravel()
+        _mono_cache[thumb_name] = float(np.percentile(np.hypot(a - a.mean(), b - b.mean()), 95)) < MONO_SPREAD
+    return _mono_cache[thumb_name]
+
+
+def _brief(brief):
+    b = dict(brief or {})
+    return {"count": max(1, int(b.get("count") or 20)), "theme": (b.get("theme") or "").strip(),
+            "colour": b.get("colour") if b.get("colour") in ("mix", "colour", "bw") else "mix",
+            "per_shoot": int(b["per_shoot"]) if b.get("per_shoot") else None}
+
+
+def _pool_info(con, ids, theme):
+    """Everything the chooser needs per photo: strength, theme fit, B&W, shoot, scale, vector."""
+    f = ensure_features(con, ids)
+    ids = [i for i in ids if i in f]
+    vec, st = vectors(con, ids), strength(con, ids)
+    vals = np.array([st[i] for i in ids]) if ids else np.zeros(0)
+    z = (vals - vals.mean()) / max(float(vals.std()), 1e-6) if len(vals) else vals
+    fit = {}
+    if theme and ids:
+        t = vision.embed_text([theme])[0]
+        sims = np.array([float(vec[i] @ t) if i in vec else 0.0 for i in ids])
+        fz = (sims - sims.mean()) / max(float(sims.std()), 1e-6)
+        fit = dict(zip(ids, fz.tolist()))
+    rows = {r[0]: r for r in con.execute(
+        f"""SELECT p.id, p.folder_id, fo.rel_path, p.graded, m.flag, m.rating FROM photos p
+            JOIN folders fo ON fo.id = p.folder_id LEFT JOIN marks m ON m.photo_id = p.id
+            WHERE p.id IN ({','.join('?' * len(ids)) or 'NULL'})""", ids)}
+    info = {}
+    for k, i in enumerate(ids):
+        r = rows.get(i)
+        info[i] = {"z": float(z[k]), "fit": fit.get(i, 0.0), "mono": is_mono(f[i].get("thumb")),
+                   "folder": r["folder_id"] if r else None,
+                   "shoot": PurePath(r["rel_path"]).name.strip() if r else "",
+                   "graded": bool(r and r["graded"]), "flag": r["flag"] if r else None,
+                   "rating": (r["rating"] or 0) if r else 0,
+                   "scale": (f[i].get("pace") or {}).get("scale"), "vec": vec.get(i)}
+    return info
+
+
+def _score(x, theme):
+    return x["z"] + (0.8 * x["fit"] if theme else 0.0)
+
+
+def choose(con, pool_ids, brief, keep=()):
+    """Pick the best `count` photos from the pool for a brief, with variety. `keep` (locked photos)
+    always stay. Returns {"chosen": [{id, reasons}], "bench": [{id, reason, like}], "note"}."""
+    b = _brief(brief)
+    info = _pool_info(con, list(dict.fromkeys(list(keep) + list(pool_ids))), b["theme"])
+    want_mono = {"bw": True, "colour": False}.get(b["colour"])
+    chosen = [i for i in keep if i in info]
+    per = {}
+    for i in chosen:
+        per[info[i]["folder"]] = per.get(info[i]["folder"], 0) + 1
+    why_not = {}
+
+    def penalty(i):
+        x, v = info[i], info[i]["vec"]
+        top, like = 0.0, None
+        if v is not None:
+            for c in chosen:
+                if info[c]["vec"] is not None:
+                    s = float(v @ info[c]["vec"])
+                    if s > top:
+                        top, like = s, c
+        pen = max(0.0, top - 0.70) * 5 + (4.0 if top >= NEAR_DUPLICATE else 0.0)
+        scales = [info[c]["scale"] for c in chosen if info[c]["scale"]]
+        if x["scale"] and len(scales) >= 4 and scales.count(x["scale"]) / len(scales) > 0.5:
+            pen += 0.3                                  # keep a mix of close, medium and wide
+        return pen, top, like
+
+    while len(chosen) < b["count"]:
+        best, best_val = None, None
+        for i, x in info.items():
+            if i in chosen:
+                continue
+            if want_mono is not None and x["mono"] != want_mono:
+                why_not[i] = ("colour", None); continue
+            if b["per_shoot"] and per.get(x["folder"], 0) >= b["per_shoot"]:
+                why_not[i] = ("shoot", None); continue
+            pen, top, like = penalty(i)
+            val = _score(x, b["theme"]) - pen
+            if top >= NEAR_DUPLICATE:
+                why_not[i] = ("dup", like)
+            elif pen >= 0.75:
+                why_not[i] = ("similar", like)
+            else:
+                why_not.pop(i, None)
+            if best_val is None or val > best_val:
+                best, best_val = i, val
+        if best is None:
+            break
+        chosen.append(best)
+        per[info[best]["folder"]] = per.get(info[best]["folder"], 0) + 1
+
+    # reasons
+    top_in_shoot = {}
+    for i, x in info.items():
+        if x["folder"] not in top_in_shoot or x["z"] > info[top_in_shoot[x["folder"]]]["z"]:
+            top_in_shoot[x["folder"]] = i
+    all_graded = all(y["graded"] for y in info.values())
+    out = []
+    for i in chosen:
+        x, r = info[i], []
+        if i in keep:
+            r.append("you locked it")
+        if x["rating"] >= 4:
+            r.append(f"one of your {x['rating']}★ photos")
+        elif x["flag"] == "pick":
+            r.append("one of your picks")
+        if b["theme"] and x["fit"] > 0.8:
+            r.append(f"fits “{b['theme']}”")
+        if top_in_shoot.get(x["folder"]) == i and len([1 for y in info.values() if y["folder"] == x["folder"]]) > 1:
+            r.append(f"the strongest from {x['shoot']}")
+        if not r and x["z"] > 1.0:
+            r.append("among the strongest of your selection")
+        if x["graded"] and not all_graded and len(r) < 3:
+            r.append("graded")
+        out.append({"id": i, "reasons": r or ["a solid photo that adds variety"]})
+    number = {c: k + 1 for k, c in enumerate(chosen)}
+    bench = []
+    rest = sorted((i for i in info if i not in chosen), key=lambda i: -_score(info[i], b["theme"]))
+    for i in rest:
+        kind, like = why_not.get(i, ("weaker", None))
+        reason = {"colour": "a colour photo (this essay is black & white)" if want_mono else "black & white (this essay is colour)",
+                  "shoot": f"already {b['per_shoot']} from {info[i]['shoot']}",
+                  "dup": "almost the same picture as one already in", "similar": "very like one already in",
+                  "weaker": "a little weaker than the ones chosen"}[kind]
+        bench.append({"id": i, "reason": reason, "like": like, "like_no": number.get(like)})
+    note = None
+    if len(chosen) < b["count"]:
+        note = (f"Only {len(chosen)} photos fit the brief" +
+                (" (black & white only)" if want_mono else " (colour only)" if want_mono is False else "") +
+                (f" with at most {b['per_shoot']} per shoot" if b["per_shoot"] else "") + ".")
+    return {"chosen": out, "bench": bench, "note": note}
+
+
+def create_from_brief(con, name, pool_ids, brief, look="leica-m9", origin=None):
+    """A new essay from a pool of photos and a brief: the best `count` chosen, in a suggested order.
+    Returns (essay_id, note)."""
+    pool_ids = list(dict.fromkeys(int(i) for i in pool_ids))
+    if not pool_ids:
+        raise ValueError("Select some photos first.")
+    b = _brief(brief)
+    r = choose(con, pool_ids, b)
+    if not r["chosen"]:
+        raise ValueError(r["note"] or "No photos fit this brief.")
+    source = {"type": "photos", "ids": pool_ids, "brief": b, "from": origin,
+              "reasons": {str(x["id"]): x["reasons"] for x in r["chosen"]}}
+    cur = con.execute("INSERT INTO essays (name, look, target, source) VALUES (?,?,?,?)",
+                      (name, look, b["count"], json.dumps(source)))
+    eid = cur.lastrowid
+    con.executemany("INSERT INTO essay_items (essay_id, photo_id, pos) VALUES (?,?,?)",
+                    [(eid, x["id"], k) for k, x in enumerate(r["chosen"])])
+    con.commit()
+    set_order(con, eid, sequence(con, eid, "flow")["order"])
+    return eid, r["note"]
+
+
+def _essay_source(con, essay_id):
+    row = con.execute("SELECT source FROM essays WHERE id=?", (essay_id,)).fetchone()
+    return json.loads(row[0] or "{}") if row else {}
+
+
+def bench(con, essay_id):
+    """The photos from the essay's pool that aren't in it, best first, each with why not."""
+    src = _essay_source(con, essay_id)
+    try:
+        pool = source_photo_ids(con, src)
+    except ValueError:
+        pool = []
+    current = [it["photo_id"] for it in items(con, essay_id)]
+    rest = [i for i in pool if i not in set(current)]
+    if not rest:
+        return []
+    b = _brief(src.get("brief") or {"count": len(current)})
+    info = _pool_info(con, current + rest, b["theme"])
+    want_mono = {"bw": True, "colour": False}.get(b["colour"])
+    number = {c: k + 1 for k, c in enumerate(current)}
+    per = {}
+    for c in current:
+        if c in info:
+            per[info[c]["folder"]] = per.get(info[c]["folder"], 0) + 1
+    out = []
+    for i in rest:
+        if i not in info:
+            continue
+        x, top, like = info[i], 0.0, None
+        if x["vec"] is not None:
+            for c in current:
+                if c in info and info[c]["vec"] is not None:
+                    sv = float(x["vec"] @ info[c]["vec"])
+                    if sv > top:
+                        top, like = sv, c
+        if want_mono is not None and x["mono"] != want_mono:
+            reason = "a colour photo (this essay is black & white)" if want_mono else "black & white (this essay is colour)"
+        elif top >= NEAR_DUPLICATE:
+            reason = "almost the same picture as one already in"
+        elif top >= 0.85:
+            reason = "very like one already in"
+        elif b["per_shoot"] and per.get(x["folder"], 0) >= b["per_shoot"]:
+            reason = f"already {b['per_shoot']} from {x['shoot']}"
+        else:
+            reason, like = "a little weaker than the ones chosen", None
+        out.append({"id": i, "reason": reason, "like": like, "like_no": number.get(like),
+                    "score": round(_score(x, b["theme"]) - max(0.0, top - 0.70) * 5, 3)})
+    out.sort(key=lambda r: -r["score"])
+    return out
+
+
+def replacements(con, essay_id, photo_id, limit=5):
+    """Alternatives from the bench for one photo's spot: strong, unlike the rest of the essay, and
+    the same kind of shot where possible."""
+    src = _essay_source(con, essay_id)
+    b = _brief(src.get("brief") or {})
+    current = [it["photo_id"] for it in items(con, essay_id)]
+    others = [c for c in current if c != photo_id]
+    cands = [x for x in bench(con, essay_id) if not x["reason"].startswith(("a colour photo", "black & white"))]
+    if not cands:
+        return []
+    info = _pool_info(con, current + [x["id"] for x in cands], b["theme"])
+    me = info.get(photo_id, {})
+    out = []
+    for x in cands:
+        i = x["id"]; y = info.get(i)
+        if not y:
+            continue
+        top = max((float(y["vec"] @ info[o]["vec"]) for o in others
+                   if y["vec"] is not None and o in info and info[o]["vec"] is not None), default=0.0)
+        if top >= NEAR_DUPLICATE:
+            continue
+        val = _score(y, b["theme"]) - max(0.0, top - 0.70) * 5
+        why = []
+        if me.get("scale") and y["scale"] == me.get("scale"):
+            val += 0.3; why.append(f"also a {y['scale']} shot")
+        if y["rating"] >= 4:
+            why.append(f"one of your {y['rating']}★ photos")
+        elif y["flag"] == "pick":
+            why.append("one of your picks")
+        if b["theme"] and y["fit"] > 0.8:
+            why.append(f"fits “{b['theme']}”")
+        why.append("strong" if y["z"] > 0.8 else "solid")
+        if top < 0.75:
+            why.append("unlike the rest of the essay")
+        out.append({"id": i, "reasons": why, "score": round(val, 3)})
+    out.sort(key=lambda r: -r["score"])
+    return out[:limit]
+
+
+def rechoose(con, essay_id, brief):
+    """Choose again from the essay's pool with a (changed) brief. Locked photos stay where they are."""
+    src = _essay_source(con, essay_id)
+    pool = source_photo_ids(con, src)
+    its = items(con, essay_id)
+    locked = [it["photo_id"] for it in its if it["locked"]]
+    locked_pos = {it["photo_id"]: it["pos"] for it in its if it["locked"]}
+    b = _brief(brief)
+    r = choose(con, pool, b, keep=locked)
+    chosen = [x["id"] for x in r["chosen"]]
+    order = [c for c in chosen if c not in locked]
+    for pid, pos in sorted(locked_pos.items(), key=lambda kv: kv[1]):
+        order.insert(min(pos, len(order)), pid)
+    src.update(brief=b, reasons={str(x["id"]): x["reasons"] for x in r["chosen"]})
+    con.execute("UPDATE essays SET source=?, target=?, updated_at=datetime('now') WHERE id=?",
+                (json.dumps(src), b["count"], essay_id))
+    set_order(con, essay_id, order, locked={p: True for p in locked})
+    set_order(con, essay_id, sequence(con, essay_id, "flow")["order"])
+    return r["note"]
 
 
 # --- pairs (diptychs) -------------------------------------------------------------------------
