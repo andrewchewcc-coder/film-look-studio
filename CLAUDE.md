@@ -31,7 +31,7 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   neutral JPG unchanged (no auto exposure / contrast).
 - `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only): Library (search + browse in one, sidebar filters; Show: Worth a
   second look / On this day via `/api/library/second` → `secondlook.suggestions(undecided=True)`), Cull,
-  Essays and Grade tabs (the old Second look tab was removed; its views live in the Library). Library → Cull this shoot /
+  Grade and Essays tabs, in workflow order (the old Second look tab was removed; its views live in the Library). Library → Cull this shoot /
   Grade picks; Cull summary lists `cull.second_look` frames.
 - `filmlook/library/` – searchable archive. Database + thumbnails live in
   `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos).
