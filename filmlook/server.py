@@ -155,6 +155,18 @@ def warm(body: WarmIn):
     return {"ok": True}
 
 
+class WarmFullIn(BaseModel):
+    name: str
+
+
+@app.post("/api/warm_full")
+def warm_full(body: WarmFullIn):
+    """Prepare the full-size image of the photo you're looking at, so 100% zoom is ready."""
+    p = _photo(body.name)
+    threading.Thread(target=lambda: engine.warm_full(p, edits.get(p)), daemon=True).start()
+    return {"ok": True}
+
+
 class CopyRatioIn(BaseModel):
     source: str
     names: list[str]

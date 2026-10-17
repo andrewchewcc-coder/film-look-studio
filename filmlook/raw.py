@@ -91,7 +91,7 @@ def resize_float(img, size, resample=Image.LANCZOS):
                      for c in range(3)], axis=-1).astype(np.float32)
 
 
-def decode(path, max_edge=None, fast=False):
+def decode(path, max_edge=None, fast=False, quick=False):
     """Decode a RAW file to linear sRGB.
 
     Full size (max_edge=None) returns uint16 (H, W, 3). With max_edge, a fast
@@ -110,6 +110,10 @@ def decode(path, max_edge=None, fast=False):
         margins = (raw.sizes.left_margin, raw.sizes.top_margin)
         # fast=True (zoom-to-check-focus): simple demosaic, ~20x quicker on Fuji X-Trans
         extra = {"demosaic_algorithm": rawpy.DemosaicAlgorithm.LINEAR} if fast else {}
+        # quick=True (Grade zoom): Fuji X-Trans with LibRaw's 1-pass method instead of 3 passes —
+        # about twice as fast and indistinguishable at 100%. Exports keep the 3-pass quality.
+        if quick and not fast and raw.raw_pattern is not None and raw.raw_pattern.shape == (6, 6):
+            extra = {"demosaic_algorithm": rawpy.DemosaicAlgorithm.PPG}
         rgb = raw.postprocess(
             **extra,
             use_camera_wb=True,

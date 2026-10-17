@@ -56,6 +56,7 @@
   .filmHead { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
   .filmHead select { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 5px; border-radius: 6px; font: inherit; font-size: 12px; }
   .filmHead button { font-size: 12px; padding: 5px; }
+  .tickRow { display: flex; gap: 5px; } .tickRow button { flex: 1; }
   #stage #bigSplit { position: absolute; pointer-events: none; user-select: none; }
   #splitLine { position: absolute; width: 2px; background: #fffc; cursor: ew-resize; z-index: 3; box-shadow: 0 0 0 1px #0006; }
   #splitLine::before { content: ""; position: absolute; left: -14px; right: -14px; top: 0; bottom: 0; }
@@ -644,7 +645,8 @@
 <main id="gradeView">
   <section id="film">
     <div class="filmHead"><select id="filmFilter" title="Show only some photos"><option value="">All photos</option><option value="todo">Not graded yet</option><option value="edited">Edited, not exported</option><option value="graded">Graded (exported)</option></select>
-      <button id="nextTodo" title="Go to the next photo that isn't graded yet">Next not graded ›</button></div>
+      <button id="nextTodo" title="Go to the next photo that isn't graded yet">Next not graded ›</button>
+      <div class="tickRow"><button id="tickAll" title="Tick every photo shown (for batch export or copying a grade)">Tick all</button><button id="tickNone">Untick all</button></div></div>
     <div class="hint">Tick photos to batch-export.</div><div id="thumbs"></div></section>
   <section id="center">
     <div id="stage">
@@ -1043,6 +1045,8 @@ function afterFirstRender() {               // the big preview is up: now the ex
   const name = S.current, pre = new Image();  // "Hold: before" ready in advance
   pre.onload = () => { if (S.current === name) { S.beforeSrc = pre.src; S.beforeImg = pre; } };
   pre.src = "/api/render?" + q({ name, look: "neutral", crop: "none", edge: 1600 });
+  setTimeout(() => { if (S.current === name && !$("gradeView").hidden)          // full size ready for zooming
+    api("/api/warm_full", esJSON({ name })).catch(() => {}); }, 1200);
   const names = S.photos, i = names.indexOf(name);
   const next = [names[i + 1], names[i - 1], names[i + 2]].filter(Boolean);
   if (next.length) api("/api/warm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ names: next }) }).catch(() => {});
@@ -3259,6 +3263,16 @@ function filmFilter() {
   });
 }
 $("filmFilter").onchange = filmFilter;
+function tickAll(on) {                       // the photos shown (respecting the filter above)
+  document.querySelectorAll(".thumb").forEach(t => {
+    if (on && t.hidden) return;
+    const cb = t.querySelector("input"); cb.checked = on;
+    on ? S.ticked.add(t.dataset.name) : S.ticked.delete(t.dataset.name);
+  });
+  updateTicked();
+}
+$("tickAll").onclick = () => tickAll(true);
+$("tickNone").onclick = () => tickAll(false);
 $("nextTodo").onclick = () => {
   const names = S.photos, i = names.indexOf(S.current);
   const todo = (n) => !(S.exported && S.exported.has(n)) && !(S.edited && S.edited.has(n));

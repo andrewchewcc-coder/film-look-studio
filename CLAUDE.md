@@ -18,6 +18,8 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
 - `filmlook/pipeline.py` – the grade: base render → per-pixel look → grain/vignette. Tone: S-curve,
   shadows/highlights, black/white, then `tone.curve` (look) and `tone.user_curve` (Grade tab's curve;
   monotone cubic, `curve_table`). `engine.render_threaded` splits renders over cores (identical output).
+  Grade zoom: full-size decode warmed in the background on open (`/api/warm_full`, `engine.warm_full`);
+  `raw.decode(quick=True)` uses 1-pass X-Trans for Fuji zoom (exports keep 3-pass).
 - `filmlook/recipes.py` – JSON looks in `looks/` (built-in) and `looks/user/` (saved), `extends`, overrides.
 - `filmlook/engine.py` – cached previews, contact sheets, strip-based full-res export with EXIF copy.
 - `filmlook/lut.py` – bake a look to a 3D LUT (.cube export; also speeds up exports).

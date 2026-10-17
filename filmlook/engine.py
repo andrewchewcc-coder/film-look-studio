@@ -167,7 +167,25 @@ def render_threaded(lin, recipe, gain, display=False, y0=0, x0=0, full_size=None
     return out
 
 
-_full_cache = {"key": None, "img": None}   # one full-resolution decode (with its edit) for zooming
+_full_cache = {"key": None, "img": None}
+_full_lock = threading.Lock()              # one full-size decode at a time; a zoom waits for a warm-up in progress
+
+
+def _full_frame(path, g, key):
+    with _full_lock:
+        if _full_cache["key"] != key:
+            _full_cache.update(key=None, img=None)                    # free the previous photo first
+            full = raw.decode(path, quick=True)
+            _full_cache.update(key=key, img=geometry.apply(full, g) if not geometry.is_identity(g) else full)
+        return _full_cache["img"]
+
+
+def warm_full(path, geom):
+    """Decode the photo at full size in the background, so zooming to 100% is immediate."""
+    g = geometry.normalise(geom)
+    key = (str(path), Path(path).stat().st_mtime_ns, geometry.key(g))
+    if _full_cache["key"] != key:
+        _full_frame(path, g, key)   # one full-resolution decode (with its edit) for zooming
 
 
 def render_region(path, recipe, geom, box, out_w):
@@ -187,11 +205,7 @@ def render_region(path, recipe, geom, box, out_w):
         frame = geometry.apply(lin, g) if not geometry.is_identity(g) else lin
     else:
         key = (str(path), Path(path).stat().st_mtime_ns, geometry.key(g))
-        if _full_cache["key"] != key:
-            _full_cache.update(key=None, img=None)                    # free the previous photo first
-            full = raw.decode(path)
-            _full_cache.update(key=key, img=geometry.apply(full, g) if not geometry.is_identity(g) else full)
-        frame = _full_cache["img"]
+        frame = _full_frame(path, g, key)
     fh, fw = frame.shape[:2]
     x0, y0 = int(bx * fw), int(by * fh)
     x1, y1 = max(x0 + 1, int(round((bx + bw) * fw))), max(y0 + 1, int(round((by + bh) * fh)))
