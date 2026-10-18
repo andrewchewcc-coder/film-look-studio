@@ -1015,15 +1015,16 @@ def score_order(order, T, pace, strength, idx):
     return s
 
 
-def _optimise(order, locked, T, pace, strength, idx, keep=None, iters=4000, seed=0):
-    """Swap / move unlocked photos to improve score_order (simple local search, restarts)."""
+def _optimise(order, locked, T, pace, strength, idx, keep=None, iters=4000, seed=0, scorer=None):
+    """Swap / move unlocked photos to improve score_order, or `scorer(order)` (simple local search)."""
     rng = np.random.default_rng(seed)
     free = [k for k, p in enumerate(order) if p not in locked]
     if len(free) < 2:
         return order
     extra = keep or (lambda o: 0.0)
+    base = scorer or (lambda o: score_order(o, T, pace, strength, idx))
     best = list(order)
-    best_s = score_order(best, T, pace, strength, idx) + extra(best)
+    best_s = base(best) + extra(best)
     cur, cur_s = list(best), best_s
     temp = 0.6
     for it in range(iters):
@@ -1037,7 +1038,7 @@ def _optimise(order, locked, T, pace, strength, idx, keep=None, iters=4000, seed
             vals = [cand[k] for k in run][::-1]
             for k, v in zip(run, vals):
                 cand[k] = v
-        cs = score_order(cand, T, pace, strength, idx) + extra(cand)
+        cs = base(cand) + extra(cand)
         if cs > cur_s or rng.random() < np.exp((cs - cur_s) / max(temp, 1e-3)):
             cur, cur_s = cand, cs
             if cs > best_s:
@@ -1054,18 +1055,31 @@ def _place_name(con, pid):
     return f"folder:{r[2]}" if r else "?"
 
 
+def _essay_ctx(con, ids):
+    """(ids, features, T, why, strength z, craft context) for a set of essay photos."""
+    from . import craft
+    ids, f, T, why = transition_matrix(con, ids)
+    st = strength(con, ids)
+    sv = np.array([st[p] for p in ids]) if ids else np.zeros(1)
+    zst = {p: float((st[p] - sv.mean()) / max(sv.std(), 1e-6)) for p in ids}
+    ctx = craft.context(con, ids, f, T, zst)
+    every = strength(con, [r[0] for r in con.execute("SELECT id FROM photos")])
+    ctx["weak"] = [st[p] < float(np.percentile(list(every.values()), 25)) if every else False for p in ids]
+    return ids, f, T, why, zst, ctx
+
+
 def sequence(con, essay_id, style="flow", arc="day_to_night", seed=0):
     """Suggest an order for the essay. Locked photos keep their positions.
+    Styles: classic / quiet / juxtaposition (photobook craft, see craft.py), flow, time, mood.
     Returns {order, transitions: [{a, b, reason}], opener, closer, style}."""
+    from . import craft
     its = items(con, essay_id)
     ids = [it["photo_id"] for it in its]
     locked_pos = {it["pos"]: it["photo_id"] for it in its if it["locked"]}
-    ids, f, T, why = transition_matrix(con, ids)
+    ids, f, T, why, zst, ctx = _essay_ctx(con, ids)
     idx = {p: k for k, p in enumerate(ids)}
     pace = [_pace_class(f[p]) for p in ids]
-    st = strength(con, ids)
-    sv = np.array([st[p] for p in ids])
-    zst = {p: float((st[p] - sv.mean()) / max(sv.std(), 1e-6)) for p in ids}
+    scorer = lambda o: craft.score(o, ctx, style if style in craft.STYLES else "flow")
     times = {r[0]: r[1] or "" for r in con.execute(
         f"SELECT id, capture_time FROM photos WHERE id IN ({','.join('?' * len(ids)) or 'NULL'})", ids)}
 
@@ -1097,9 +1111,9 @@ def sequence(con, essay_id, style="flow", arc="day_to_night", seed=0):
     order, it_un = [], iter(unlocked)
     for k in range(len(ids)):
         order.append(locked_pos[k] if k in locked_pos else next(it_un))
-    if style in ("flow", "mood"):
+    if style != "time":
         order = _optimise(order, set(locked_pos.values()), T, pace, zst, idx, keep=keep, seed=seed,
-                          iters=6000 if style == "flow" else 3000)
+                          iters=3000 if style == "mood" else 6000, scorer=scorer)
 
     trans = []
     for a, b in zip(order, order[1:]):
@@ -1108,8 +1122,87 @@ def sequence(con, essay_id, style="flow", arc="day_to_night", seed=0):
         reason = (_short(r, f[a], f[b]) if r and T[i, j] > 0.5 else None) or _pace_reason(f[a], f[b])
         trans.append({"a": a, "b": b, "reason": reason, "score": round(float(T[i, j]), 3)})
     return {"style": style, "arc": arc if style == "mood" else None, "order": order, "transitions": trans,
+            "chapters": [order[k] for k in craft.chapter_starts(len(order))][1:] if style == "classic" else [],
             "opener": _strong_reason(f[order[0]], zst[order[0]]) if order else None,
             "closer": _strong_reason(f[order[-1]], zst[order[-1]]) if order else None}
+
+
+def craft_check(con, order):
+    """The photobook guidelines as a checklist for this order, plus the hero photos."""
+    from . import craft
+    ids, f, T, why, zst, ctx = _essay_ctx(con, list(order))
+    order = [p for p in order if p in ctx["idx"]]
+    items_ = craft.check(order, ctx, f)
+    rules = list(dict.fromkeys(x["rule"] for x in items_))
+    failing = {x["rule"] for x in items_ if not x["ok"]}
+    return {"items": items_, "passed": len(rules) - len(failing), "rules": len(rules),
+            "heroes": craft.heroes(ctx, order)}
+
+
+def craft_fix(con, order, kind, positions=(), locked=(), rule=None):
+    """One step towards fixing a checklist item; returns the new order (the page applies it, so Undo works).
+    kind: opener / closer (bring the best candidate there) or move (find the best new place for the
+    photos at `positions`, 1-based, by moving or swapping them)."""
+    from . import craft
+    ids, f, T, why, zst, ctx = _essay_ctx(con, list(order))
+    order = [p for p in order if p in ctx["idx"]]
+    locked = set(locked)
+    n = len(order)
+    free = [k for k in range(n) if order[k] not in locked]
+    score = lambda o: craft.score(o, ctx, "classic")
+    def legal(o):                                               # locked photos stay where they are
+        return all(o[j] == order[j] for j in range(n) if order[j] in locked)
+
+    if kind in ("opener", "closer"):
+        at = 0 if kind == "opener" else n - 1
+        if order[at] in locked:
+            return order
+        def passes(o):                                         # the checklist's own test
+            i = ctx["idx"][o[at]]
+            if kind == "opener":
+                return not (ctx["busy"][i] or ctx["scale"][i] == "close" or ctx["z"][i] < 0)
+            return not ((ctx["busy"][i] and ctx["z"][i] < 0.7) or ctx["z"][i] < -0.3)
+        best_o, best_s = list(order), (passes(order), score(order))
+        for k in free:
+            if k == at:
+                continue
+            swap = list(order)
+            swap[at], swap[k] = swap[k], swap[at]
+            move = list(order)
+            p = move.pop(k)
+            move.insert(0, p) if at == 0 else move.append(p)
+            for o in (swap, move):
+                if legal(o):
+                    sc = (passes(o), score(o))                  # a passing opener first, then the whole essay
+                    if sc > best_s:
+                        best_o, best_s = o, sc
+        return best_o
+    movers = {order[k - 1] for k in positions if 0 < k <= n and order[k - 1] not in locked}
+    if rule:                                                    # aim at the guideline that was clicked
+        base_score = score
+        score = lambda o: base_score(o) - 3.0 * craft.failures(o, ctx, rule)
+    cur = list(order)
+    for _ in range(3):                                          # a few steps: long runs need more than one move
+        best_o, best_s = cur, score(cur)
+        for k in [i for i, p in enumerate(cur) if p in movers]:
+            for t in free:
+                if t == k:
+                    continue
+                o = list(cur)
+                o[k], o[t] = o[t], o[k]
+                cands = [o]
+                o2 = list(cur)
+                o2.insert(t, o2.pop(k))
+                cands.append(o2)
+                for c in cands:
+                    if legal(c):
+                        sc = score(c)
+                        if sc > best_s + 1e-9:
+                            best_o, best_s = c, sc
+        if best_o is cur:
+            break
+        cur = best_o
+    return cur
 
 
 def _pace_reason(fa, fb):

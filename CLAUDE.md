@@ -68,6 +68,12 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   print-ready book PDF (A4 / 8x10, portrait / landscape; border or full-bleed; cover, captions, page
   numbers, index, 3 mm bleed with TrimBox) following the spreads, 300 dpi, streamed page by page
   (own tiny PDF writer, one JPEG per page). Library also shows a new-shoot notice (`scan.new_shoots`).
+- `filmlook/library/craft.py` – photobook craft: 13 guidelines from classic street photobooks (Frank, Cartier-Bresson,
+  Klein, Levitt, Koudelka, Moriyama, Parr, Leiter, Webb, Davidson) as `score` (styles classic / quiet /
+  juxtaposition / flow weigh them) and `check` (the Essays → Arrange → Check list; `failures` per rule for Fix).
+  Busy is relative to the essay; motifs = SigLIP prompts z-scored over the library (theme motifs in >40% ignored);
+  heroes (≈1 in 8 strongest) get a spread alone in the book PDF (`heroes=True`); `make_book(preview=True)` = small pages from thumbnails for the Book panel's Preview. `essay.sequence` optimises
+  `craft.score` for every style but time; `essay.craft_check` / `craft_fix` back /api/essays/{id}/check and /fix.
 - `filmlook/publish.py` – WordPress publishing (REST API + Application Password in the macOS Keychain; site/user
   in LIBRARY_DIR/publish.json). Essays → Publish tab: post details saved in essays.source.publish, local
   preview, Upload as draft = web JPGs (GPS stripped) to the Media Library + a DRAFT post copying the

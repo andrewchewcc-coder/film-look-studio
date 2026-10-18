@@ -3,7 +3,9 @@
 Pages follow the essay's spreads: page 1 alone on the right, then facing pairs (2-3, 4-5 …),
 exactly as the Spreads view shows. Each photo is placed at 300 dpi from your best version: the
 largest graded JPG, else the RAW with your Grade-tab grade (or the essay's look) and its crop.
-Optional: a cover, captions (your titles), page numbers, an index page, and 3 mm print bleed.
+Optional: a cover, captions (your titles), page numbers, an index page, 3 mm print bleed, and
+hero spreads: the strongest photos (about 1 in 8, craft.heroes) sit alone on a right-hand page
+with a blank page opposite, as Frank and Webb give their key pictures room.
 
 The PDF is written page by page (each page a high-quality JPEG), so a 60-page book never needs
 more than one page in memory. Saved under ~/Pictures/Film Look Studio Essays; originals untouched.
@@ -134,9 +136,11 @@ def _text_fit(d, text, font, width):
 # --- the book ---------------------------------------------------------------------------------
 
 def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, captions=True,
-              page_numbers=True, index=True, bleed=False, cover_photo=None, job=None,
-              cancelled=lambda: False, poll=3.0):
-    """Write the book PDF; returns its path (None if cancelled). Waits while a drive is offline."""
+              page_numbers=True, index=True, bleed=False, cover_photo=None, heroes=False, job=None,
+              cancelled=lambda: False, poll=3.0, preview=False):
+    """Write the book PDF; returns its path (None if cancelled). Waits while a drive is offline.
+    preview=True: the same pages, small and fast from the essay thumbnails (works offline), returned
+    as [{kind: cover/photo/blank/index, page (photo page number or None), jpeg bytes}]."""
     from .. import recipes
     job = job if job is not None else {}
     e = con.execute("SELECT name, look FROM essays WHERE id=?", (essay_id,)).fetchone()
@@ -144,14 +148,15 @@ def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, ca
         raise ValueError(f"unknown size {size}")
     wi, hi = SIZES[size]
     b = BLEED if bleed else 0.0
-    PW, PH = round((wi + 2 * b) * DPI), round((hi + 2 * b) * DPI)      # whole page incl. bleed, pixels
-    bx = round(b * DPI)                                                 # bleed in pixels
+    dpi = 40 if preview else DPI
+    PW, PH = round((wi + 2 * b) * dpi), round((hi + 2 * b) * dpi)      # whole page incl. bleed, pixels
+    bx = round(b * dpi)                                                 # bleed in pixels
     tw, th = PW - 2 * bx, PH - 2 * bx                                   # the trimmed page
     items = essay_out.plan(con, essay_id)
     if not items:
         raise ValueError("This essay has no photos yet.")
     job.update(total=len(items) + int(cover) + int(index), done=0, current="", waiting=[], folder=None, pdf=None)
-    while not all(i["online"] for i in items):
+    while not preview and not all(i["online"] for i in items):
         job["waiting"] = sorted({i["drive"] or "a drive" for i in items if not i["online"]})
         if cancelled():
             job["waiting"] = []
@@ -164,9 +169,32 @@ def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, ca
         f"""SELECT p.id, p.capture_time, fo.rel_path AS folder FROM photos p JOIN folders fo ON fo.id = p.folder_id
             WHERE p.id IN ({','.join('?' * len(items))})""", [i["photo_id"] for i in items])}
 
-    essay_out.OUT_DIR.mkdir(parents=True, exist_ok=True)
-    dst = essay_out.OUT_DIR / f"{essay_out.safe_name(e['name'])} – book {SIZE_NAMES[size]}{' bleed' if bleed else ''}.pdf"
-    pdf = PdfWriter(dst)
+    if preview:
+        feats = essay.ensure_features(con, [i["photo_id"] for i in items])
+        pages_out = []
+
+        class _Collect:                                         # stands in for the PDF writer
+            def add_page(self, img, *a, **k):
+                buf = io.BytesIO()
+                img.save(buf, "JPEG", quality=80)
+                pages_out.append({"kind": kind_now[0], "page": page_now[0], "jpeg": buf.getvalue()})
+
+            def close(self):
+                pass
+        pdf, dst = _Collect(), None
+
+        def get_image(it):
+            t = (feats.get(it["photo_id"]) or {}).get("thumb")
+            return Image.open(essay.ESSAY_THUMBS / t).convert("RGB") if t and (essay.ESSAY_THUMBS / t).exists() \
+                else Image.new("RGB", (300, 200), (200, 200, 200))
+    else:
+        essay_out.OUT_DIR.mkdir(parents=True, exist_ok=True)
+        dst = essay_out.OUT_DIR / f"{essay_out.safe_name(e['name'])} – book {SIZE_NAMES[size]}{' bleed' if bleed else ''}.pdf"
+        pdf = PdfWriter(dst)
+
+        def get_image(it):
+            return photo_image(con, it, recipe, long_edge)
+    kind_now, page_now = ["cover"], [None]
     short = min(tw, th)
     margin = round(short * 0.11)
     cap_px = round(short * 0.017)
@@ -185,7 +213,7 @@ def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, ca
         page, d = blank(), None
         pid = cover_photo if cover_photo in [i["photo_id"] for i in items] else items[0]["photo_id"]
         it = next(i for i in items if i["photo_id"] == pid)
-        im = photo_image(con, it, recipe, long_edge)
+        im = get_image(it)
         box_w, box_h = tw - 2 * margin, round((th - 2 * margin) * 0.72)
         ph = _fit(im, box_w, box_h)
         page.paste(ph, (bx + (tw - ph.width) // 2, bx + margin + (box_h - ph.height) // 2))
@@ -201,13 +229,22 @@ def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, ca
         add(page)
         job["done"] += 1
 
+    hero_ids = set(essay.craft_check(con, [i["photo_id"] for i in items])["heroes"]) if heroes else set()
+
     # photo pages: page 1 is a right-hand page; even pages are on the left
-    for n, it in enumerate(items, 1):
+    n = 0
+    for it in items:
         if cancelled():
             pdf.close()
             return None
+        if it["photo_id"] in hero_ids and n % 2 == 1:          # a hero goes on the right, blank page opposite
+            n += 1
+            kind_now[0], page_now[0] = "blank", n
+            add(blank())
+        n += 1
+        kind_now[0], page_now[0] = "photo", n
         job["current"] = f"page {n}: {it['file']}"
-        im = photo_image(con, it, recipe, long_edge)
+        im = get_image(it)
         page = blank()
         if layout == "full":
             page.paste(_cover_crop(im, PW, PH), (0, 0))
@@ -231,9 +268,10 @@ def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, ca
         job["done"] += 1
 
     # index: every photo with its number, title, shoot and date
-    pages_so_far = len(items)
+    pages_so_far = n
     if index:
         job["current"] = "index"
+        kind_now[0], page_now[0] = "index", None
         cols = 4 if tw < th else 6
         cell_w = (tw - 2 * margin) // cols
         thumb_h = round(cell_w * 0.62)
@@ -267,8 +305,11 @@ def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, ca
         job["done"] += 1
 
     if pages_so_far % 2:                         # printers bind in pairs of pages: end on a left page
+        kind_now[0], page_now[0] = "blank", None
         add(blank())
     pdf.close()
+    if preview:
+        return pages_out
     job["current"] = ""
     job["pdf"] = str(dst)
     return dst

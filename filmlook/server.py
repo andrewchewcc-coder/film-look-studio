@@ -1480,9 +1480,33 @@ class SuggestIn(BaseModel):
 def essay_suggest(eid: int, body: SuggestIn):
     """A suggested order (not applied: the page applies it, so Undo works)."""
     _essay_row(eid)
-    if body.style not in ("flow", "time", "mood"):
+    if body.style not in ("flow", "time", "mood", "classic", "quiet", "juxtaposition"):
         raise HTTPException(400, "unknown style")
     return _essay().sequence(_lib().con(), eid, body.style, body.arc)
+
+
+@app.get("/api/essays/{eid}/check")
+def essay_check(eid: int, order: str):
+    """The photobook guidelines as a checklist for this order (see library/craft.py)."""
+    _essay_row(eid)
+    return _essay().craft_check(_lib().con(), [int(x) for x in order.split(",") if x])
+
+
+class FixIn(BaseModel):
+    order: list[int]
+    kind: str
+    positions: list[int] = []
+    locked: list[int] = []
+    rule: str | None = None
+
+
+@app.post("/api/essays/{eid}/fix")
+def essay_fix(eid: int, body: FixIn):
+    """One step towards fixing a checklist item: a new order (not applied: the page applies it, so Undo works)."""
+    _essay_row(eid)
+    if body.kind not in ("opener", "closer", "move"):
+        raise HTTPException(400, "unknown fix")
+    return {"order": _essay().craft_fix(_lib().con(), body.order, body.kind, body.positions, body.locked, body.rule)}
 
 
 @app.get("/api/essays/{eid}/pairs")
@@ -1626,6 +1650,7 @@ class BookIn(BaseModel):
     index: bool = True
     bleed: bool = False
     cover_photo: int | None = None
+    heroes: bool = False
 
 
 @app.post("/api/essays/{eid}/book")
@@ -1643,7 +1668,8 @@ def essay_book(eid: int, body: BookIn):
         try:
             eb.make_book(_lib().con(), eid, size=body.size, layout=body.layout, cover=body.cover,
                          captions=body.captions, page_numbers=body.page_numbers, index=body.index,
-                         bleed=body.bleed, cover_photo=body.cover_photo, job=job, cancelled=lambda: job["cancel"])
+                         bleed=body.bleed, cover_photo=body.cover_photo, heroes=body.heroes, job=job,
+                         cancelled=lambda: job["cancel"])
         except Exception as e:
             job["error"] = str(e)
         job["current"] = ""
@@ -1651,6 +1677,21 @@ def essay_book(eid: int, body: BookIn):
 
     threading.Thread(target=work, daemon=True).start()
     return {"job": job_id}
+
+
+@app.post("/api/essays/{eid}/book_preview")
+def essay_book_preview(eid: int, body: BookIn):
+    """Small versions of every book page (cover, spreads, hero blanks, index), from thumbnails."""
+    import base64
+    from .library import essay_book as eb
+    _essay_row(eid)
+    if body.size not in eb.SIZES:
+        raise HTTPException(400, "unknown page size")
+    pages = eb.make_book(_lib().con(), eid, size=body.size, layout=body.layout, cover=body.cover,
+                         captions=body.captions, page_numbers=body.page_numbers, index=body.index,
+                         bleed=body.bleed, cover_photo=body.cover_photo, heroes=body.heroes, preview=True)
+    return {"pages": [{"kind": p["kind"], "page": p["page"],
+                       "src": "data:image/jpeg;base64," + base64.b64encode(p["jpeg"]).decode()} for p in pages]}
 
 
 @app.post("/api/jobs/{job_id}/cancel")

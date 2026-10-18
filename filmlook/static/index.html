@@ -398,6 +398,24 @@
   .esPair .acts, .esCand .acts { margin-bottom: 5px; }
   .esCard.flash { border-color: #6fd28a; box-shadow: 0 0 0 3px #6fd28a55; }
   .esPair img, .esCand img { height: 96px; display: block; }
+  .bkSpreads { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+  .bkSpread { display: flex; flex-wrap: wrap; width: max-content; max-width: 100%; }
+  .bkSpread img, .bkSpread .none { height: 120px; }
+  .bkSpread img { box-shadow: 0 1px 4px #0008; }
+  .bkSpread .none { display: inline-block; aspect-ratio: var(--bkAR, 0.707); }
+  .bkSpread .lab { flex-basis: 100%; text-align: center; font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .esCheckHead { flex: 0 0 220px; color: var(--muted); line-height: 1.45; }
+  .esCheckHead b { color: var(--text); font-size: 13px; }
+  .esCheck { flex: 0 0 230px; display: flex; gap: 8px; border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+  .esCheck .mk { color: #e0796b; font-weight: 600; }
+  .esCheck.ok .mk { color: #6cc28a; }
+  .esCheck.ok { opacity: 0.7; }
+  .esCheck .rule { color: var(--text); font-weight: 600; font-size: 12px; }
+  .esCheck .why { color: var(--text); font-size: 12px; margin: 3px 0 5px; white-space: normal; cursor: pointer; }
+  .esCheck .imgs { display: flex; gap: 3px; margin-bottom: 6px; cursor: pointer; }
+  .esCheck .imgs img { height: 38px; border-radius: 2px; }
+  .esCheck button { padding: 2px 8px; font-size: 12px; }
+  #esPanel.tall .esCheck, #esPanel.tall .esCheckHead { flex-basis: auto; }
   .esPair .why, .esCand .why { max-width: 260px; margin: 4px 0; color: var(--text); font-size: 12px; white-space: normal; }
   .esPair .acts, .esCand .acts { display: flex; gap: 5px; }
   .esPair .acts button, .esCand .acts button { padding: 2px 8px; font-size: 12px; }
@@ -619,11 +637,20 @@
       <div id="esTop">
         <input type="text" id="esTitle" title="Essay name">
         <span id="esCount" class="small"></span>
-        <span class="small">Suggest order:</span>
-        <button class="esSug" data-style="flow" title="Each photo leads into the next; varied pace">Visual flow</button>
-        <button class="esSug" data-style="time" title="Chronological, grouped by place">Time &amp; place</button>
-        <button class="esSug" data-style="mood" data-arc="day_to_night">Day → night</button>
-        <button class="esSug" data-style="mood" data-arc="calm_to_intense">Calm → intense</button>
+        <select id="esStyle" title="How to arrange the photos">
+          <optgroup label="Photobook styles">
+            <option value="classic" title="Frank, Cartier-Bresson: chapters, a strong opener and closer, motifs as a refrain">Classic (Frank, Cartier-Bresson)</option>
+            <option value="quiet" title="Leiter, Webb: gentle colour steps, rhymes, room to breathe">Quiet flow (Leiter, Webb)</option>
+            <option value="juxtaposition" title="Klein: bold contrasts between neighbours and across spreads">Juxtaposition (Klein)</option>
+          </optgroup>
+          <optgroup label="Other">
+            <option value="flow">Visual flow</option>
+            <option value="time">Time &amp; place</option>
+            <option value="mood:day_to_night">Day → night</option>
+            <option value="mood:calm_to_intense">Calm → intense</option>
+          </optgroup>
+        </select>
+        <button id="esArrange" title="Suggest an order in this style (locked photos stay; Undo goes back)">Arrange</button>
         <span class="seg"><button data-view="strip" class="on">Strip</button><button data-view="contact">Contact sheet</button><button data-view="spreads">Spreads</button></span>
         <button id="esUndo" title="Undo (⌘Z)">Undo</button>
         <select id="esVersions" title="Saved versions"></select>
@@ -635,7 +662,7 @@
       <div id="esBoard"></div>
       <div id="esPanel"><div id="esGrip" title="Drag to resize · double-click for the standard size"></div>
         <div class="esPanelHead"><div class="seg" id="esPanelGroups"><button data-g="arrange" class="on">Arrange</button><button data-g="brief">Brief</button><button data-g="output">Output</button></div>
-          <div class="seg" id="esPanelTabs"><button data-p="pairs" class="on">Pairs</button><button data-p="bench" title="Photos from your selection that weren't chosen">Bench</button><button data-p="fill">Fill the gap</button><button data-p="replace" hidden>Replace</button><button data-p="export" title="The photos in order as 01_title.jpg">Export photos</button><button data-p="book" title="A print-ready book or zine PDF">Book PDF</button><button data-p="contact" title="A PDF contact sheet with numbers and titles">Contact sheet</button><button data-p="publish" title="Publish to your WordPress website">Publish</button><button data-p="brief" hidden>Brief</button></div></div>
+          <div class="seg" id="esPanelTabs"><button data-p="check" title="Photobook guidelines: what works and what to fix">Check</button><button data-p="pairs" class="on">Pairs</button><button data-p="bench" title="Photos from your selection that weren't chosen">Bench</button><button data-p="fill">Fill the gap</button><button data-p="replace" hidden>Replace</button><button data-p="export" title="The photos in order as 01_title.jpg">Export photos</button><button data-p="book" title="A print-ready book or zine PDF">Book PDF</button><button data-p="contact" title="A PDF contact sheet with numbers and titles">Contact sheet</button><button data-p="publish" title="Publish to your WordPress website">Publish</button><button data-p="brief" hidden>Brief</button></div></div>
         <div id="esPanelBody" class="small"></div>
       </div>
     </div>
@@ -2693,7 +2720,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 // --- Essays -----------------------------------------------------------------------------------
-const ES = { id: null, photos: [], trans: [], view: "strip", undo: [], panel: "pairs", gap: null, setup: false };
+const ES = { id: null, photos: [], trans: [], view: "strip", undo: [], panel: "check", gap: null, setup: false };
 const esJSON = (body) => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 async function esOpen() { esList(); }
 async function esList() {
@@ -2738,6 +2765,7 @@ function esSave() {
   esTransitions();
 }
 async function esTransitions() {
+  if (ES.panel === "check") { clearTimeout(ES.checkTimer); ES.checkTimer = setTimeout(() => { if (ES.panel === "check") esPanel("check"); }, 600); }
   if (ES.photos.length < 2) { ES.trans = []; return esRender(); }
   const order = ES.photos.map(p => p.id).join(",");
   try {
@@ -2832,19 +2860,22 @@ function esRender() {
   }
 }
 document.querySelectorAll("#esTop .seg button").forEach(b => b.onclick = () => { ES.view = b.dataset.view; esRender(); });
-document.querySelectorAll(".esSug").forEach(b => b.onclick = async () => {
-  const label = b.textContent;
+try { const v = localStorage.getItem("fls.esStyle"); if (v && [...$("esStyle").options].some(o => o.value === v)) $("esStyle").value = v; } catch (e) {}
+$("esStyle").onchange = () => { try { localStorage.setItem("fls.esStyle", $("esStyle").value); } catch (e) {} };
+$("esArrange").onclick = async () => {
+  const [style, arc] = $("esStyle").value.split(":"), label = $("esStyle").selectedOptions[0].textContent.replace(/ \(.*\)$/, "");
   $("esNote").textContent = `Working out a “${label}” order…`;
   try {
-    const r = await (await api(`/api/essays/${ES.id}/suggest`, esJSON({ style: b.dataset.style, arc: b.dataset.arc || "day_to_night" }))).json();
+    const r = await (await api(`/api/essays/${ES.id}/suggest`, esJSON({ style, arc: arc || "day_to_night" }))).json();
     esPushUndo();
     const byId = Object.fromEntries(ES.photos.map(p => [p.id, p]));
     ES.photos = r.order.map(id => byId[id]).filter(Boolean);
     ES.trans = r.transitions;
-    $("esNote").textContent = `“${label}” order applied (Undo to go back). Opener: ${r.opener}. Closer: ${r.closer}.`;
+    const ch = (r.chapters || []).map(id => "#" + (ES.photos.findIndex(p => p.id === id) + 1));
+    $("esNote").textContent = `“${label}” order applied (Undo to go back). Opener: ${r.opener}. Closer: ${r.closer}.` + (ch.length ? ` Chapters begin at #1, ${ch.join(", ")}.` : "");
     esRender(); esSave();
   } catch (e) { $("esNote").textContent = e.message; }
-});
+};
 $("esUndo").onclick = () => esUndo();
 function esUndo() {
   const u = ES.undo.pop(); if (!u) return $("esNote").textContent = "Nothing to undo.";
@@ -2893,9 +2924,9 @@ $("esGrip").addEventListener("pointerdown", (e) => {
 });
 $("esGrip").addEventListener("dblclick", () => esPanelHeight(ES_PANEL_DEFAULT));
 // The bottom panel in three groups: Arrange (pairs, bench, fill the gap) · Brief · Output (export, book, contact sheet, publish).
-const ES_GROUPS = { arrange: ["pairs", "bench", "fill", "replace"], brief: ["brief"], output: ["export", "book", "contact", "publish"] };
+const ES_GROUPS = { arrange: ["check", "pairs", "bench", "fill", "replace"], brief: ["brief"], output: ["export", "book", "contact", "publish"] };
 const esGroupOf = (p) => Object.keys(ES_GROUPS).find(g => ES_GROUPS[g].includes(p)) || "arrange";
-ES.lastIn = { arrange: "pairs", brief: "brief", output: "export" };
+ES.lastIn = { arrange: "check", brief: "brief", output: "export" };
 document.querySelectorAll("#esPanelTabs button").forEach(b => b.onclick = () => esPanel(b.dataset.p));
 document.querySelectorAll("#esPanelGroups button").forEach(b => b.onclick = () => esPanel(ES.lastIn[b.dataset.g]));
 async function esPanel(which) {
@@ -2914,7 +2945,42 @@ async function esPanel(which) {
   const thumb = (id) => `<img src="/api/essays/thumb/${id}" alt="">`;
   const num = (id) => ES.photos.findIndex(p => p.id === id) + 1;
   try {
-    if (which === "pairs") {
+    if (which === "check") {
+      const order = ES.photos.map(p => p.id);
+      if (order.length < 3) { P.textContent = "Add a few more photos to check the sequence."; return; }
+      const r = await (await api(`/api/essays/${ES.id}/check?` + q({ order: order.join(",") }))).json();
+      if (ES.panel !== "check" || order.join(",") !== ES.photos.map(p => p.id).join(",")) return;
+      P.innerHTML = `<div class="esCheckHead"><b>Follows ${r.passed} of ${r.rules} photobook guidelines</b><br>From Frank, Cartier-Bresson, Klein, Levitt, Koudelka, Moriyama, Parr, Leiter, Webb and Davidson. Fix one at a time, or choose a style above and click Arrange.</div>`;
+      const ids = (ps) => ps.map(k => ES.photos[k - 1] && ES.photos[k - 1].id).filter(Boolean);
+      for (const it of [...r.items.filter(x => !x.ok), ...r.items.filter(x => x.ok)]) {
+        const d = document.createElement("div"); d.className = "esCheck" + (it.ok ? " ok" : "");
+        const fixLabel = it.fix === "remove" ? `Remove #${ES.photos.findIndex(p => p.id === it.photo) + 1}` : it.fix === "opener" ? "Find a better opener" : it.fix === "closer" ? "Find a better closer" : it.fix ? "Fix" : "";
+        d.innerHTML = `<div class="mk">${it.ok ? "✓" : "✕"}</div><div class="body"><div class="rule">${esc(it.rule)}</div><div class="why">${esc(it.text)}</div>
+          ${it.positions.length && !it.ok ? `<div class="imgs">${ids(it.positions).slice(0, 6).map(thumb).join("")}</div>` : ""}
+          ${fixLabel ? `<button>${fixLabel}</button>` : ""}</div>`;
+        if (it.positions.length) d.querySelector(".why").onclick = () => esFlash(ids(it.positions));
+        const im = d.querySelector(".imgs"); if (im) im.onclick = () => esFlash(ids(it.positions));
+        const b = d.querySelector("button");
+        if (b) b.onclick = async () => {
+          b.disabled = true; b.textContent = "Working…";
+          try {
+            if (it.fix === "remove") {
+              esPushUndo(); ES.photos = ES.photos.filter(p => p.id !== it.photo);
+              $("esNote").textContent = "Removed from the essay (Undo to bring it back; it stays on the Bench).";
+            } else {
+              const res = await (await api(`/api/essays/${ES.id}/fix`, esJSON({ order: ES.photos.map(p => p.id), kind: it.fix, positions: it.positions, rule: it.rule,
+                locked: ES.photos.filter(p => p.locked).map(p => p.id) }))).json();
+              if (res.order.join(",") === ES.photos.map(p => p.id).join(",")) { $("esNote").textContent = "No better place found without breaking another guideline — try Arrange, or move it by hand."; return esPanel("check"); }
+              esPushUndo(); const byId = Object.fromEntries(ES.photos.map(p => [p.id, p]));
+              ES.photos = res.order.map(id => byId[id]).filter(Boolean);
+              $("esNote").textContent = `Fixed: ${it.rule.toLowerCase()} (Undo to go back).`;
+            }
+            esRender(); esSave(); esPanel("check");
+          } catch (e) { $("esNote").textContent = e.message; b.disabled = false; }
+        };
+        P.appendChild(d);
+      }
+    } else if (which === "pairs") {
       const ps = await (await api(`/api/essays/${ES.id}/pairs?limit=30`)).json();
       P.innerHTML = ps.length ? "" : "No pairs yet — add more photos.";
       for (const pr of ps) {
@@ -3085,17 +3151,46 @@ function esBookPanel(P) {
       <label><input type="checkbox" id="bkCaptions" checked> Captions (your titles)</label>
       <label><input type="checkbox" id="bkNumbers" checked> Page numbers</label>
       <label><input type="checkbox" id="bkIndex" checked> Index page</label>
-      <label title="Adds 3 mm on every side, as online book printers ask"><input type="checkbox" id="bkBleed"> 3 mm bleed (online printers)</label></div>
-    <div class="esRow"><button id="bkGo" class="primary">Make book PDF</button></div>
+      <label title="Adds 3 mm on every side, as online book printers ask"><input type="checkbox" id="bkBleed"> 3 mm bleed (online printers)</label>
+      <label title="Your strongest photos (about 1 in 8) sit alone on a right-hand page with a blank page opposite, as Frank and Webb do. Later pages shift from the Spreads view."><input type="checkbox" id="bkHeroes"> Hero photos alone on a spread</label></div>
+    <div class="esRow"><button id="bkPrev" title="Every page, small and quick, from thumbnails">Preview</button><button id="bkGo" class="primary">Make book PDF</button></div>
+    <div id="bkPreview"></div>
     <div class="small">Pages follow your Spreads view: page 1 alone on the right, then facing pairs. Photos at full print quality from your graded versions; ungraded ones get your Grade-tab grade or the essay's look. About 1 second per graded photo, ~15 s per ungraded RAW. Saved in Pictures › Film Look Studio Essays.</div>
   </div>`;
+  const bkBody = () => ({ size: $("bkSize").value, layout: $("bkLayout").value, cover: $("bkCover").checked, captions: $("bkCaptions").checked,
+    page_numbers: $("bkNumbers").checked, index: $("bkIndex").checked, bleed: $("bkBleed").checked, cover_photo: +$("bkCoverPhoto").value,
+    heroes: $("bkHeroes").checked });
+  let prevSeq = 0, shown = false;
+  const preview = async () => {
+    const seq = ++prevSeq; shown = true;
+    clearTimeout(esSaveTimer);
+    const locked = {}, titles = {};
+    ES.photos.forEach(p => { locked[p.id] = p.locked; titles[p.id] = p.title || ""; });
+    $("bkPreview").innerHTML = `<div class="small">Laying out the pages…</div>`;
+    try {
+      await api(`/api/essays/${ES.id}/order`, esJSON({ order: ES.photos.map(p => p.id), locked, titles }));
+      const r = await (await api(`/api/essays/${ES.id}/book_preview`, esJSON(bkBody()))).json();
+      if (seq !== prevSeq || !$("bkPreview")) return;
+      const AR = { "a4-portrait": 210 / 297, "a4-landscape": 297 / 210, "8x10-portrait": 0.8, "8x10-landscape": 1.25 };
+      $("bkPreview").style.setProperty("--bkAR", AR[$("bkSize").value] || 0.707);
+      // Cover alone, then facing pages: page 1 on the right, then 2–3, 4–5 … like the printed book.
+      const rest = r.pages.filter(p => p.kind !== "cover"), spreads = [];
+      const cover = r.pages.find(p => p.kind === "cover");
+      if (cover) spreads.push([null, cover, "Cover"]);
+      for (let k = -1; k < rest.length; k += 2) spreads.push([rest[k] || null, rest[k + 1] || null, ""]);
+      const pg = (p) => p ? `<img src="${p.src}" title="${p.kind === "blank" ? "Blank page" : p.kind === "index" ? "Index" : p.page ? "Page " + p.page : ""}">` : `<span class="none"></span>`;
+      $("bkPreview").innerHTML = `<div class="small">${r.pages.length} pages${cover ? " incl. cover" : ""}. This is a quick look from thumbnails; the PDF uses full-quality photos.</div>
+        <div class="bkSpreads">${spreads.map(([a, b, lab]) => `<div class="bkSpread">${lab ? "" : pg(a)}${pg(b)}<div class="lab">${lab || [a, b].filter(Boolean).map(p => p.kind === "photo" ? p.page : p.kind === "index" ? "index" : "blank").join(" · ")}</div></div>`).join("")}</div>`;
+    } catch (e) { if (seq === prevSeq) $("bkPreview").textContent = e.message; }
+  };
+  $("bkPrev").onclick = preview;
+  P.querySelectorAll("select, input").forEach(el => el.addEventListener("change", () => { if (shown) preview(); }));
   $("bkGo").onclick = async () => {
     clearTimeout(esSaveTimer);
     const locked = {}, titles = {};
     ES.photos.forEach(p => { locked[p.id] = p.locked; titles[p.id] = p.title || ""; });
     await api(`/api/essays/${ES.id}/order`, esJSON({ order: ES.photos.map(p => p.id), locked, titles }));
-    const body = { size: $("bkSize").value, layout: $("bkLayout").value, cover: $("bkCover").checked, captions: $("bkCaptions").checked,
-                   page_numbers: $("bkNumbers").checked, index: $("bkIndex").checked, bleed: $("bkBleed").checked, cover_photo: +$("bkCoverPhoto").value };
+    const body = bkBody();
     const r = await (await api(`/api/essays/${ES.id}/book`, esJSON(body))).json();
     ES.bookJob = { id: r.job, essay: ES.id }; esBookJob(P);
   };
