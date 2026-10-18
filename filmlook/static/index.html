@@ -211,6 +211,14 @@
   .cell .acts { position: absolute; left: 0; right: 0; top: 0; display: none; align-items: center; gap: 3px; padding: 5px;
     background: linear-gradient(#000d, #0000); }
   .cell:hover .acts { display: flex; }
+  .cell .steer { position: absolute; left: 0; right: 0; bottom: 0; display: none; gap: 3px; padding: 5px; justify-content: center; }
+  .cell:hover .steer { display: flex; }
+  .cell .steer button { padding: 1px 7px; font-size: 12px; background: #000c; border-color: #555; }
+  .cell .steer button.on { background: var(--accent); color: #000; border-color: var(--accent); }
+  .cell.liked { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .cell.unliked img { opacity: 0.35; }
+  #lbSteer { font-size: 12px; color: var(--muted); margin: -4px 0 8px; line-height: 1.5; }
+  #lbSteer button { padding: 0 6px; font-size: 11px; margin-left: 4px; }
   .cell .acts button { padding: 1px 7px; font-size: 12px; background: #000a; border-color: #555; }
   .cell .acts button.on[data-f="pick"] { background: #1f6b35; border-color: #2e9c4f; }
   .cell .acts button.on[data-f="reject"] { background: #7a2a22; border-color: #a33b30; }
@@ -474,6 +482,7 @@
   <div id="libSide">
     <label for="libq">Search</label>
     <input type="text" id="libq" placeholder="rain at night" spellcheck="false">
+    <div id="lbSteer" hidden></div>
     <label for="lbWhere">Browse</label>
     <select id="lbWhere"><option value="">All shoots</option></select>
     <label for="lbMode">Show</label>
@@ -1185,7 +1194,7 @@ document.addEventListener("keyup", e => { if (e.key === "b" && bDown) showBefore
 
 
 // --- Library -------------------------------------------------------------------------
-const L = { offset: 0, total: 0, seq: 0, polling: false, photos: [], sel: new Set(), last: null, view: null, side: false, orig: false, shoots: [], hover: null };
+const L = { like: [], unlike: [], offset: 0, total: 0, seq: 0, polling: false, photos: [], sel: new Set(), last: null, view: null, side: false, orig: false, shoots: [], hover: null };
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function setTab(tab) {
@@ -1334,6 +1343,8 @@ function params(offset) {
               camera: $("fCamera").value, graded: $("fGraded").value, flag: $("fFlag").value, stars: $("fStars").value,
               offset, limit: folder ? 3000 : 200, order: folder && !text ? "oldest" : "newest" };
   if (folder) p.folder_id = folder;
+  if (L.like.length) p.like = L.like.join(",");
+  if (L.unlike.length) p.unlike = L.unlike.join(",");
   return p;
 }
 async function libRefresh() {                 // marks may have changed elsewhere: reload, keep scroll and selection
@@ -1344,6 +1355,24 @@ async function libRefresh() {                 // marks may have changed elsewher
 function lbModeControls() {                   // these filters don't apply to the Second look views
   const on = !!$("lbMode").value;
   ["libq", "fFlag", "fGraded", "fStars"].forEach(id => { $(id).disabled = on; $(id).style.opacity = on ? 0.4 : ""; });
+}
+// More like this / Not this: steer the search with photos (works with or without words).
+function lbSearching() { return !!($("libq").value.trim() || L.like.length); }
+function lbSteer(id, kind) {
+  const [mine, other] = kind === "like" ? [L.like, L.unlike] : [L.unlike, L.like];
+  const i = mine.indexOf(id);
+  if (i >= 0) mine.splice(i, 1); else { mine.push(id); const j = other.indexOf(id); if (j >= 0) other.splice(j, 1); }
+  if (!L.like.length && !$("libq").value.trim()) L.unlike = [];      // "Not this" needs something to search for
+  if ($("lbMode").value) $("lbMode").value = "";                       // steering is a search of all photos
+  lbSteerNote(); runSearch(); $("libMain").scrollTop = 0;
+}
+function lbSteerClear() { L.like = []; L.unlike = []; lbSteerNote(); }
+function lbSteerNote() {
+  const n = L.like.length, m = L.unlike.length, el = $("lbSteer");
+  el.hidden = !n && !m;
+  el.innerHTML = [n ? `${n} “more like this”` : "", m ? `${m} “not this”` : ""].filter(Boolean).join(" · ")
+    + `<button id="lbSteerX" title="Forget these and search with the words only">Clear</button>`;
+  if (!el.hidden) $("lbSteerX").onclick = () => { lbSteerClear(); runSearch(); };
 }
 // What search made of the words, e.g. " (colour: red · shoot: portugal · 2025)".
 function understood(u) {
@@ -1376,16 +1405,17 @@ async function runSearch(more = false, atLeast = 0) {
   if (seq !== L.seq) return;
   if (!more) { L.photos = []; $("grid").innerHTML = ""; L.divided = false; L.grouped = false; }
   for (const r of res.results) {
-    if (p.q && r.grouped && !L.grouped) {
+    const ranked = p.q || L.like.length;
+    if (ranked && r.grouped && !L.grouped) {
       L.grouped = L.divided = true;
       const d = document.createElement("div"); d.className = "divider";
       d.textContent = "Near-identical frames of photos above";
       $("grid").appendChild(d);
     }
-    if (p.q && r.strong === false && !r.grouped && !L.divided) {
+    if (ranked && r.strong === false && !r.grouped && !L.divided) {
       L.divided = true;
       const d = document.createElement("div"); d.className = "divider";
-      d.textContent = res.strong ? `Weaker matches — these may not show “${p.q}”` : `No clear matches for “${p.q}” — closest photos`;
+      d.textContent = res.strong ? `Weaker matches — these may not show ${p.q ? `“${p.q}”` : "what you chose"}` : `No clear matches for ${p.q ? `“${p.q}”` : "what you chose"} — closest photos`;
       $("grid").appendChild(d);
     }
     L.photos.push(r);
@@ -1395,7 +1425,8 @@ async function runSearch(more = false, atLeast = 0) {
   L.total = res.total; L.offset += res.results.length;
   $("more").hidden = L.offset >= L.total;
   const order = p.q ? "best match first" : p.order === "oldest" ? "shooting order" : "newest first";
-  $("lbSub").textContent = p.q ? `${(res.strong || 0).toLocaleString()} clear matches for “${p.q}”${understood(res.understood)} · ${order}` : `${L.total.toLocaleString()} photos · ${order}`;
+  const asked = p.q ? `“${p.q}”` : "photos like the one you chose";
+  $("lbSub").textContent = p.q || L.like.length ? `${(res.strong || 0).toLocaleString()} clear matches for ${asked}${understood(res.understood)}${L.like.length || L.unlike.length ? " · steered by your choices" : ""} · best match first` : `${L.total.toLocaleString()} photos · ${order}`;
   $("libEmpty").hidden = L.total > 0;
   $("libEmpty").textContent = L.total ? "" : "No photos match. Try other words or loosen the filters.";
   lbCount(); lbNoteDeleted(); lbCullButton();
@@ -1469,7 +1500,8 @@ function describe(r) {
 function lbThumb(r) { return $("lbView").value === "graded" && r.graded ? `/api/browse/thumb/${r.id}` : `/api/library/thumb/${r.id}`; }
 function cell(r, i) {
   const d = document.createElement("div");
-  d.className = "cell" + (r.online ? "" : " offline") + (r.mark === "reject" ? " rejected" : "") + (L.sel.has(r.id) ? " sel" : "");
+  d.className = "cell" + (r.online ? "" : " offline") + (r.mark === "reject" ? " rejected" : "") + (L.sel.has(r.id) ? " sel" : "")
+    + (L.like.includes(r.id) ? " liked" : "") + (L.unlike.includes(r.id) ? " unliked" : "");
   d.dataset.id = r.id; d.dataset.i = i;
   const tags = [], tl = [], tr = [];             // decision top-left · graded top-right · stars bottom
   if (r.mark === "pick") tl.push(`<span class="pk" title="Picked">✓ Picked</span>`);
@@ -1484,7 +1516,7 @@ function cell(r, i) {
   if (r.similar) tags.push(`<span class="o" title="${r.similar} near-identical frame${r.similar > 1 ? "s" : ""} from this shoot — shown at the end of the results">+${r.similar} alike</span>`);
   const label = r.reasons && r.reasons.length ? r.reasons.join(" · ") : r.name;
   d.innerHTML = `<img loading="lazy" src="${lbThumb(r)}" alt="" draggable="false"><div class="tl">${tl.join("")}</div><div class="tr">${tr.join("")}</div><div class="tags">${tags.join("")}</div><div class="nm${r.reasons ? " why" : ""}">${esc(label)}</div>
-    <div class="acts"><button data-f="pick" class="${r.mark === "pick" ? "on" : ""}" title="Pick (P)">✓</button><button data-f="reject" class="${r.mark === "reject" ? "on" : ""}" title="Reject (X)">✕</button><button data-f="" title="Unmark (U)">↺</button>${r.reasons ? `<button data-n title="Not now: don't suggest it again (N)">Not now</button>` : ""}<span class="st">${stars}</span></div>`;
+    <div class="acts"><button data-f="pick" class="${r.mark === "pick" ? "on" : ""}" title="Pick (P)">✓</button><button data-f="reject" class="${r.mark === "reject" ? "on" : ""}" title="Reject (X)">✕</button><button data-f="" title="Unmark (U)">↺</button>${r.reasons ? `<button data-n title="Not now: don't suggest it again (N)">Not now</button>` : ""}<span class="st">${stars}</span></div>${r.reasons ? "" : `<div class="steer"><button data-like class="${L.like.includes(r.id) ? "on" : ""}" title="Show more photos like this one">More like this</button>${lbSearching() ? `<button data-unlike class="${L.unlike.includes(r.id) ? "on" : ""}" title="Not what you're looking for: push photos like this one down">Not this</button>` : ""}</div>`}`;
   d.title = `${r.name}\n${r.folder}\n${describe(r)}` + (r.reasons ? `\n${r.reasons.join(" · ")}` : "");
   d.onclick = (e) => lbSelect(+d.dataset.i, e);
   d.ondblclick = () => {                      // opening the viewer to look shouldn't change the selection
@@ -1497,6 +1529,8 @@ function cell(r, i) {
   d.querySelectorAll(".acts [data-r]").forEach(b => b.onclick = (e) => {
     e.stopPropagation(); const n = +b.dataset.r; libMark([r], { rating: r.my_rating === n ? 0 : n });
   });
+  d.querySelectorAll(".steer button").forEach(b => { b.ondblclick = (e) => e.stopPropagation();
+    b.onclick = (e) => { e.stopPropagation(); lbSteer(r.id, b.dataset.like !== undefined ? "like" : "unlike"); }; });
   d.querySelector(".acts").onclick = (e) => e.stopPropagation();
   d.querySelector(".acts").ondblclick = (e) => e.stopPropagation();
   d.addEventListener("mouseenter", () => { L.hover = r; });
@@ -1759,7 +1793,7 @@ function lbViewPanel(r) {
       ${r.camera ? `<span>Camera</span><span>${esc(r.camera)}</span>` : ""}${r.lens ? `<span>Lens</span><span>${esc(r.lens)}</span>` : ""}
       ${settings ? `<span>Settings</span><span>${esc(settings)}</span>` : ""}${!r.online ? `<span>Drive</span><span>${r.deleted ? "deleted from drive" : esc(r.drive) + " is offline"}</span>` : ""}</div>
     <h4>Actions</h4>
-    <div class="acts"><button data-a="grade">Open in Grade</button><button data-a="finder">Show in Finder</button><button data-a="essay">Add to essay…</button>${r.reasons ? `<button data-a="notnow">Not now (don't suggest again)</button>` : ""}</div>
+    <div class="acts"><button data-a="grade">Open in Grade</button><button data-a="finder">Show in Finder</button><button data-a="essay">Add to essay…</button><button data-a="like">More like this</button>${lbSearching() ? `<button data-a="unlike">Not this</button>` : ""}${r.reasons ? `<button data-a="notnow">Not now (don't suggest again)</button>` : ""}</div>
     <div class="keys">P pick · X reject · U none · 0–5 stars<br>${r.graded ? "G graded / original · S side by side<br>" : ""}Click or Z zoom to 100% · ← → previous / next<br>F Finder · Esc close</div>`;
   P.querySelectorAll("[data-m]").forEach(b => b.onclick = () => libMark([r], { flag: b.dataset.m || null }));
   P.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { const n = +b.dataset.s; libMark([r], { rating: r.my_rating === n ? 0 : n }); });
@@ -1770,6 +1804,7 @@ function lbViewPanel(r) {
     else if (a === "finder") lbFinder([r]);
     else if (a === "essay") { L.sel = new Set([r.id]); lbCount(); lbCloseViewer(); $("lbAddEssay").click(); }
     else if (a === "notnow") lbNotNow([r]).then(() => lbViewRender());
+    else if (a === "like" || a === "unlike") { lbCloseViewer(); lbSteer(r.id, a); }
   });
 }
 // 100% zoom: the full-size graded JPG (or the camera's full-size preview for the original); drag to move.
@@ -1857,7 +1892,7 @@ $("lbClose").onclick = () => { $("lightbox").hidden = true; };
 $("lightbox").onclick = (e) => { if (e.target.id === "lightbox") $("lightbox").hidden = true; };
 
 let typeTimer = null;
-$("libq").addEventListener("input", () => { clearTimeout(typeTimer); typeTimer = setTimeout(() => runSearch(), 400); });
+$("libq").addEventListener("input", () => { clearTimeout(typeTimer); typeTimer = setTimeout(() => { lbSteerClear(); runSearch(); }, 400); });
 $("libq").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(typeTimer); runSearch(); } });
 ["lbWhere", "lbMode", "fFrom", "fTo", "fCamera", "fGraded", "fFlag", "fStars"].forEach(id => $(id).addEventListener("change", () => { L.sel.clear(); $("lbNote").textContent = ""; runSearch(); }));
 $("lbView").onchange = () => { document.querySelectorAll("#grid .cell").forEach(c => { const r = L.photos[+c.dataset.i]; if (r) c.querySelector("img").src = lbThumb(r); }); };

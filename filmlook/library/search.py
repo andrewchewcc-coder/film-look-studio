@@ -13,6 +13,7 @@ STRONG_Z = 3.0           # "strong match": this many standard deviations above a
 STRONG_FROM_TOP = 1.5    # ...and within this much of the best match...
 STRONG_MAX_BAR = 3.3     # ...but one standout photo never raises the bar above this
 SAME_PICTURE = 0.92      # results this alike (same shoot) are grouped: only the best one is shown up top
+LIKE_Z = 2.3            # "More like this" alone: this far above typical counts as a clear match
 FOLDER_BOOST = 3.5       # a word matching a shoot's folder name (a place, an event) counts this much
 MONTHS = {m: i + 1 for i, m in enumerate(["january", "february", "march", "april", "may", "june", "july",
                                           "august", "september", "october", "november", "december"])}
@@ -162,13 +163,15 @@ def _z(x):
     return (x - np.median(x)) / max(float(x.std()), 1e-6)
 
 
-def search(con, text="", limit=200, offset=0, order="newest", **filters):
+def search(con, text="", limit=200, offset=0, order="newest", like=(), unlike=(), **filters):
     """Return {total, results}. With text, ranked by match; otherwise newest first
     (order="oldest": shooting order, as when looking through one shoot).
 
     The words are understood in parts: a year or month filters, colour words check the photo's
     actual colours, words in a shoot's folder name (a place, an event) favour that shoot, and the
-    rest is matched by the picture model. Near-identical frames are grouped behind the best one."""
+    rest is matched by the picture model. Near-identical frames are grouped behind the best one.
+    `like` / `unlike`: photo ids marked "More like this" / "Not this" to steer the results (they
+    work with or without words)."""
     mounts = drives.online_mounts(con)
     u = understand(con, text) if text.strip() else None
     if u:
@@ -179,18 +182,25 @@ def search(con, text="", limit=200, offset=0, order="newest", **filters):
             filters["month"] = u["month"]
     where, args = _filters(filters)
     rows = con.execute(SELECT + where, args).fetchall()
-    if not u or not (u["text"] or u["colours"] or u["mono"]):
+    like, unlike = [int(i) for i in like], [int(i) for i in unlike]
+    steer = bool(like)
+    if not steer and (not u or not (u["text"] or u["colours"] or u["mono"])):
         rows.sort(key=lambda r: (r["capture_time"] or "", r["rel_path"]), reverse=order != "oldest")
         page = rows[offset:offset + limit]
         return {"total": len(rows), "results": [_shape(r, mounts) for r in page]}
     ids, mat = _matrix(con)
     if not len(ids):
         return {"total": 0, "results": []}
+    u = u or {"year": None, "month": None, "colours": [], "mono": False, "folders": set(), "folder_words": [],
+              "text": "", "picture": ""}
     model_words = u["picture"] or u["text"]
-    s = mat @ query_vector(model_words)                         # (N, VIEWS)
-    scores = np.maximum(s[:, 0], s[:, 1:].max(axis=1) - CLOSEUP_PENALTY)
-    # Relevance against the whole library: real matches stand out from the crowd.
-    z = _z(scores)
+    if model_words or u["colours"] or u["mono"]:
+        s = mat @ query_vector(model_words or " ".join(u["colours"]) or "black and white photo")   # (N, VIEWS)
+        scores = np.maximum(s[:, 0], s[:, 1:].max(axis=1) - CLOSEUP_PENALTY)
+        # Relevance against the whole library: real matches stand out from the crowd.
+        z = _z(scores)
+    else:
+        z = np.zeros(len(ids), np.float32)
     if u["colours"] or u["mono"]:
         shares = colours.ensure(con)
         extra = []
@@ -202,7 +212,21 @@ def search(con, text="", limit=200, offset=0, order="newest", **filters):
                          + np.array([6.0 if int(i) in bw else 0.0 for i in ids]))
         colour_z = np.mean(extra, axis=0)
         z = _z(0.4 * z + colour_z) if not u["picture"] else _z(z + 0.8 * colour_z)
+    pos = {int(i): k for k, i in enumerate(ids)}
+    liked = [mat[pos[i], 0] for i in like if i in pos]
+    if liked:                                 # "More like this": photos that look like the ones you liked
+        v = np.mean(liked, axis=0)
+        z = _z(z + 1.2 * _z(mat[:, 0] @ (v / np.linalg.norm(v)))) if (model_words or u["colours"] or u["mono"]) \
+            else _z(mat[:, 0] @ (v / np.linalg.norm(v)))
+    unliked = [mat[pos[i], 0] for i in unlike if i in pos]
+    if unliked:                               # "Not this": push away from what you turned down
+        v = np.mean(unliked, axis=0)
+        z = _z(z - 0.6 * _z(mat[:, 0] @ (v / np.linalg.norm(v))))
     cutoff = max(STRONG_Z, min(float(z.max()) - STRONG_FROM_TOP, STRONG_MAX_BAR))
+    if liked and not (model_words or u["colours"] or u["mono"]):
+        cutoff = LIKE_Z                       # photo-to-photo likeness spreads wider than words do
+    if like or unlike:                        # your choices themselves: liked first, turned down last
+        z = z + np.array([20.0 if int(i) in like else -20.0 if int(i) in unlike else 0.0 for i in ids])
     if u["folders"]:
         boost = 100.0 if not u["picture"] and not u["colours"] and not u["mono"] else FOLDER_BOOST
         folder_of = dict(con.execute("SELECT id, folder_id FROM photos").fetchall())
@@ -210,10 +234,9 @@ def search(con, text="", limit=200, offset=0, order="newest", **filters):
     by_id = dict(zip(ids.tolist(), z.tolist()))
     ranked = sorted((r for r in rows if r["id"] in by_id), key=lambda r: -by_id[r["id"]])
     # Group near-identical frames of the same shoot behind the best one (they move to the end).
-    pos = {int(i): k for k, i in enumerate(ids)}
     kept, kept_vecs, dups, similar = [], [], [], {}
     for r in ranked:
-        if len(kept) < 400 and by_id[r["id"]] >= cutoff - 1.5:
+        if len(kept) < 400 and by_id[r["id"]] >= cutoff - 1.5 and r["id"] not in like:
             v = mat[pos[r["id"]], 0]
             twin = next((k for k, kv in zip(kept, kept_vecs) if k["folder_id"] == r["folder_id"]
                          and float(kv @ v) >= SAME_PICTURE), None)
@@ -224,7 +247,7 @@ def search(con, text="", limit=200, offset=0, order="newest", **filters):
             kept_vecs.append(v)
         kept.append(r)
     ranked = kept + dups
-    strong = sum(1 for r in kept if by_id[r["id"]] >= cutoff)
+    strong = sum(1 for r in kept if by_id[r["id"]] >= cutoff and r["id"] not in unlike)
     page = ranked[offset:offset + limit]
     dup_ids = {r["id"] for r in dups}
     results = [_shape(r, mounts, by_id[r["id"]]) for r in page]
@@ -232,6 +255,9 @@ def search(con, text="", limit=200, offset=0, order="newest", **filters):
         r["strong"] = r["score"] >= cutoff and r["id"] not in dup_ids
         r["similar"] = similar.get(r["id"], 0)
         r["grouped"] = r["id"] in dup_ids
+        r["steer"] = "like" if r["id"] in like else "unlike" if r["id"] in unlike else None
+        if r["steer"] == "unlike":
+            r["strong"] = False
     return {"total": len(ranked), "strong": strong, "results": results,
             "understood": {k: u[k] for k in ("year", "month", "colours", "mono", "folder_words")}}
 

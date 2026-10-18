@@ -427,9 +427,12 @@ def library_pause():
 @app.get("/api/library/search")
 def library_search(q: str = "", cats: str = "street,travel", year: str = "", date_from: str = "",
                    date_to: str = "", camera: str = "", graded: str = "", folder_id: int = 0,
-                   flag: str = "", stars: int = 0, offset: int = 0, limit: int = 200, order: str = "newest"):
+                   flag: str = "", stars: int = 0, offset: int = 0, limit: int = 200, order: str = "newest",
+                   like: str = "", unlike: str = ""):
     from .library import search
+    ids = lambda t: [int(x) for x in t.split(",") if x.strip().isdigit()]
     return search.search(_lib().con(), q, limit=min(limit, 3000), offset=offset, order=order,
+                         like=ids(like), unlike=ids(unlike),
                          categories=[c for c in cats.split(",") if c] or None, year=year or None,
                          date_from=date_from or None, date_to=date_to or None, camera=camera or None,
                          graded=None if graded == "" else "edited" if graded == "edited" else graded == "1",
