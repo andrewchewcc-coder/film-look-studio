@@ -173,9 +173,7 @@ def features_of(im, analysis=None, scene_features=None):
             gesture = {"vec": vec, "labels": sorted(set(labels)), "score": sf.get("gesture", 0.0)}
 
     people = sf.get("people", 0)
-    subj = sf.get("subject_box") or [0.25, 0.25, 0.5, 0.5]
-    scale = "close" if (subj[2] * subj[3] > 0.25 or sf.get("face_size", 0) > 0.02) else \
-            "wide" if (people == 0 or subj[2] * subj[3] < 0.04) else "medium"
+    scale, sure = shot_scale(analysis)       # frames without a big person are finished in ensure_features
     return {"shape": {"hist": hist.round(4).tolist(), "layout": lay.round(3).tolist(), "vertical": round(vert, 3),
                       "horizontal": round(horiz, 3), "diagonal": round(diag, 3), "edges": round(edges, 5)},
             "accent_on_person": on_person,
@@ -183,7 +181,97 @@ def features_of(im, analysis=None, scene_features=None):
             "colour": {"palette": centers.round(4).tolist(), "weights": weights.round(4).tolist(), "accent": accent,
                        "hues": hue_prof.round(4).tolist(), "colourful": round(float(sat.mean()), 4)},
             "light": light, "gesture": gesture,
-            "pace": {"people": people, "scale": scale, "busy": round(edges, 5), "bright": light["mean"]}}
+            "pace": {"people": people, "scale": scale, "scale_sure": sure, "busy": round(edges, 5),
+                     "bright": light["mean"]}}
+
+
+# --- shot size ---------------------------------------------------------------------------------
+# close (face fills the frame, or a detail), medium (person cut by the frame, or one object / facade),
+# full (the whole person, large), wide (people small, or a scene). People are measured with Apple
+# Vision's boxes; frames without a big person ask SigLIP, calibrated against your whole library.
+
+SCALE_VERSION = 2
+SCALE_NAMES = {"close": "close-up", "medium": "medium", "full": "full-length", "wide": "wide"}
+SCALE_PROMPTS = {
+    "close": ["an extreme close-up photograph of a small detail", "a macro close-up of an object filling the frame",
+              "a close-up of hands holding something", "a close-up of a texture or pattern"],
+    "medium": ["a photograph of a single object or statue", "a photograph of a doorway or window",
+               "a photograph of a building facade", "a medium shot of a group of people"],
+    "wide": ["a wide photograph of a street scene", "a wide shot of a city with buildings and roads",
+             "a landscape photograph with a distant horizon", "a wide view of a large interior space"]}
+_scale_cal = {}
+
+
+def shot_scale(analysis, ai=None):
+    """(scale, sure). `ai` = calibrated SigLIP scores {close, medium, wide} (z-scores over the library);
+    without it, frames with no big person come back as ("wide", False) to be finished later."""
+    a = analysis or {}
+    face = max((f["box"][3] for f in a.get("faces", [])), default=0)
+    people = [p for p in a.get("people", []) if p.get("conf", 1) >= 0.4]
+    main = max(people, key=lambda p: p["box"][3]) if people else None
+    h = main["box"][3] if main else 0
+    close_ai = ai["close"] - max(ai["medium"], ai["wide"]) if ai else 0
+    if face >= 0.16:
+        return "close", True
+    if face < 0.06 and close_ai > 1.0:
+        return "close", True                                   # hands, objects, a detail
+    if main and h >= 0.33:
+        x, y, w, hh = main["box"]
+        def seen(joint):                                      # a pose joint inside the main person's box
+            return any(k.endswith(joint) and x - .05 <= v[0] <= x + w + .05 and y - .05 <= v[1] <= y + hh + .05
+                       for pose in a.get("poses", []) for k, v in pose.items())
+        if seen("ankle") or (h >= 0.5 and seen("knee") and y + hh < 0.96):
+            return "full", True                                # whole figure (feet may just be hidden)
+        return "medium", True                                  # cut by the frame, a counter, a crowd…
+    if ai is None:
+        return "wide", False
+    crowd = len([p for p in a.get("people", []) if p.get("conf", 1) >= 0.3]) >= 3
+    c, m, w = ai["close"], ai["medium"], ai["wide"]
+    if c > 0.8 and close_ai >= 0.8 and not crowd:
+        return "close", close_ai >= 1.2
+    if m > w + 0.3 and not main:
+        return "medium", m > w + 0.8
+    return "wide", bool(main) or w > max(c, m) + 0.5
+
+
+def _scale_scores(con, photo_ids):
+    """{photo_id: {close, medium, wide}}: SigLIP shot-size scores of the library thumbnail (whole
+    photo), as z-scores against the whole library so each prompt set's own bias cancels out."""
+    from .search import _matrix
+    ids, mat = _matrix(con)
+    if not len(ids):
+        return {}
+    if _scale_cal.get("n") != len(ids):
+        tv = {k: vision.embed_text(v) for k, v in SCALE_PROMPTS.items()}
+        whole = mat[:, 0]
+        cal = {k: ((whole @ t.T).mean(1).mean(), (whole @ t.T).mean(1).std() or 1.0) for k, t in tv.items()}
+        _scale_cal.update(n=len(ids), tv=tv, cal=cal)
+    lib = {int(i): k for k, i in enumerate(ids)}
+    out = {}
+    for pid in photo_ids:
+        if pid in lib:
+            v = mat[lib[pid], 0]
+            out[pid] = {k: float(((v @ t.T).mean() - _scale_cal["cal"][k][0]) / _scale_cal["cal"][k][1])
+                        for k, t in _scale_cal["tv"].items()}
+    return out
+
+
+def _finish_scale(con, feats):
+    """Bring shot sizes up to date (SCALE_VERSION) without re-measuring anything else."""
+    todo = [pid for pid, f in feats.items() if (f.get("pace") or {}).get("scale_v") != SCALE_VERSION]
+    if not todo:
+        return
+    ai = _scale_scores(con, todo)
+    for pid in todo:
+        sc = con.execute("SELECT analysis FROM scene WHERE photo_id=?", (pid,)).fetchone()
+        scale, sure = shot_scale(json.loads(sc[0]) if sc and sc[0] else None, ai.get(pid))
+        if pid not in ai and not sure:
+            scale, sure = "wide", False
+        f = feats[pid]
+        f["pace"].update(scale=scale, scale_sure=sure, scale_v=SCALE_VERSION)
+        stored = {k: v for k, v in f.items() if k not in ("thumb", "image")}
+        con.execute("UPDATE essay_features SET features=? WHERE photo_id=?", (json.dumps(stored), pid))
+    con.commit()
 
 
 def ensure_features(con, photo_ids):
@@ -220,6 +308,7 @@ def ensure_features(con, photo_ids):
                         (pid, key, name, json.dumps(f), np.asarray(v, np.float16).tobytes()))
             out[pid] = {**f, "thumb": name, "image": kind}
         con.commit()
+    _finish_scale(con, out)
     return out
 
 
@@ -451,7 +540,7 @@ def choose(con, pool_ids, brief, keep=()):
         pen = max(0.0, top - 0.70) * 5 + (4.0 if top >= NEAR_DUPLICATE else 0.0)
         scales = [info[c]["scale"] for c in chosen if info[c]["scale"]]
         if x["scale"] and len(scales) >= 4 and scales.count(x["scale"]) / len(scales) > 0.5:
-            pen += 0.3                                  # keep a mix of close, medium and wide
+            pen += 0.3                                  # keep a mix of close-up, medium, full-length and wide
         return pen, top, like
 
     while len(chosen) < b["count"]:
@@ -617,7 +706,7 @@ def replacements(con, essay_id, photo_id, limit=5):
         val = _score(y, b["theme"]) - max(0.0, top - 0.70) * 5
         why = []
         if me.get("scale") and y["scale"] == me.get("scale"):
-            val += 0.3; why.append(f"also a {y['scale']} shot")
+            val += 0.3; why.append(f"also a {SCALE_NAMES.get(y['scale'], y['scale'])} shot")
         if y["rating"] >= 4:
             why.append(f"one of your {y['rating']}★ photos")
         elif y["flag"] == "pick":
@@ -732,8 +821,8 @@ def _contrast(fa, fb, age_a=None, age_b=None):
         opts.append((0.9, "crowded ↔ empty"))
     if abs(fa["light"]["mean"] - fb["light"]["mean"]) > 0.3:
         opts.append((0.75 + abs(fa["light"]["mean"] - fb["light"]["mean"]), "light ↔ dark"))
-    if {pa["scale"], pb["scale"]} == {"close", "wide"}:
-        opts.append((0.8, "close ↔ wide"))
+    if {pa["scale"], pb["scale"]} == {"close", "wide"} and pa.get("scale_sure", True) and pb.get("scale_sure", True):
+        opts.append((0.8, "close-up ↔ wide"))
     if age_a is not None and age_b is not None and abs(age_a - age_b) > 0.04 and (age_a > 0.02) != (age_b > 0.02):
         opts.append((0.7, "old ↔ young (approximate)"))
     if not opts:
@@ -1025,8 +1114,9 @@ def sequence(con, essay_id, style="flow", arc="day_to_night", seed=0):
 
 def _pace_reason(fa, fb):
     pa, pb = _pace_class(fa), _pace_class(fb)
-    if pa[0] != pb[0]:
-        return f"change of pace: {pa[0]} → {pb[0]}"
+    sure = fa["pace"].get("scale_sure", True) and fb["pace"].get("scale_sure", True)
+    if pa[0] != pb[0] and sure:                    # only claim a shot size we're confident about
+        return f"change of pace: {SCALE_NAMES.get(pa[0], pa[0])} → {SCALE_NAMES.get(pb[0], pb[0])}"
     if pa[1] != pb[1]:
         return f"{pa[1]} → {pb[1]}"
     if pa[2] != pb[2]:
@@ -1036,7 +1126,7 @@ def _pace_reason(fa, fb):
 
 def _strong_reason(fv, z):
     bits = ["one of the strongest photos" if z > 0.7 else "a solid photo"]
-    if fv["pace"]["scale"] == "wide":
+    if fv["pace"]["scale"] == "wide" and fv["pace"].get("scale_sure", True):
         bits.append("sets the scene")
     if fv["colour"]["accent"]:
         bits.append(f"{fv['colour']['accent']['name']} accent")
@@ -1089,9 +1179,9 @@ def fill_gap(con, essay_id, position, limit=8, pool=60):
         if need_quiet and not busy_c:
             score += 0.4
             note.append("a quieter frame between busy ones")
-        if len(scales) == 1 and fc["pace"]["scale"] not in scales:
+        if len(scales) == 1 and fc["pace"]["scale"] not in scales and fc["pace"].get("scale_sure", True):
             score += 0.25
-            note.append(f"a {fc['pace']['scale']} shot to vary the pace")
+            note.append(f"a {SCALE_NAMES.get(fc['pace']['scale'], fc['pace']['scale'])} shot to vary the pace")
         if why and _short(why[0], f[why[1]], fc):
             r, p = why
             note.insert(0, _short(r, f[p], fc) + (" (with the photo before)" if p == prev else " (with the photo after)"))

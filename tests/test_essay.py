@@ -88,7 +88,9 @@ def test_optimise_keeps_locks_avoids_duplicates_and_improves():
 
 def test_pace_reason_describes_the_change():
     a, b = _feat(scale="wide"), _feat(scale="close")
-    assert essay._pace_reason(a, b) == "change of pace: wide → close"
+    assert essay._pace_reason(a, b) == "change of pace: wide → close-up"
+    a["pace"]["scale_sure"] = False                       # unsure: say something else
+    assert "close-up" not in essay._pace_reason(a, b)
     assert essay._short("gesture", _feat(), _feat()) is None      # nothing to claim
 
 
@@ -145,3 +147,18 @@ def test_book_pdf_writer_makes_valid_pages(tmp_path):
     xref = int(data.rsplit(b"startxref", 1)[1].split()[0])
     assert data[xref:xref + 4] == b"xref"                           # the index points where it should
     assert set(essay_book.SIZES) == {"a4-portrait", "a4-landscape", "8x10-portrait", "8x10-landscape"}
+
+
+def test_shot_scale_from_people_and_ai():
+    face = {"faces": [{"box": [0.4, 0.2, 0.2, 0.25]}]}
+    assert essay.shot_scale(face) == ("close", True)
+    walker = {"people": [{"box": [0.4, 0.1, 0.2, 0.8], "conf": 0.9}],
+              "poses": [{"left_ankle": [0.5, 0.88, 1], "neck": [0.5, 0.2, 1]}]}
+    assert essay.shot_scale(walker) == ("full", True)
+    cut = {"people": [{"box": [0.3, 0.3, 0.4, 0.7], "conf": 0.9}], "faces": [{"box": [0.45, 0.32, 0.08, 0.08]}]}
+    assert essay.shot_scale(cut) == ("medium", True)
+    assert essay.shot_scale({}) == ("wide", False)                 # needs the AI to decide
+    assert essay.shot_scale({}, {"close": 2.0, "medium": 0.2, "wide": -0.5})[0] == "close"
+    assert essay.shot_scale({}, {"close": -0.5, "medium": 1.5, "wide": 0.2})[0] == "medium"
+    small = {"people": [{"box": [0.5, 0.6, 0.03, 0.1], "conf": 0.8}]}
+    assert essay.shot_scale(small, {"close": -0.5, "medium": 1.5, "wide": 0.2}) == ("wide", True)

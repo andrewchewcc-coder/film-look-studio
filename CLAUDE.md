@@ -53,7 +53,9 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   photos whose original is gone can be forgotten). `pairing.py` accepts whole-hour time-zone
   shifts when names match (-IG exports); `scan.merge_into_owner` keeps marks/essay places on merge.
   `essay.py` (photo essays: display image = newest graded export else library thumb; per-photo
-  shape/colour/light/gesture/pace features; pairs (rhymes + contrasts, ranked per type, good/bad
+  shape/colour/light/gesture/pace features; shot size `shot_scale` (close/medium/full/wide + sure: Vision
+  person height, face size, feet/knees from pose; else SigLIP prompts z-scored over the library; SCALE_VERSION
+  re-labels cached features; unsure sizes are never claimed in reasons); pairs (rhymes + contrasts, ranked per type, good/bad
   marks); sequence styles flow / time / mood with locked positions; fill-the-gap; leave-outs;
   versions; `choose` / `create_from_brief` / `bench` / `replacements` / `rechoose`: best-N from a pool to a
   brief with variety, B&W via `is_mono`, theme words steer; Library → Make an essay / Add to essay…). Essays tab: strip / contact sheet / spreads (page 1 alone on the right), drag, lock,
