@@ -239,6 +239,12 @@ CREATE TABLE IF NOT EXISTS essay_features (
     vector   BLOB                                 -- whole-photo SigLIP embedding of that image
 );
 
+-- Colour shares per photo (library thumbnail), for colour words in search.
+CREATE TABLE IF NOT EXISTS photo_colours (
+    photo_id INTEGER PRIMARY KEY REFERENCES photos(id),
+    thumb    TEXT NOT NULL,
+    shares   TEXT NOT NULL                -- JSON {red, orange, ..., chroma}
+);
 CREATE TABLE IF NOT EXISTS embeddings (
     photo_id INTEGER PRIMARY KEY REFERENCES photos(id),
     model    TEXT NOT NULL,

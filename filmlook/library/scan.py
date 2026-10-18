@@ -36,7 +36,7 @@ class Stopped(Exception):
 
 def forget_photo(con, pid, keep_decision=False):
     """Delete a photo record and everything hanging off it (never the photo's files)."""
-    for table in ("embeddings", "quality", "scene", "essay_features") + (() if keep_decision else ("picks", "marks")):
+    for table in ("embeddings", "quality", "scene", "essay_features", "photo_colours") + (() if keep_decision else ("picks", "marks")):
         con.execute(f"DELETE FROM {table} WHERE photo_id=?", (pid,))
     con.execute("UPDATE files SET photo_id=NULL WHERE photo_id=?", (pid,))
     con.execute("DELETE FROM essay_items WHERE photo_id=?", (pid,))

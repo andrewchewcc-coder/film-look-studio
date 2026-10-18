@@ -1,16 +1,26 @@
 """Plain-words search and filters over the library."""
+import re
 import threading
 from pathlib import PurePath
 
 import numpy as np
 
-from . import drives, vision
+from . import colours, drives, vision
 
 DEFAULT_CATEGORIES = ("street", "travel")
 CLOSEUP_PENALTY = 0.01   # a close-up match counts slightly less than a whole-photo match
 STRONG_Z = 3.0           # "strong match": this many standard deviations above a typical photo...
 STRONG_FROM_TOP = 1.5    # ...and within this much of the best match...
 STRONG_MAX_BAR = 3.3     # ...but one standout photo never raises the bar above this
+SAME_PICTURE = 0.92      # results this alike (same shoot) are grouped: only the best one is shown up top
+FOLDER_BOOST = 3.5       # a word matching a shoot's folder name (a place, an event) counts this much
+MONTHS = {m: i + 1 for i, m in enumerate(["january", "february", "march", "april", "may", "june", "july",
+                                          "august", "september", "october", "november", "december"])}
+MONTHS.update({m[:3]: i for m, i in list(MONTHS.items())})
+MONTHS["sept"] = 9
+FOLDER_STOP = {"the", "and", "for", "with", "photos", "photo", "pics", "images", "raw", "dng", "jpg", "edit",
+               "edits", "export", "exports", "graded", "selects", "day", "trip", "area", "walk", "street", "streets",
+               "new", "old", "misc", "dcim", "camera", "leica", "fuji", "fujifilm", "may"}
 _cache = {"key": None, "ids": None, "matrix": None}
 _cache_lock = threading.Lock()
 
@@ -45,6 +55,8 @@ def _filters(f):
     if cats:
         where.append(f"COALESCE(fo.category, p.category, 'misc') IN ({','.join('?' * len(cats))})")
         args += list(cats)
+    if f.get("month"):
+        where.append("CAST(substr(p.capture_time, 6, 2) AS INTEGER) = ?"); args.append(int(f["month"]))
     if f.get("year"):
         where.append("substr(p.capture_time, 1, 4) = ?"); args.append(str(f["year"]))
     if f.get("date_from"):
@@ -99,32 +111,129 @@ def _shape(r, mounts, score=None):
             "mark": r["mark"], "my_rating": r["my_rating"], "edited": bool(r["grade_id"])}
 
 
+_folder_cache = {"key": None, "words": None, "n": 0}
+
+
+def _folder_words(con):
+    """{word: {folder ids}} from the shoots' folder paths (places, events, people's names)."""
+    key = con.execute("SELECT COUNT(*), COALESCE(MAX(id), 0) FROM folders").fetchone()
+    key = tuple(key)
+    if _folder_cache["key"] != key:
+        words = {}
+        rows = con.execute("SELECT id, rel_path FROM folders").fetchall()
+        for r in rows:
+            for w in re.split(r"[^a-z]+", r["rel_path"].lower()):
+                if len(w) >= 3 and w not in FOLDER_STOP:
+                    words.setdefault(w, set()).add(r["id"])
+        _folder_cache.update(key=key, words=words, n=len(rows))
+    return _folder_cache["words"], _folder_cache["n"]
+
+
+def understand(con, text):
+    """Split a search into its parts: years and months (filters), colours, shoot-folder words, and
+    the words left for the picture model."""
+    words = text.strip().split()
+    years = [w for w in words if re.fullmatch(r"(19|20)\d\d", w)]
+    year = years[-1] if years else None
+    month, left = None, []
+    for w in words:
+        lw = w.lower().strip(",.")
+        if w in years:
+            continue
+        if lw in MONTHS and (lw != "may" or year):          # "may" is only a month next to a year
+            month = MONTHS[lw]
+        else:
+            left.append(w)
+    rest = " ".join(left)
+    cols, mono, without_colours = colours.find_words(rest)
+    index, n = _folder_words(con)
+    folders, folder_words = set(), []
+    for w in without_colours.split():
+        hits = index.get(w.lower().strip(",."))
+        if hits and len(hits) <= max(3, 0.4 * n):
+            folders |= hits
+            folder_words.append(w.lower())
+    picture = " ".join(w for w in without_colours.split() if w.lower() not in folder_words)
+    return {"year": year, "month": month, "colours": cols, "mono": mono, "folders": folders,
+            "folder_words": folder_words, "text": rest, "picture": picture}
+
+
+def _z(x):
+    return (x - np.median(x)) / max(float(x.std()), 1e-6)
+
+
 def search(con, text="", limit=200, offset=0, order="newest", **filters):
     """Return {total, results}. With text, ranked by match; otherwise newest first
-    (order="oldest": shooting order, as when looking through one shoot)."""
+    (order="oldest": shooting order, as when looking through one shoot).
+
+    The words are understood in parts: a year or month filters, colour words check the photo's
+    actual colours, words in a shoot's folder name (a place, an event) favour that shoot, and the
+    rest is matched by the picture model. Near-identical frames are grouped behind the best one."""
     mounts = drives.online_mounts(con)
+    u = understand(con, text) if text.strip() else None
+    if u:
+        filters = dict(filters)
+        if u["year"] and not filters.get("year"):
+            filters["year"] = u["year"]
+        if u["month"]:
+            filters["month"] = u["month"]
     where, args = _filters(filters)
     rows = con.execute(SELECT + where, args).fetchall()
-    if not text.strip():
+    if not u or not (u["text"] or u["colours"] or u["mono"]):
         rows.sort(key=lambda r: (r["capture_time"] or "", r["rel_path"]), reverse=order != "oldest")
         page = rows[offset:offset + limit]
         return {"total": len(rows), "results": [_shape(r, mounts) for r in page]}
     ids, mat = _matrix(con)
     if not len(ids):
         return {"total": 0, "results": []}
-    s = mat @ query_vector(text.strip())                       # (N, VIEWS)
+    model_words = u["picture"] or u["text"]
+    s = mat @ query_vector(model_words)                         # (N, VIEWS)
     scores = np.maximum(s[:, 0], s[:, 1:].max(axis=1) - CLOSEUP_PENALTY)
     # Relevance against the whole library: real matches stand out from the crowd.
-    z = (scores - np.median(scores)) / max(float(scores.std()), 1e-6)
+    z = _z(scores)
+    if u["colours"] or u["mono"]:
+        shares = colours.ensure(con)
+        extra = []
+        for c in u["colours"]:
+            extra.append(_z(np.array([shares.get(int(i), {}).get(c, 0.0) for i in ids])))
+        if u["mono"]:                         # graded in B&W first, then the least colourful frames
+            bw = colours.graded_bw(con)
+            extra.append(_z(-np.array([shares.get(int(i), {}).get("chroma", 0.1) for i in ids])) * 0.3
+                         + np.array([6.0 if int(i) in bw else 0.0 for i in ids]))
+        colour_z = np.mean(extra, axis=0)
+        z = _z(0.4 * z + colour_z) if not u["picture"] else _z(z + 0.8 * colour_z)
     cutoff = max(STRONG_Z, min(float(z.max()) - STRONG_FROM_TOP, STRONG_MAX_BAR))
+    if u["folders"]:
+        boost = 100.0 if not u["picture"] and not u["colours"] and not u["mono"] else FOLDER_BOOST
+        folder_of = dict(con.execute("SELECT id, folder_id FROM photos").fetchall())
+        z = z + np.array([boost if folder_of.get(int(i)) in u["folders"] else 0.0 for i in ids])
     by_id = dict(zip(ids.tolist(), z.tolist()))
     ranked = sorted((r for r in rows if r["id"] in by_id), key=lambda r: -by_id[r["id"]])
-    strong = sum(1 for r in ranked if by_id[r["id"]] >= cutoff)
+    # Group near-identical frames of the same shoot behind the best one (they move to the end).
+    pos = {int(i): k for k, i in enumerate(ids)}
+    kept, kept_vecs, dups, similar = [], [], [], {}
+    for r in ranked:
+        if len(kept) < 400 and by_id[r["id"]] >= cutoff - 1.5:
+            v = mat[pos[r["id"]], 0]
+            twin = next((k for k, kv in zip(kept, kept_vecs) if k["folder_id"] == r["folder_id"]
+                         and float(kv @ v) >= SAME_PICTURE), None)
+            if twin is not None:
+                dups.append(r)
+                similar[twin["id"]] = similar.get(twin["id"], 0) + 1
+                continue
+            kept_vecs.append(v)
+        kept.append(r)
+    ranked = kept + dups
+    strong = sum(1 for r in kept if by_id[r["id"]] >= cutoff)
     page = ranked[offset:offset + limit]
+    dup_ids = {r["id"] for r in dups}
     results = [_shape(r, mounts, by_id[r["id"]]) for r in page]
     for r in results:
-        r["strong"] = r["score"] >= cutoff
-    return {"total": len(ranked), "strong": strong, "results": results}
+        r["strong"] = r["score"] >= cutoff and r["id"] not in dup_ids
+        r["similar"] = similar.get(r["id"], 0)
+        r["grouped"] = r["id"] in dup_ids
+    return {"total": len(ranked), "strong": strong, "results": results,
+            "understood": {k: u[k] for k in ("year", "month", "colours", "mono", "folder_words")}}
 
 
 def photo(con, photo_id):

@@ -41,7 +41,9 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   `drives.py` (drives by volume UUID; offline = not mounted), `scan.py` (incremental, stoppable),
   `pairing.py` (RAW + copies + exported JPGs = one photo), `sidecars.py` (ON1/XMP, read only),
   `thumbs.py` (embedded RAW previews), `vision.py` (SigLIP 2 on MPS, categories),
-  `index.py`, `search.py`, `service.py` (background scan job for the app),
+  `index.py`, `search.py` (`understand` splits a search: years/months filter, colour words use `colours.py`
+  shares (B&W = graded versions via `colours.graded_bw`), shoot-folder words boost that shoot, the rest goes
+  to SigLIP; near-identical frames of a shoot are grouped at the end with "+N alike"), `service.py` (background scan job for the app),
   `quality.py` (focus/motion/exposure from embedded previews, burst groups),
   `secondlook.py` (second-look finder: cross-fitted taste model + zero-shot appeal; keep/dismiss in `picks`).
   `scene.py` (Apple Vision via pyobjc: people/faces/eyes/pose/subject -> culling features),

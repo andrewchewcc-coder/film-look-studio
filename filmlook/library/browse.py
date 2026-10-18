@@ -92,12 +92,22 @@ def show_in_finder(paths):
     return r.returncode == 0
 
 
-def forget_deleted(con, folder_id):
-    """Remove library records of photos whose original is gone from an online drive."""
+def _deleted(con, folder_id=None):
+    """Photos whose original is gone from a drive that is plugged in (offline drives never count)."""
     mounts = drives.online_mounts(con)
-    ids = [r["id"] for r in con.execute("""SELECT p.id, f.drive_id FROM photos p JOIN files f ON f.id = p.primary_file_id
-                                           WHERE p.folder_id=? AND f.missing=1""", (folder_id,))
-           if r["drive_id"] in mounts]
+    sql = "SELECT p.id, f.drive_id FROM photos p JOIN files f ON f.id = p.primary_file_id WHERE f.missing=1"
+    rows = con.execute(sql + (" AND p.folder_id=?" if folder_id else ""), (folder_id,) if folder_id else ())
+    return [r["id"] for r in rows if r["drive_id"] in mounts]
+
+
+def deleted_count(con, folder_id=None):
+    return len(_deleted(con, folder_id))
+
+
+def forget_deleted(con, folder_id=None):
+    """Remove library records of photos whose original is gone from an online drive
+    (one shoot, or every shoot when folder_id is None)."""
+    ids = _deleted(con, folder_id)
     for pid in ids:
         forget_photo(con, pid)
     con.commit()

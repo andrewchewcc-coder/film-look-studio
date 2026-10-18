@@ -1345,6 +1345,14 @@ function lbModeControls() {                   // these filters don't apply to th
   const on = !!$("lbMode").value;
   ["libq", "fFlag", "fGraded", "fStars"].forEach(id => { $(id).disabled = on; $(id).style.opacity = on ? 0.4 : ""; });
 }
+// What search made of the words, e.g. " (colour: red · shoot: portugal · 2025)".
+function understood(u) {
+  if (!u) return "";
+  const MON = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const bits = [...u.colours.map(c => "colour: " + c), ...(u.mono ? ["black & white"] : []),
+                ...u.folder_words.map(w => "shoot: " + w), ...(u.month ? [MON[u.month]] : []), ...(u.year ? [u.year] : [])];
+  return bits.length ? ` (${bits.join(" · ")})` : "";
+}
 async function runSearch(more = false, atLeast = 0) {
   if ($("lbMode").value) return runSecond(more);
   lbModeControls();
@@ -1366,9 +1374,15 @@ async function runSearch(more = false, atLeast = 0) {
     return;
   } finally { clearTimeout(slow); clearTimeout(limit); }
   if (seq !== L.seq) return;
-  if (!more) { L.photos = []; $("grid").innerHTML = ""; L.divided = false; }
+  if (!more) { L.photos = []; $("grid").innerHTML = ""; L.divided = false; L.grouped = false; }
   for (const r of res.results) {
-    if (p.q && r.strong === false && !L.divided) {
+    if (p.q && r.grouped && !L.grouped) {
+      L.grouped = L.divided = true;
+      const d = document.createElement("div"); d.className = "divider";
+      d.textContent = "Near-identical frames of photos above";
+      $("grid").appendChild(d);
+    }
+    if (p.q && r.strong === false && !r.grouped && !L.divided) {
       L.divided = true;
       const d = document.createElement("div"); d.className = "divider";
       d.textContent = res.strong ? `Weaker matches — these may not show “${p.q}”` : `No clear matches for “${p.q}” — closest photos`;
@@ -1381,7 +1395,7 @@ async function runSearch(more = false, atLeast = 0) {
   L.total = res.total; L.offset += res.results.length;
   $("more").hidden = L.offset >= L.total;
   const order = p.q ? "best match first" : p.order === "oldest" ? "shooting order" : "newest first";
-  $("lbSub").textContent = p.q ? `${(res.strong || 0).toLocaleString()} clear matches for “${p.q}” · ${order}` : `${L.total.toLocaleString()} photos · ${order}`;
+  $("lbSub").textContent = p.q ? `${(res.strong || 0).toLocaleString()} clear matches for “${p.q}”${understood(res.understood)} · ${order}` : `${L.total.toLocaleString()} photos · ${order}`;
   $("libEmpty").hidden = L.total > 0;
   $("libEmpty").textContent = L.total ? "" : "No photos match. Try other words or loosen the filters.";
   lbCount(); lbNoteDeleted(); lbCullButton();
@@ -1467,6 +1481,7 @@ function cell(r, i) {
   if (r.my_rating > 0) tags.push(`<span class="st" title="Your stars">${"★".repeat(r.my_rating)}</span>`);
   const stars = [1, 2, 3, 4, 5].map(n => `<b data-r="${n}" class="${(r.my_rating || 0) >= n ? "on" : ""}">★</b>`).join("");
   if (r.dismissed) tags.push(`<span class="o">Not now</span>`);
+  if (r.similar) tags.push(`<span class="o" title="${r.similar} near-identical frame${r.similar > 1 ? "s" : ""} from this shoot — shown at the end of the results">+${r.similar} alike</span>`);
   const label = r.reasons && r.reasons.length ? r.reasons.join(" · ") : r.name;
   d.innerHTML = `<img loading="lazy" src="${lbThumb(r)}" alt="" draggable="false"><div class="tl">${tl.join("")}</div><div class="tr">${tr.join("")}</div><div class="tags">${tags.join("")}</div><div class="nm${r.reasons ? " why" : ""}">${esc(label)}</div>
     <div class="acts"><button data-f="pick" class="${r.mark === "pick" ? "on" : ""}" title="Pick (P)">✓</button><button data-f="reject" class="${r.mark === "reject" ? "on" : ""}" title="Reject (X)">✕</button><button data-f="" title="Unmark (U)">↺</button>${r.reasons ? `<button data-n title="Not now: don't suggest it again (N)">Not now</button>` : ""}<span class="st">${stars}</span></div>`;
@@ -1685,13 +1700,18 @@ async function lbFinder(rs) {
     $("lbNote").textContent = msg;
   } catch (e) { $("lbNote").textContent = e.message; }
 }
-function lbNoteDeleted() {
-  const folder = lbFolder(), gone = L.photos.filter(r => r.deleted).length;
+async function lbNoteDeleted() {
+  const folder = lbFolder();
+  let gone = L.photos.filter(r => r.deleted).length;
+  if (!folder) {                              // All shoots: count across the whole library
+    try { gone = (await (await api("/api/browse/deleted_count")).json()).count; } catch (e) { return; }
+    if (lbFolder() !== folder) return;
+  }
   if (!gone) { if ($("lbNote").querySelector("#lbForget")) $("lbNote").textContent = ""; return; }
-  if (!folder) return;
-  $("lbNote").innerHTML = `${gone} photo${gone === 1 ? " was" : "s were"} deleted from the drive.<button id="lbForget">Remove ${gone === 1 ? "it" : "them"} from the library</button>`;
+  const where = folder ? "" : " (across all shoots)";
+  $("lbNote").innerHTML = `${gone} photo${gone === 1 ? " was" : "s were"} deleted from the drive${where}.<button id="lbForget">Remove ${gone === 1 ? "it" : "them"} from the library</button>`;
   $("lbForget").onclick = async () => {
-    const r = await (await api(`/api/browse/forget_deleted/${folder}`, { method: "POST" })).json();
+    const r = await (await api(`/api/browse/forget_deleted/${folder || 0}`, { method: "POST" })).json();
     $("lbNote").textContent = `Removed ${r.removed} from the library.`;
     await loadLib(); runSearch();
   };

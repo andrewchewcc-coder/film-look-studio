@@ -592,8 +592,15 @@ def browse_reveal(body: IdsIn):
 
 @app.post("/api/browse/forget_deleted/{folder_id}")
 def browse_forget_deleted(folder_id: int):
+    """folder_id 0 = every shoot."""
     from .library import browse
-    return {"removed": browse.forget_deleted(_lib().con(), folder_id)}
+    return {"removed": browse.forget_deleted(_lib().con(), folder_id or None)}
+
+
+@app.get("/api/browse/deleted_count")
+def browse_deleted_count():
+    from .library import browse
+    return {"count": browse.deleted_count(_lib().con())}
 
 
 @app.on_event("startup")
