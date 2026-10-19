@@ -1651,6 +1651,7 @@ class BookIn(BaseModel):
     bleed: bool = False
     cover_photo: int | None = None
     heroes: bool = False
+    printing: str = "screen"
 
 
 @app.post("/api/essays/{eid}/book")
@@ -1658,6 +1659,8 @@ def essay_book(eid: int, body: BookIn):
     """A print-ready book / zine PDF (background job; waits for offline drives)."""
     from .library import essay_book as eb
     _essay_row(eid)
+    if body.printing not in eb.PRINTINGS:
+        raise HTTPException(400, "unknown way of printing")
     if body.size not in eb.SIZES:
         raise HTTPException(400, "unknown page size")
     job_id = uuid.uuid4().hex[:8]
@@ -1669,7 +1672,7 @@ def essay_book(eid: int, body: BookIn):
             eb.make_book(_lib().con(), eid, size=body.size, layout=body.layout, cover=body.cover,
                          captions=body.captions, page_numbers=body.page_numbers, index=body.index,
                          bleed=body.bleed, cover_photo=body.cover_photo, heroes=body.heroes, job=job,
-                         cancelled=lambda: job["cancel"])
+                         cancelled=lambda: job["cancel"], printing=body.printing)
         except Exception as e:
             job["error"] = str(e)
         job["current"] = ""
@@ -1685,11 +1688,14 @@ def essay_book_preview(eid: int, body: BookIn):
     import base64
     from .library import essay_book as eb
     _essay_row(eid)
+    if body.printing not in eb.PRINTINGS:
+        raise HTTPException(400, "unknown way of printing")
     if body.size not in eb.SIZES:
         raise HTTPException(400, "unknown page size")
     pages = eb.make_book(_lib().con(), eid, size=body.size, layout=body.layout, cover=body.cover,
                          captions=body.captions, page_numbers=body.page_numbers, index=body.index,
-                         bleed=body.bleed, cover_photo=body.cover_photo, heroes=body.heroes, preview=True)
+                         bleed=body.bleed, cover_photo=body.cover_photo, heroes=body.heroes, preview=True,
+                         printing=body.printing)
     return {"pages": [{"kind": p["kind"], "page": p["page"],
                        "src": "data:image/jpeg;base64," + base64.b64encode(p["jpeg"]).decode()} for p in pages]}
 

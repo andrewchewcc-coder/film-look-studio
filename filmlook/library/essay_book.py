@@ -21,9 +21,13 @@ from . import drives, essay, essay_out
 
 DPI = 300
 SIZES = {"a4-portrait": (210 / 25.4, 297 / 25.4), "a4-landscape": (297 / 25.4, 210 / 25.4),
-         "8x10-portrait": (8.0, 10.0), "8x10-landscape": (10.0, 8.0)}
+         "8x10-portrait": (8.0, 10.0), "8x10-landscape": (10.0, 8.0), "a5-portrait": (148.5 / 25.4, 210 / 25.4)}
 SIZE_NAMES = {"a4-portrait": "A4 portrait", "a4-landscape": "A4 landscape",
-              "8x10-portrait": "8x10 portrait", "8x10-landscape": "8x10 landscape"}
+              "8x10-portrait": "8x10 portrait", "8x10-landscape": "8x10 landscape", "a5-portrait": "A5"}
+# How the book will be made into a real one (see PRINTING_HOWTO for the steps shown when it's done).
+PRINTINGS = ("screen", "printer", "duplex", "zine-a5", "zine-a4")
+PRINTING_NAMES = {"screen": "", "printer": "for a book printer", "duplex": "double-sided",
+                  "zine-a5": "zine A5 (print on A4)", "zine-a4": "zine A4 (print on A3)"}
 BLEED = 3 / 25.4            # inches added on every side when bleed is on
 PAPER = (255, 255, 255)
 INK = (34, 34, 34)
@@ -48,13 +52,14 @@ class PdfWriter:
 
     def add_page(self, img, width_in, height_in, trim_in=0.0):
         """img: the whole page (incl. bleed) as RGB at DPI. trim_in: bleed to mark as TrimBox."""
-        buf = io.BytesIO()
-        img.save(buf, "JPEG", quality=94, subsampling=0, dpi=(DPI, DPI))
-        data = buf.getvalue()
+        self.add_jpeg(_jpeg(img), img.width, img.height, width_in, height_in, trim_in)
+
+    def add_jpeg(self, data, w_px, h_px, width_in, height_in, trim_in=0.0):
+        """A page that is already a JPEG (no second compression)."""
         base = len(self.offsets) + 1
         self._reserve(3)
         im_n, content_n, page_n = base, base + 1, base + 2
-        self._obj(im_n, (f"<< /Type /XObject /Subtype /Image /Width {img.width} /Height {img.height} "
+        self._obj(im_n, (f"<< /Type /XObject /Subtype /Image /Width {w_px} /Height {h_px} "
                          f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {len(data)} >>\n"
                          "stream\n").encode() + data + b"\nendstream")
         W, H = width_in * 72, height_in * 72
@@ -133,17 +138,73 @@ def _text_fit(d, text, font, width):
     return text + "…"
 
 
+def _jpeg(img, quality=94):
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=quality, subsampling=0, dpi=(DPI, DPI))
+    return buf.getvalue()
+
+
+def reading_order(pages, printing):
+    """The book's pages in reading order for a way of printing. pages: [{kind, ...}] as rendered
+    (cover first if any, then photo / blank / index pages); BLANK entries are {"kind": "blank"}."""
+    cov = [p for p in pages if p["kind"] == "cover"]
+    body = [p for p in pages if p["kind"] != "cover"]
+    blank = {"kind": "blank", "page": None}
+    if len(body) % 2:                                           # inside pages come in pairs: end on a left page
+        body.append(blank)
+    if printing == "printer":                                   # the printer's book block starts on a right page
+        return cov + body
+    seq = (cov + [blank] if cov else []) + body                 # the cover's back stays blank: page 1 on the right
+    if printing in ("screen", "duplex"):
+        return seq + [blank] * (len(seq) % 2)
+    return seq + [blank] * (-len(seq) % 4)                      # a folded booklet: sheets of 4 pages
+
+
+def imposition(n):
+    """Sheet sides for a fold-and-staple booklet of n pages (n a multiple of 4), 0-based page indexes:
+    [(left, right), ...] front then back of each sheet, outermost sheet first."""
+    out = []
+    for i in range(n // 4):
+        out.append((n - 1 - 2 * i, 2 * i))                      # front: back cover side | front cover side
+        out.append((2 * i + 1, n - 2 - 2 * i))                  # back of the same sheet
+    return out
+
+
+PRINTING_HOWTO = {
+    "screen": "One PDF in reading order: the cover, a blank inside cover, then page 1 on the right and facing pairs — "
+              "so a flipbook (e.g. DearFlip) shows the same spreads as the printed book.",
+    "printer": "Two files: the cover and the inside pages. At your book printer choose the same page size; upload the "
+               "inside pages as the book block (page 1 is a right-hand page) and use the cover file on their cover "
+               "template (they add the spine and back). Tick bleed if they ask for it.",
+    "duplex": "Print double-sided at a copy shop or at home: {flip}. Page 2 is the blank back of the cover, so photo "
+              "page 1 lands on a right-hand page. Then bind along the left edge (spiral, glue or staples).",
+    "zine": "Print on {paper} paper, double-sided, flip on the short edge, at 100% (\"Actual size\" — not \"Fit\"). "
+            "Keep the sheets in order, fold the stack in half, and staple twice along the fold. "
+            "{sheets} sheets make a {pages}-page {fold} zine.",
+}
+
+
 # --- the book ---------------------------------------------------------------------------------
 
 def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, captions=True,
               page_numbers=True, index=True, bleed=False, cover_photo=None, heroes=False, job=None,
-              cancelled=lambda: False, poll=3.0, preview=False):
-    """Write the book PDF; returns its path (None if cancelled). Waits while a drive is offline.
-    preview=True: the same pages, small and fast from the essay thumbnails (works offline), returned
-    as [{kind: cover/photo/blank/index, page (photo page number or None), jpeg bytes}]."""
+              cancelled=lambda: False, poll=3.0, preview=False, printing="screen"):
+    """Write the book PDF(s); returns the main path (None if cancelled). Waits while a drive is offline.
+    printing: screen (one PDF) / printer (cover + inside pages) / duplex (blank back of the cover) /
+    zine-a5 / zine-a4 (portrait pages two to a sheet in booklet order, on A4 / A3 paper).
+    preview=True: the pages in reading order, small and fast from the essay thumbnails (works
+    offline), as [{kind: cover/photo/blank/index, page (photo page number or None), jpeg bytes}]."""
+    import shutil
+    import tempfile
     from .. import recipes
     job = job if job is not None else {}
     e = con.execute("SELECT name, look FROM essays WHERE id=?", (essay_id,)).fetchone()
+    if printing not in PRINTINGS:
+        raise ValueError(f"unknown printing {printing}")
+    if printing.startswith("zine"):
+        size = "a5-portrait" if printing == "zine-a5" else "a4-portrait"      # folded sheets are portrait
+    if printing in ("duplex", "zine-a5", "zine-a4"):
+        bleed = False                                           # copy shops and home printers don't trim
     if size not in SIZES:
         raise ValueError(f"unknown size {size}")
     wi, hi = SIZES[size]
@@ -169,29 +230,16 @@ def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, ca
         f"""SELECT p.id, p.capture_time, fo.rel_path AS folder FROM photos p JOIN folders fo ON fo.id = p.folder_id
             WHERE p.id IN ({','.join('?' * len(items))})""", [i["photo_id"] for i in items])}
 
+    rendered = []                                               # [{kind, page, data | path}] in render order
+    tmp = None if preview else Path(tempfile.mkdtemp(prefix="flsbook-"))
     if preview:
         feats = essay.ensure_features(con, [i["photo_id"] for i in items])
-        pages_out = []
-
-        class _Collect:                                         # stands in for the PDF writer
-            def add_page(self, img, *a, **k):
-                buf = io.BytesIO()
-                img.save(buf, "JPEG", quality=80)
-                pages_out.append({"kind": kind_now[0], "page": page_now[0], "jpeg": buf.getvalue()})
-
-            def close(self):
-                pass
-        pdf, dst = _Collect(), None
 
         def get_image(it):
             t = (feats.get(it["photo_id"]) or {}).get("thumb")
             return Image.open(essay.ESSAY_THUMBS / t).convert("RGB") if t and (essay.ESSAY_THUMBS / t).exists() \
                 else Image.new("RGB", (300, 200), (200, 200, 200))
     else:
-        essay_out.OUT_DIR.mkdir(parents=True, exist_ok=True)
-        dst = essay_out.OUT_DIR / f"{essay_out.safe_name(e['name'])} – book {SIZE_NAMES[size]}{' bleed' if bleed else ''}.pdf"
-        pdf = PdfWriter(dst)
-
         def get_image(it):
             return photo_image(con, it, recipe, long_edge)
     kind_now, page_now = ["cover"], [None]
@@ -205,7 +253,12 @@ def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, ca
         return Image.new("RGB", (PW, PH), PAPER)
 
     def add(img):
-        pdf.add_page(img, wi + 2 * b, hi + 2 * b, trim_in=b)
+        if preview:
+            rendered.append({"kind": kind_now[0], "page": page_now[0], "data": _jpeg(img, 80)})
+        else:                                                   # one page in memory at a time
+            path = tmp / f"{len(rendered):04d}.jpg"
+            path.write_bytes(_jpeg(img))
+            rendered.append({"kind": kind_now[0], "page": page_now[0], "path": path})
 
     # cover
     if cover:
@@ -218,8 +271,12 @@ def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, ca
         ph = _fit(im, box_w, box_h)
         page.paste(ph, (bx + (tw - ph.width) // 2, bx + margin + (box_h - ph.height) // 2))
         d = ImageDraw.Draw(page)
-        f_title, f_sub = _font(short * 0.055, True), _font(short * 0.022)
+        f_sub = _font(short * 0.022)
         ty = bx + margin + box_h + round(short * 0.05)
+        for k in (0.055, 0.048, 0.042, 0.036, 0.031):           # shrink a long title before shortening it
+            f_title = _font(short * k, True)
+            if d.textlength(e["name"], font=f_title) <= tw - 2 * margin:
+                break
         title = _text_fit(d, e["name"], f_title, tw - 2 * margin)
         d.text((bx + tw // 2, ty), title, fill=INK, font=f_title, anchor="ma")
         years = sorted({meta[i["photo_id"]]["capture_time"][:4] for i in items
@@ -235,7 +292,8 @@ def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, ca
     n = 0
     for it in items:
         if cancelled():
-            pdf.close()
+            if tmp:
+                shutil.rmtree(tmp, ignore_errors=True)
             return None
         if it["photo_id"] in hero_ids and n % 2 == 1:          # a hero goes on the right, blank page opposite
             n += 1
@@ -304,12 +362,57 @@ def make_book(con, essay_id, size="a4-portrait", layout="border", cover=True, ca
             pages_so_far += 1
         job["done"] += 1
 
-    if pages_so_far % 2:                         # printers bind in pairs of pages: end on a left page
-        kind_now[0], page_now[0] = "blank", None
-        add(blank())
-    pdf.close()
+    seq = reading_order(rendered, printing)
+    blank_data = _jpeg(blank(), 80 if preview else 94)
+    data = lambda p: p.get("data") or (p["path"].read_bytes() if p.get("path") else blank_data)
     if preview:
-        return pages_out
+        return [{"kind": p["kind"], "page": p["page"], "jpeg": data(p)} for p in seq]
+
+    try:
+        essay_out.OUT_DIR.mkdir(parents=True, exist_ok=True)
+        if printing.startswith("zine"):
+            stem = f"{essay_out.safe_name(e['name'])} – {PRINTING_NAMES[printing]}"
+        else:
+            extra = PRINTING_NAMES[printing]
+            stem = f"{essay_out.safe_name(e['name'])} – book {SIZE_NAMES[size]}" + (f" {extra}" if extra else "") \
+                + (" bleed" if bleed else "")
+        files = []
+
+        def write(path, pages):
+            pdf = PdfWriter(path)
+            for p in pages:
+                pdf.add_jpeg(data(p), PW, PH, wi + 2 * b, hi + 2 * b, trim_in=b)
+            pdf.close()
+            files.append(path)
+
+        sheets = 0
+        if printing == "printer":
+            cov = [p for p in seq if p["kind"] == "cover"]
+            write(essay_out.OUT_DIR / f"{stem} – inside pages.pdf", [p for p in seq if p["kind"] != "cover"])
+            if cov:
+                write(essay_out.OUT_DIR / f"{stem} – cover.pdf", cov)
+        elif printing.startswith("zine"):
+            job["current"] = "arranging the pages on sheets"
+            pdf = PdfWriter(essay_out.OUT_DIR / f"{stem}.pdf")
+            for left, right in imposition(len(seq)):            # two portrait pages side by side per sheet side
+                sheet = Image.new("RGB", (2 * PW, PH), PAPER)
+                for k, idx in enumerate((left, right)):
+                    sheet.paste(Image.open(io.BytesIO(data(seq[idx]))).convert("RGB"), (k * PW, 0))
+                pdf.add_page(sheet, 2 * wi, hi)
+                sheets += 1
+            pdf.close()
+            files.append(essay_out.OUT_DIR / f"{stem}.pdf")
+            sheets //= 2
+        else:
+            write(essay_out.OUT_DIR / f"{stem}.pdf", seq)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    dst = files[0]
+    howto = PRINTING_HOWTO["zine" if printing.startswith("zine") else printing]
+    job["howto"] = howto.format(flip="flip on the long edge" if hi > wi else "flip on the short edge",
+                                paper="A4" if printing == "zine-a5" else "A3", sheets=sheets,
+                                pages=len(seq), fold="A5" if printing == "zine-a5" else "A4")
+    job["files"] = [str(f) for f in files]
     job["current"] = ""
     job["pdf"] = str(dst)
     return dst

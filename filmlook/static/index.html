@@ -3144,8 +3144,14 @@ function esBookPanel(P) {
   if (ES.bookJob && ES.bookJob.essay === ES.id) return esBookJob(P);
   const opts = ES.photos.map((p, k) => `<option value="${p.id}">#${k + 1} ${esc(p.title || p.name)}</option>`).join("");
   P.innerHTML = `<div class="esExp">
+    <div class="esRow">Made for <select id="bkPrinting">
+      <option value="screen">Screen or web flipbook — one PDF</option>
+      <option value="printer">A book printer — cover and inside pages as separate PDFs</option>
+      <option value="duplex">Copy shop or home — double-sided, bound at the left</option>
+      <option value="zine-a5">Fold-and-staple zine — print on A4, folds to A5</option>
+      <option value="zine-a4">Fold-and-staple zine — print on A3, folds to A4</option></select></div>
     <div class="esRow">Page size <select id="bkSize"><option value="a4-portrait">A4 portrait</option><option value="a4-landscape">A4 landscape</option>
-      <option value="8x10-portrait">8 × 10 in portrait</option><option value="8x10-landscape">8 × 10 in landscape</option></select>
+      <option value="8x10-portrait">8 × 10 in portrait</option><option value="8x10-landscape">8 × 10 in landscape</option></select><span id="bkZineSize" hidden></span>
       Photos <select id="bkLayout"><option value="border">One per page, white border</option><option value="full">Full-bleed (fill the page)</option></select></div>
     <div class="esRow"><label><input type="checkbox" id="bkCover" checked> Cover</label> <select id="bkCoverPhoto" title="Cover photo">${opts}</select>
       <label><input type="checkbox" id="bkCaptions" checked> Captions (your titles)</label>
@@ -3157,7 +3163,19 @@ function esBookPanel(P) {
     <div id="bkPreview"></div>
     <div class="small">Pages follow your Spreads view: page 1 alone on the right, then facing pairs. Photos at full print quality from your graded versions; ungraded ones get your Grade-tab grade or the essay's look. About 1 second per graded photo, ~15 s per ungraded RAW. Saved in Pictures › Film Look Studio Essays.</div>
   </div>`;
-  const bkBody = () => ({ size: $("bkSize").value, layout: $("bkLayout").value, cover: $("bkCover").checked, captions: $("bkCaptions").checked,
+  // A zine's page size comes from the paper (folded A4 = A5, folded A3 = A4, portrait); home and
+  // copy-shop printing can't trim, so no bleed there.
+  const bkPrintingUI = () => {
+    const pr = $("bkPrinting").value, zine = pr.startsWith("zine");
+    $("bkSize").hidden = zine; $("bkZineSize").hidden = !zine;
+    $("bkZineSize").textContent = pr === "zine-a5" ? "A5 portrait pages" : "A4 portrait pages";
+    $("bkBleed").disabled = pr === "duplex" || zine; if ($("bkBleed").disabled) $("bkBleed").checked = false;
+    $("bkBleed").parentElement.style.opacity = $("bkBleed").disabled ? 0.4 : "";
+    try { localStorage.setItem("fls.bkPrinting", pr); } catch (e) {}
+  };
+  try { const v = localStorage.getItem("fls.bkPrinting"); if (v) $("bkPrinting").value = v; } catch (e) {}
+  $("bkPrinting").addEventListener("change", bkPrintingUI); bkPrintingUI();
+  const bkBody = () => ({ printing: $("bkPrinting").value, size: $("bkSize").value, layout: $("bkLayout").value, cover: $("bkCover").checked, captions: $("bkCaptions").checked,
     page_numbers: $("bkNumbers").checked, index: $("bkIndex").checked, bleed: $("bkBleed").checked, cover_photo: +$("bkCoverPhoto").value,
     heroes: $("bkHeroes").checked });
   let prevSeq = 0, shown = false;
@@ -3172,14 +3190,23 @@ function esBookPanel(P) {
       const r = await (await api(`/api/essays/${ES.id}/book_preview`, esJSON(bkBody()))).json();
       if (seq !== prevSeq || !$("bkPreview")) return;
       const AR = { "a4-portrait": 210 / 297, "a4-landscape": 297 / 210, "8x10-portrait": 0.8, "8x10-landscape": 1.25 };
-      $("bkPreview").style.setProperty("--bkAR", AR[$("bkSize").value] || 0.707);
+      $("bkPreview").style.setProperty("--bkAR", $("bkPrinting").value.startsWith("zine") ? 0.707 : AR[$("bkSize").value] || 0.707);
       // Cover alone, then facing pages: page 1 on the right, then 2–3, 4–5 … like the printed book.
-      const rest = r.pages.filter(p => p.kind !== "cover"), spreads = [];
-      const cover = r.pages.find(p => p.kind === "cover");
-      if (cover) spreads.push([null, cover, "Cover"]);
-      for (let k = -1; k < rest.length; k += 2) spreads.push([rest[k] || null, rest[k + 1] || null, ""]);
+      const cover = r.pages.find(p => p.kind === "cover"), spreads = [];
+      if ($("bkPrinting").value === "printer") {        // cover in its own file; the book block starts on a right page
+        const rest = r.pages.filter(p => p.kind !== "cover");
+        if (cover) spreads.push([null, cover, "Cover (own file)"]);
+        for (let k = -1; k < rest.length; k += 2) spreads.push([rest[k] || null, rest[k + 1] || null, ""]);
+      } else {                                           // one PDF: the first page alone on the right, then pairs
+        const pg0 = r.pages[0];
+        spreads.push([null, pg0, pg0 && pg0.kind === "cover" ? "Cover" : ""]);
+        for (let k = 1; k < r.pages.length; k += 2) spreads.push([r.pages[k] || null, r.pages[k + 1] || null, ""]);
+      }
       const pg = (p) => p ? `<img src="${p.src}" title="${p.kind === "blank" ? "Blank page" : p.kind === "index" ? "Index" : p.page ? "Page " + p.page : ""}">` : `<span class="none"></span>`;
-      $("bkPreview").innerHTML = `<div class="small">${r.pages.length} pages${cover ? " incl. cover" : ""}. This is a quick look from thumbnails; the PDF uses full-quality photos.</div>
+      const pr = $("bkPrinting").value, sheets = r.pages.length / 4;
+      const how = pr.startsWith("zine") ? ` — printed on ${sheets} sheet${sheets > 1 ? "s" : ""} of ${pr === "zine-a5" ? "A4" : "A3"}, double-sided, folded and stapled`
+        : pr === "duplex" ? ` — ${Math.ceil(r.pages.length / 2)} sheets double-sided` : pr === "printer" ? " — the cover goes in its own file" : "";
+      $("bkPreview").innerHTML = `<div class="small">${r.pages.length} pages${cover ? " incl. cover" : ""}${how}. This is a quick look from thumbnails; the PDF uses full-quality photos.</div>
         <div class="bkSpreads">${spreads.map(([a, b, lab]) => `<div class="bkSpread">${lab ? "" : pg(a)}${pg(b)}<div class="lab">${lab || [a, b].filter(Boolean).map(p => p.kind === "photo" ? p.page : p.kind === "index" ? "index" : "blank").join(" · ")}</div></div>`).join("")}</div>`;
     } catch (e) { if (seq === prevSeq) $("bkPreview").textContent = e.message; }
   };
@@ -3203,14 +3230,20 @@ async function esBookJob(P) {
   if (j.error) html = `<div class="warn">The book stopped: ${esc(j.error)}</div>`;
   else if (j.waiting && j.waiting.length) html = `<div class="warn">Waiting for ${esc(j.waiting.join(", "))} — plug it in and the book carries on by itself.</div>`;
   else if (!j.finished) html = `<div>Making the book… ${esc(j.current || "")}</div><progress max="${j.total || 1}" value="${j.done}"></progress>`;
-  else html = `<div>${j.pdf ? "Book ready: " + esc(j.pdf.split("/").pop()) : "Cancelled."}</div>`;
+  else if (!j.pdf) html = `<div>Cancelled.</div>`;
+  else {
+    const files = j.files && j.files.length ? j.files : [j.pdf];
+    html = `<div>Book ready${files.length > 1 ? ` — ${files.length} files` : ""}:</div>` + files.map((f, k) =>
+      `<div class="esRow"><span>${esc(f.split("/").pop())}</span><button data-open="${k}" class="${k ? "" : "primary"}">Open</button><button data-show="${k}">Show in Finder</button></div>`).join("")
+      + (j.howto ? `<div class="small" style="color:var(--text);max-width:640px;line-height:1.5"><b>How to make it into a book:</b> ${esc(j.howto)}</div>` : "");
+    ES.bookFiles = files;
+  }
   P.innerHTML = `<div class="esExp">${html}<div class="esRow">
-    ${!j.finished ? `<button id="bkStop">Cancel</button>` : `<button id="bkAgain">Make another</button>`}
-    ${j.pdf ? `<button id="bkOpen" class="primary">Open the PDF</button><button id="bkShow">Show in Finder</button>` : ""}</div></div>`;
+    ${!j.finished ? `<button id="bkStop">Cancel</button>` : `<button id="bkAgain">Make another</button>`}</div></div>`;
   if ($("bkStop")) $("bkStop").onclick = () => api(`/api/jobs/${job.id}/cancel`, { method: "POST" });
   if ($("bkAgain")) $("bkAgain").onclick = () => { ES.bookJob = null; esPanel("book"); };
-  if ($("bkShow")) $("bkShow").onclick = () => api("/api/essays/reveal", esJSON({ path: j.pdf }));
-  if ($("bkOpen")) $("bkOpen").onclick = () => api("/api/essays/open", esJSON({ path: j.pdf }));
+  P.querySelectorAll("[data-open]").forEach(b => b.onclick = () => api("/api/essays/open", esJSON({ path: ES.bookFiles[+b.dataset.open] })));
+  P.querySelectorAll("[data-show]").forEach(b => b.onclick = () => api("/api/essays/reveal", esJSON({ path: ES.bookFiles[+b.dataset.show] })));
   if (!j.finished) setTimeout(() => esBookJob(P), 1500);
 }
 // Publish to WordPress. Part 1: connecting (website, username, application password in the Keychain).

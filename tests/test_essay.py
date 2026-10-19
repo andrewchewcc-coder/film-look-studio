@@ -146,7 +146,7 @@ def test_book_pdf_writer_makes_valid_pages(tmp_path):
     assert b"/MediaBox [0 0 576.000 720.000]" in data and b"/TrimBox [7.200 7.200 568.800 712.800]" in data
     xref = int(data.rsplit(b"startxref", 1)[1].split()[0])
     assert data[xref:xref + 4] == b"xref"                           # the index points where it should
-    assert set(essay_book.SIZES) == {"a4-portrait", "a4-landscape", "8x10-portrait", "8x10-landscape"}
+    assert set(essay_book.SIZES) == {"a4-portrait", "a4-landscape", "8x10-portrait", "8x10-landscape", "a5-portrait"}
 
 
 def test_shot_scale_from_people_and_ai():
@@ -162,3 +162,18 @@ def test_shot_scale_from_people_and_ai():
     assert essay.shot_scale({}, {"close": -0.5, "medium": 1.5, "wide": 0.2})[0] == "medium"
     small = {"people": [{"box": [0.5, 0.6, 0.03, 0.1], "conf": 0.8}]}
     assert essay.shot_scale(small, {"close": -0.5, "medium": 1.5, "wide": 0.2}) == ("wide", True)
+
+
+def test_book_printing_orders():
+    from filmlook.library import essay_book
+    cover = {"kind": "cover"}
+    body = [{"kind": "photo", "page": n} for n in range(1, 6)]       # 5 photo pages
+    kinds = lambda seq: [p["kind"][0] if p["kind"] != "photo" else str(p["page"]) for p in seq]
+    assert kinds(essay_book.reading_order([cover] + body, "printer")) == ["c", "1", "2", "3", "4", "5", "b"]
+    assert kinds(essay_book.reading_order([cover] + body, "screen")) == ["c", "b", "1", "2", "3", "4", "5", "b"]
+    # double-sided: the cover's back is blank so page 1 is a right-hand page
+    assert kinds(essay_book.reading_order([cover] + body, "duplex")) == ["c", "b", "1", "2", "3", "4", "5", "b"]
+    zine = essay_book.reading_order([cover] + body, "zine-a5")
+    assert len(zine) % 4 == 0 and kinds(zine)[:3] == ["c", "b", "1"]
+    # booklet order: 8 pages = 2 sheets; outer sheet front = back cover | front cover
+    assert essay_book.imposition(8) == [(7, 0), (1, 6), (5, 2), (3, 4)]

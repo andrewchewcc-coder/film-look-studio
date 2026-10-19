@@ -67,7 +67,9 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   new folder under ~/Pictures/Film Look Studio Essays; waits while a drive is offline. `essay_book.py`:
   print-ready book PDF (A4 / 8x10, portrait / landscape; border or full-bleed; cover, captions, page
   numbers, index, 3 mm bleed with TrimBox) following the spreads, 300 dpi, streamed page by page
-  (own tiny PDF writer, one JPEG per page). Library also shows a new-shoot notice (`scan.new_shoots`).
+  (own tiny PDF writer, one JPEG per page). `printing`: screen / printer (cover + inside pages files) / duplex /
+  zine-a5 / zine-a4 (`reading_order` adds the blank inside cover; `imposition` = booklet order, portrait pages
+  two per A4 / A3 sheet); pages render to a temp folder first; `job['howto']` = the printing steps shown when done. Library also shows a new-shoot notice (`scan.new_shoots`).
 - `filmlook/library/craft.py` – photobook craft: 13 guidelines from classic street photobooks (Frank, Cartier-Bresson,
   Klein, Levitt, Koudelka, Moriyama, Parr, Leiter, Webb, Davidson) as `score` (styles classic / quiet /
   juxtaposition / flow weigh them) and `check` (the Essays → Arrange → Check list; `failures` per rule for Fix).
