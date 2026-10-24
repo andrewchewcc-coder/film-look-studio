@@ -176,7 +176,7 @@ def cmd_library(args):
 
 def cmd_serve(args):
     from . import server
-    server.run(args.folder, port=args.port, open_browser=not args.no_browser)
+    server.run(args.folder, port=args.port, open_browser=not args.no_browser, auto_stop=args.auto_stop)
 
 
 def main(argv=None):
@@ -235,7 +235,9 @@ def main(argv=None):
 
     p = sub.add_parser("serve", help="open the browser app")
     p.add_argument("folder", nargs="?"); p.add_argument("--port", type=int, default=8765)
-    p.add_argument("--no-browser", action="store_true"); p.set_defaults(fn=cmd_serve)
+    p.add_argument("--no-browser", action="store_true")
+    p.add_argument("--auto-stop", action="store_true", help="stop once no app page has been open for 10 minutes")
+    p.set_defaults(fn=cmd_serve)
 
     args = ap.parse_args(argv)
     try:

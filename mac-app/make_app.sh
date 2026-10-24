@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build "Film Look Studio.app" (no Terminal window; Quit from the Dock stops it).
+# Build "Film Look Studio.app" (no Terminal window; Quit button in the app, or auto-stop when no page is open).
 #   ./mac-app/make_app.sh            -> /Applications/Film Look Studio.app + a Desktop alias
 #   ./mac-app/make_app.sh <folder>   -> <folder>/Film Look Studio.app (no alias)
 set -e
@@ -11,7 +11,7 @@ TMP="$(mktemp -d)"
 
 sed "s|__PROJECT_DIR__|$PROJECT|" "$HERE/launcher.applescript" > "$TMP/launcher.applescript"
 rm -rf "$APP"
-osacompile -s -o "$APP" "$TMP/launcher.applescript"          # -s: stay open (Dock icon, Quit works)
+osacompile -o "$APP" "$TMP/launcher.applescript"          # runs, opens the browser, and is done
 
 # icon
 "$PROJECT/.venv/bin/python" "$HERE/make_icon.py" "$TMP/icon.png"

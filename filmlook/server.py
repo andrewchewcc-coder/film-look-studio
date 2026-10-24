@@ -1783,8 +1783,62 @@ def essay_thumb(photo_id: int):
     return library_thumb(photo_id)
 
 
-def run(folder=None, port=8765, open_browser=True):
+# --- quitting --------------------------------------------------------------------------------
+# Quit button in the header, and (when started from the Mac app) a quiet stop once no app page has
+# been open for a while — never while a scan, export, book or upload is still running.
+
+_last_seen = [0.0]
+AUTO_STOP_MINUTES = 10
+
+
+@app.middleware("http")
+async def _note_activity(request, call_next):
+    import time as _t
+    _last_seen[0] = _t.time()                 # any request from an open page (pages poll every few seconds)
+    return await call_next(request)
+
+
+def _busy():
+    return bool(_lib().job.get("running")) or any(not j.get("finished", True) for j in list(jobs.values()))
+
+
+def _stop_soon():
+    import os
+    threading.Timer(0.5, lambda: os._exit(0)).start()
+
+
+@app.get("/api/ping")
+def ping():
+    """Open pages call this every minute (even in a background tab) so the auto-stop knows."""
+    return {"ok": True}
+
+
+@app.post("/api/quit")
+def quit_app(force: bool = False):
+    """Stop Film Look Studio (the page says what is still running unless force)."""
+    if _busy() and not force:
+        return {"ok": False, "busy": [a["label"] for a in activity() if not a["finished"]]}
+    print("Film Look Studio: quit from the app.")
+    _stop_soon()
+    return {"ok": True}
+
+
+def _auto_stop_watch():
+    import time as _t
+    while True:
+        _t.sleep(30)
+        if _t.time() - _last_seen[0] > AUTO_STOP_MINUTES * 60 and not _busy():
+            print(f"Film Look Studio: no app page open for {AUTO_STOP_MINUTES} minutes — stopping.")
+            _stop_soon()
+            return
+
+
+def run(folder=None, port=8765, open_browser=True, auto_stop=False):
+    import time as _t
     import uvicorn
+    _last_seen[0] = _t.time()
+    if auto_stop:
+        threading.Thread(target=_auto_stop_watch, daemon=True).start()
     _lib().warm_model()
     if folder:
         set_folder(FolderIn(folder=folder))

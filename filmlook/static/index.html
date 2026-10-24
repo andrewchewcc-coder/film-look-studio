@@ -461,7 +461,7 @@
   <h1>Film Look Studio</h1>
   <div class="tabs"><button id="tabLib">Library</button><button id="tabCull">Cull</button><button id="tabGrade">Grade</button><button id="tabEssay">Essays</button></div>
   <div id="folderBar"><button id="backLib" hidden title="Back to the Library, where these photos came from">← Library</button><span id="folderName" title="">No folder open</span><button id="open" class="linkish" title="Open a folder that isn't in the Library">Open a folder…</button></div>
-  <div id="hdrRight"><button id="actBtn" hidden title="What's running in the background"></button><button id="keysBtn" title="Keyboard shortcuts (?)">?</button><button id="setBtn" title="Settings">⚙ Settings</button></div>
+  <div id="hdrRight"><button id="actBtn" hidden title="What's running in the background"></button><button id="keysBtn" title="Keyboard shortcuts (?)">?</button><button id="setBtn" title="Settings">⚙ Settings</button><button id="quitBtn" title="Stop Film Look Studio (closing the browser also stops it after 10 minutes)">Quit</button></div>
 </header>
 <div id="actPop" hidden></div>
 <div id="setBox" hidden><div class="box">
@@ -1745,6 +1745,17 @@ function lbAfterScan() {                     // a scan finished: the shoots it w
   lbCheckNew();
 }
 setInterval(() => { if (!document.hidden && !L.polling) lbCheckNew(); }, 60000);
+setInterval(() => { fetch("/api/ping").catch(() => {}); }, 60000);     // keeps the app running while a page is open
+$("quitBtn").onclick = async () => {
+  if (!confirm("Quit Film Look Studio?")) return;
+  let r = await (await api("/api/quit", { method: "POST" })).json();
+  if (!r.ok && r.busy) {
+    if (!confirm(`Still working on: ${r.busy.join(", ")}.\n\nQuit anyway? That stops it.`)) return;
+    r = await (await api("/api/quit?force=true", { method: "POST" })).json();
+  }
+  document.body.innerHTML = `<div style="display:grid;place-items:center;height:100vh;text-align:center;color:#ccc;font:15px -apple-system,sans-serif;background:#111">
+    <div><h2 style="color:#eee;font-weight:600">Film Look Studio has quit</h2><p>You can close this tab. Click the Film Look Studio icon to open it again.</p></div></div>`;
+};
 $("lbAll").onclick = () => { L.sel = new Set(L.photos.map(r => r.id)); document.querySelectorAll("#grid .cell").forEach(c => c.classList.add("sel")); lbCount(); };
 $("lbFinder").onclick = () => lbFinder(L.photos.filter(r => L.sel.has(r.id)));
 async function lbFinder(rs) {

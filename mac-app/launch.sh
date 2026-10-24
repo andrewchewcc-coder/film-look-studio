@@ -15,7 +15,7 @@ case "$1" in
     answers && exit 0
     mkdir -p "$(dirname "$PIDFILE")"
     { echo; echo "=== started $(date) ==="; } >> "$LOG"
-    nohup ./studio serve --no-browser >> "$LOG" 2>&1 < /dev/null &
+    nohup ./studio serve --no-browser --auto-stop >> "$LOG" 2>&1 < /dev/null &
     echo $! > "$PIDFILE"
     for _ in $(seq 1 240); do answers && exit 0; sleep 0.5; done   # up to 2 minutes
     exit 1 ;;
