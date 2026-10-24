@@ -5,6 +5,9 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
 
 - When Andrew asks for grading help (suggest a look, tweak in plain English, match a
   reference or a photographer, export, make a LUT), use the `grade` skill.
+- Mac app: `mac-app/make_app.sh` builds /Applications/Film Look Studio.app (stay-open AppleScript applet: starts
+  `./studio serve --no-browser` in the background, log in ~/Library/Logs/Film Look Studio.log, Quit stops port 8765)
+  plus a Desktop alias. Rebuild only if the launcher changes; app updates need just Quit + reopen.
 - Run the app with `./studio <command>` (see `./studio -h`). First-time setup: `./setup.sh`.
 - Never modify or delete source RAW files; exports go to `graded/` next to them.
 
