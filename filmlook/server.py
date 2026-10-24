@@ -904,6 +904,26 @@ def publish_forget():
 
 # --- Second look: overlooked photos ------------------------------------------------------
 
+@app.get("/api/library/second")
+def library_second(mode: str = "second", year: str = "", date_from: str = "", date_to: str = "",
+                   folder_id: int = 0, offset: int = 0, limit: int = 120):
+    """The Library's Second look views: "second" (worth a second look) or "this_day", for one
+    shoot, a year, dates or everything. Results are Library photos plus the reasons."""
+    from .library import search, secondlook
+    c = _lib().con()
+    scoped = folder_id or year or date_from or date_to
+    view = "this_day" if mode == "this_day" else ("period" if scoped else "gems")
+    res = secondlook.suggestions(c, view, categories=None, year=year or None, date_from=date_from or None,
+                                 date_to=date_to or None, folder_id=folder_id or None, offset=offset,
+                                 limit=min(limit, 300), undecided=True)
+    out = []
+    for r in res["results"]:
+        ph = search.photo(c, r["id"])
+        if ph:
+            out.append({**ph, "reasons": r["reasons"]})
+    return {"total": res["total"], "results": out, "note": res["note"]}
+
+
 class DecideIn(BaseModel):
     decision: str | None = None
 
