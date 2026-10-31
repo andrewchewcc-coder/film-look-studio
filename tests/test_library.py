@@ -32,6 +32,29 @@ def test_raw_copy_and_exports_are_one_photo():
     assert g == {1: [(1, "original"), (2, "export"), (3, "copy"), (4, "export"), (5, "export")]}
 
 
+def test_camera_jpg_is_not_a_grade():
+    def soft(i, name, software):
+        return {**f(i, name, "jpg", "2025-05-04T18:15:49"), "exif": json.dumps({"software": software})}
+    files = [
+        f(1, "25-05-04-18-15-49.dng", "raw", "2025-05-04T18:15:49"),
+        soft(2, "25-05-04-18-15-49.jpg", "3.1.1"),                     # Leica RAW + JPG mode
+        soft(3, "25-05-04-18-15-49-IG.jpg", "ON1 Photo RAW 2025.1"),
+        soft(4, "graded/25-05-04-18-15-49_tri-x.jpg", "3.1.1"),         # app export: always a grade
+    ]
+    g = as_dict(pairing.group(files))
+    assert g == {1: [(1, "original"), (2, "camera"), (3, "export"), (4, "export")]}
+    fuji = {**f(9, "x.jpg", "jpg"), "exif": json.dumps({"software": "Digital Camera X-T5 Ver4.00"})}
+    assert pairing.is_camera_jpg(fuji)
+    assert not pairing.is_camera_jpg({**fuji, "exif": json.dumps({"software": "Film Look Studio"})})
+    assert not pairing.is_camera_jpg({**fuji, "exif": json.dumps({"software": None})})
+    edited = {**soft(5, "x.jpg", "4.0.0")}                             # Camera Raw keeps the firmware tag
+    assert not pairing.is_camera_jpg({**edited, "exif": json.dumps(
+        {"software": "4.0.0", "modify_time": "2025-05-07T21:12:10"})})
+    assert not pairing.is_camera_jpg({**edited, "exif": json.dumps({"software": "4.0.0", "edit_history": True})})
+    assert pairing.is_camera_jpg({**edited, "exif": json.dumps(
+        {"software": "4.0.0", "modify_time": "2025-05-04T18:15:49", "edit_history": False})})
+
+
 def test_similar_names_dont_cross_pair():
     files = [
         f(1, "25-10-17-15-55-06-01.dng", "raw"),

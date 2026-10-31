@@ -24,7 +24,7 @@ SKIP_DIRS = {"System Volume Information", ".Spotlight-V100", ".Trashes", ".fseve
 EXPORT_SUBFOLDERS = {"graded"}  # exports kept in a subfolder still pair with the shoot
 EXIF_TAGS = ["DateTimeOriginal", "SubSecTimeOriginal", "CreateDate", "Make", "Model", "LensModel",
              "FocalLength", "FNumber", "ExposureTime", "ISO", "GPSLatitude", "GPSLongitude",
-             "ImageSize", "Orientation"]
+             "ImageSize", "Orientation", "Software", "ModifyDate", "HistorySoftwareAgent"]
 EXIFTOOL = next((p for p in ("/opt/homebrew/bin/exiftool", "/usr/local/bin/exiftool") if os.path.exists(p)),
                 "exiftool")
 SAMPLE = 1 << 20  # quick hash reads 3 x 1 MB
@@ -252,14 +252,17 @@ def read_exif(paths):
 
 
 def _capture_time(x):
-    s = x.get("DateTimeOriginal") or x.get("CreateDate")
+    return _time_of(x.get("DateTimeOriginal") or x.get("CreateDate"), x.get("SubSecTimeOriginal"))
+
+
+def _time_of(s, subsec=None):
     if not s or not isinstance(s, str) or s.startswith("0000"):
         return None
     try:
         t = datetime.strptime(s[:19], "%Y:%m:%d %H:%M:%S")
     except ValueError:
         return None
-    sub = str(x.get("SubSecTimeOriginal") or "")
+    sub = str(subsec or "")
     return t.isoformat() + (f".{sub[:3]}" if sub.isdigit() else "")
 
 
@@ -282,7 +285,10 @@ def _exif_fields(x):
             "focal_length": x.get("FocalLength"), "aperture": x.get("FNumber"),
             "shutter": x.get("ExposureTime"), "iso": x.get("ISO"),
             "gps_lat": x.get("GPSLatitude"), "gps_lon": x.get("GPSLongitude"),
-            "width": w, "height": h, "orientation": x.get("Orientation")}
+            "width": w, "height": h, "orientation": x.get("Orientation"),
+            "software": str(x.get("Software") or "").strip() or None,
+            "modify_time": _time_of(x.get("ModifyDate")),             # camera JPG: same as capture time
+            "edit_history": bool(x.get("HistorySoftwareAgent"))}       # an editor touched it
 
 
 # --- folders and shoots -----------------------------------------------------------
@@ -439,7 +445,7 @@ def scan(con, root_ids=None, progress=None, should_stop=lambda: False, batch=40)
                 rel_dir = str(d.relative_to(mount))
                 folder_id = _folder_id(con, drive_id, rel_dir)
                 known = {r["rel_path"]: r for r in con.execute(
-                    "SELECT id, rel_path, size, mtime, missing FROM files WHERE folder_id=?", (folder_id,))}
+                    "SELECT id, rel_path, size, mtime, missing, kind, exif FROM files WHERE folder_id=?", (folder_id,))}
                 touched = False
 
                 # Sidecars: cheap, re-read when changed.
@@ -472,7 +478,9 @@ def scan(con, root_ids=None, progress=None, should_stop=lambda: False, batch=40)
                     seen_rel.add(rel)
                     stats["seen"] += 1
                     k = known.get(rel)
-                    if k and not k["missing"] and k["size"] == st.st_size and abs(k["mtime"] - st.st_mtime) < 1e-3:
+                    stale_exif = k and k["kind"] == "jpg" and '"edit_history"' not in (k["exif"] or "")  # read before camera-JPG tags
+                    if (k and not k["missing"] and not stale_exif and k["size"] == st.st_size
+                            and abs(k["mtime"] - st.st_mtime) < 1e-3):
                         stats["unchanged"] += 1
                         done += 1
                         continue

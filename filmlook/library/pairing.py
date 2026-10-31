@@ -6,7 +6,15 @@ belong to `25-02-12-09-32-26.RAF`. A JPG whose name doesn't match falls back to 
 exact capture-time match with exactly one RAW. Anything left over (phone photos)
 is a photo of its own. When the names match, a capture time shifted by whole hours also
 counts as the same moment: an export (e.g. for Instagram) can carry another time zone.
+
+A JPG the camera saved next to its RAW (RAW + JPG mode) is the camera's own colour, not
+a grade: its Software tag is the camera firmware ("3.1.1", "Digital Camera X-T5 Ver4.00") and
+it was never modified (modify time = capture time, no editor history; Camera Raw or Affinity
+keep the firmware tag but change those).
+It joins the photo as 'camera' instead of 'export', so the photo isn't counted as graded.
+Anything in a graded/ subfolder is always an export.
 """
+import json
 import re
 from datetime import datetime
 from pathlib import PurePath
@@ -15,6 +23,11 @@ SEPARATORS = " -_(.~"
 COPY_RE = re.compile(r"^(?P<base>.+?)(?: copy(?: \d+)?| \(\d+\))$")
 MAX_TIME_DIFF = 2.0  # seconds
 MAX_ZONE_SHIFT = 14  # hours: the widest time-zone difference
+EXPORT_FOLDERS = {"graded"}
+EDITORS = ("on1", "lightroom", "photoshop", "adobe", "capture one", "film look", "darktable", "rawtherapee",
+           "luminar", "pixelmator", "affinity", "snapseed", "dxo", "photolab", "silkypix", "acdsee", "gimp",
+           "photos", "vsco", "exiftool", "raw studio", "x raw", "fujifilm x raw", "capture nx", "nx studio")
+FIRMWARE_RE = re.compile(r"^(v(er)?\.?\s*)?\d+(\.\d+)+\s*$|digital camera|firmware|\bver\.?\s*\d|\bv\d+\.\d+", re.I)
 
 
 def _stem(f):
@@ -39,6 +52,23 @@ def _times_agree(a, b, zone_shift=False):
     return d <= MAX_TIME_DIFF
 
 
+def is_camera_jpg(f):
+    """True for a JPG straight out of the camera (firmware in its Software tag, kept beside the RAW)."""
+    if f["kind"] != "jpg" or PurePath(f["rel_path"]).parent.name.lower() in EXPORT_FOLDERS:
+        return False
+    try:
+        x = json.loads(f.get("exif") or "{}")
+        soft = (x.get("software") or "").strip()
+    except (ValueError, AttributeError):
+        return False
+    if not soft or any(e in soft.lower() for e in EDITORS) or not FIRMWARE_RE.search(soft):
+        return False
+    if x.get("edit_history"):
+        return False
+    shot, modified = _time(f), _time({"capture_time": x.get("modify_time")})
+    return shot is None or modified is None or abs((modified - shot).total_seconds()) <= MAX_TIME_DIFF
+
+
 def _name_parent(stem, candidates):
     """Longest candidate stem that `stem` equals or extends at a separator."""
     best = None
@@ -50,7 +80,7 @@ def _name_parent(stem, candidates):
 
 
 def group(files):
-    """files: dicts with id, rel_path, kind, capture_time.
+    """files: dicts with id, rel_path, kind, capture_time (and exif JSON, for camera JPGs).
     Returns [(primary_id, [(file_id, role), ...])] — primary listed first as 'original'."""
     raws = {_stem(f): f for f in files if f["kind"] == "raw"}
     groups = {}          # primary id -> [(id, role)]
@@ -75,14 +105,15 @@ def group(files):
     others = sorted((f for f in files if f["kind"] != "raw"), key=lambda f: len(_stem(f)))
     leftovers = []
     for f in others:
+        role = "camera" if is_camera_jpg(f) else "export"
         parent = _name_parent(_stem(f), raws)
         if parent and _times_agree(f, raws[parent], zone_shift=True):
-            groups[owner[parent]].append((f["id"], "export"))
+            groups[owner[parent]].append((f["id"], role))
             continue
         t = _time(f)
         same_time = [s for s, r in raws.items() if t and _time(r) == t] if t else []
         if len(same_time) == 1:
-            groups[owner[same_time[0]]].append((f["id"], "export"))
+            groups[owner[same_time[0]]].append((f["id"], role))
         else:
             leftovers.append(f)
 

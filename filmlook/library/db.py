@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS files (
     folder_id    INTEGER NOT NULL REFERENCES folders(id),
     rel_path     TEXT NOT NULL,
     kind         TEXT NOT NULL,         -- raw / jpg / onphoto
-    role         TEXT,                  -- original / copy / export / duplicate
+    role         TEXT,                  -- original / copy / export / camera (the camera's own JPG) / duplicate
     photo_id     INTEGER REFERENCES photos(id),
     size         INTEGER NOT NULL,
     mtime        REAL NOT NULL,

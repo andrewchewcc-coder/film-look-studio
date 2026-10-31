@@ -45,7 +45,9 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos).
   `db.py` schema (photos ← files, sidecars, embeddings; later features attach to `photos.id`),
   `drives.py` (drives by volume UUID; offline = not mounted), `scan.py` (incremental, stoppable),
-  `pairing.py` (RAW + copies + exported JPGs = one photo), `sidecars.py` (ON1/XMP, read only),
+  `pairing.py` (RAW + copies + exported JPGs = one photo; a camera JPG from RAW+JPG mode — firmware in
+  Software, modify time = capture time, no editor history, not in graded/ — joins as role 'camera' and doesn't
+  make the photo graded; the app's exports get Software=Film Look Studio), `sidecars.py` (ON1/XMP, read only),
   `thumbs.py` (embedded RAW previews), `vision.py` (SigLIP 2 on MPS, categories),
   `index.py`, `search.py` (`understand` splits a search: years/months filter, colour words use `colours.py`
   shares (B&W = graded versions via `colours.graded_bw`), shoot-folder words boost that shoot, the rest goes

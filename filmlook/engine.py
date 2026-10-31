@@ -278,7 +278,8 @@ def copy_metadata(src, dst):
     subprocess.run(
         [exiftool, "-q", "-q", "-overwrite_original", "-TagsFromFile", str(src),
          "-all:all", "-unsafe", "--icc_profile:all", "--PreviewImage", "--ThumbnailImage",
-         "--JpgFromRaw", "--OtherImage", "-Orientation=1", "-n", str(dst)],
+         "--JpgFromRaw", "--OtherImage", "-Orientation=1", "-n",
+         "-Software=Film Look Studio", str(dst)],   # not the camera firmware: the Library counts it as graded
         check=False, capture_output=True,
     )
     return True
