@@ -139,25 +139,34 @@ def test_connection(s=None, password=None):
 
 # --- building and uploading a draft post --------------------------------------------------------
 
-# Your essays' gallery: a Visual Portfolio slider (fade, autoplay, bullets, 10 thumbnails) inside a
-# Spectra container at 80% width — copied from "Thaipusam 2026" so new essays look the same.
-VP_SETTINGS = {
-    "align": "full", "content_source": "images", "images_titles_source": "none",
-    "images_descriptions_source": "none", "items_count": -1, "layout": "slider",
-    "masonry_horizontal_order": True, "justified_row_height": 449, "slider_effect": "fade",
-    "slider_autoplay_hover_pause": True, "slider_items_height_type": "auto",
-    "slider_items_height_dynamic": 100, "slider_slides_per_view_type": "auto", "slider_loop": True,
-    "slider_arrows": False, "slider_bullets": True, "slider_mousewheel": True,
-    "slider_thumbnails": True, "slider_thumbnails_gap": 10, "slider_thumbnails_height_type": "auto",
-    "slider_thumbnails_height_dynamic": 80, "slider_thumbnails_per_view_custom": 10, "items_gap": 6,
-    "items_style": "default", "items_style_default__show_overlay": "always",
-    "items_style_emerge__show_overlay": "always", "items_style_emerge__show_caption": "always",
-    "items_click_action": "false", "items_click_action_popup_title_source": "item_title",
-    "items_click_action_popup_description_source": "item_description",
+# Two gallery styles, each copied from one of your posts so new essays look the same:
+#   carousel  — Spectra Image Gallery, one photo at a time, full size, lightbox, soft shadow
+#               (from "Fire Dragon Festival 2026", your newest layout; the default)
+#   slideshow — Visual Portfolio fade slider with bullets + 10 thumbnails in a Spectra container
+#               at 89% width (from "A Morning Walk at Bedok Jetty")
+GALLERY_STYLES = ("carousel", "slideshow")
+SPECTRA_SIZES = ("thumbnail", "medium", "large", "vp_sm", "vp_md", "vp_lg", "vp_xl")   # the sizes your gallery lists
+SPECTRA_GALLERY = {
+    "classMigrate": True, "readyToRender": True, "tileSize": 395, "feedLayout": "carousel",
+    "imageDisplayCaption": False, "galleryImageSize": "full", "imageClickEvent": "lightbox",
+    "columnsDesk": 1, "columnsMob": 1, "paginateColor": "", "imageBoxShadowColor": "rgb(0 0 0 / 15%)",
+    "imageBoxShadowHOffset": 3, "imageBoxShadowVOffset": 8, "imageBoxShadowBlur": 12, "imageBoxShadowSpread": 0,
+    "imageBorderTopWidth": 0, "imageBorderLeftWidth": 0, "imageBorderRightWidth": 0, "imageBorderBottomWidth": 0,
+    "imageBorderStyle": "none",
 }
-CONTAINER = {"contentWidth": "default", "widthDesktop": 80, "minHeightDesktop": 347, "backgroundType": "color",
-             "backgroundColor": "", "variationSelected": True, "isBlockRootParent": True,
-             "widthSetByUser": True, "containerBorderStyle": "none"}
+VP_SETTINGS = {
+    "align": "wide", "content_source": "images", "images_titles_source": "none",
+    "images_descriptions_source": "none", "items_count": -1, "layout": "slider", "slider_effect": "fade",
+    "slider_autoplay_hover_pause": True, "slider_items_height_type": "auto", "slider_loop": True,
+    "slider_arrows": False, "slider_bullets": True, "slider_thumbnails": True,
+    "slider_thumbnails_per_view_custom": 10, "items_style": "default",
+    "items_click_action_popup_title_source": "item_title",
+    "items_click_action_popup_description_source": "item_description", "filter": "default",
+}
+CONTAINER = {"innerContentWidth": "alignfull", "widthDesktop": 89, "minHeightDesktop": 310,
+             "alignItemsDesktop": "stretch", "alignItemsTablet": "stretch", "alignItemsMobile": "stretch",
+             "backgroundType": "color", "backgroundColor": "", "variationSelected": True, "isBlockRootParent": True,
+             "widthSetByUser": True, "equalHeight": True, "containerBorderStyle": "none"}
 
 
 def _block_id(n=8):
@@ -176,10 +185,22 @@ def _paragraphs(text):
     return "\n\n".join(out)
 
 
-def post_content(intro, media, closing="", captions=False):
-    """The post's blocks: write-up, the gallery (like your existing essays), closing text.
-    media: [{"id", "url", "thumb", "title"}] in order."""
-    import html
+def _spectra_gallery(media, captions):
+    """Spectra Image Gallery carousel (a dynamic block: settings only, WordPress draws it)."""
+    g = {"block_id": _block_id(8), **SPECTRA_GALLERY, "mediaIDs": [m["id"] for m in media],
+         "imageDisplayCaption": bool(captions)}
+    g["mediaGallery"] = [{"sizes": m.get("sizes") or {"full": {"url": m["url"]}}, "mime": "image/jpeg", "type": "image",
+                          "subtype": "jpeg", "id": m["id"], "url": m["url"], "alt": m.get("alt", ""),
+                          "link": m.get("link", ""), "caption": m["title"] if captions else ""} for m in media]
+    return f"<!-- wp:uagb/image-gallery {json.dumps(g)} /-->"
+
+
+def post_content(intro, media, closing="", captions=False, style="carousel"):
+    """The post's blocks: write-up, the gallery (carousel or slideshow, like your posts), closing text.
+    media: [{"id", "url", "thumb", "title", "sizes", "alt", "link"}] in order."""
+    if style != "slideshow":
+        gallery = _spectra_gallery(media, captions)
+        return "\n\n".join(x for x in (_paragraphs(intro), gallery, _paragraphs(closing)) if x)
     vp = {"block_id": _block_id(6), **VP_SETTINGS}
     if captions:
         vp["images_titles_source"] = "title"           # show each photo's title (your caption)
@@ -188,7 +209,7 @@ def post_content(intro, media, closing="", captions=False):
     cid = _block_id(8)
     container = {"block_id": cid, **CONTAINER}
     gallery = (f"<!-- wp:uagb/container {json.dumps(container)} -->\n"
-               f'<div class="wp-block-uagb-container uagb-block-{cid} default uagb-is-root-container">'
+               f'<div class="wp-block-uagb-container uagb-block-{cid} alignfull uagb-is-root-container">'
                f"<!-- wp:visual-portfolio/block {json.dumps(vp)} /--></div>\n<!-- /wp:uagb/container -->")
     return "\n\n".join(x for x in (_paragraphs(intro), gallery, _paragraphs(closing)) if x)
 
@@ -218,9 +239,15 @@ def upload_media(path, title, alt, s=None, password=None):
     m = _request("POST", "wp/v2/media", s, password, raw=data,
                  headers={"Content-Type": "image/jpeg", "Content-Disposition": f'attachment; filename="{name}"'})
     _request("POST", f"wp/v2/media/{m['id']}", s, password, data={"title": title, "alt_text": alt})
-    sizes = (m.get("media_details") or {}).get("sizes") or {}
+    md = m.get("media_details") or {}
+    sizes = md.get("sizes") or {}
     thumb = (sizes.get("large") or sizes.get("medium_large") or {}).get("source_url") or m["source_url"]
-    return {"id": m["id"], "url": m["source_url"], "thumb": thumb}
+    def size(v):
+        w, h = v.get("width") or 0, v.get("height") or 0
+        return {"height": h, "width": w, "url": v.get("source_url"), "orientation": "landscape" if w >= h else "portrait"}
+    spectra = {k: size(v) for k, v in sizes.items() if k in SPECTRA_SIZES}
+    spectra["full"] = size({"source_url": m["source_url"], "width": md.get("width"), "height": md.get("height")})
+    return {"id": m["id"], "url": m["source_url"], "thumb": thumb, "sizes": spectra, "alt": alt, "link": m.get("link", "")}
 
 
 def upload_essay(con, essay_id, job=None, cancelled=lambda: False, poll=3.0):
@@ -278,7 +305,8 @@ def upload_essay(con, essay_id, job=None, cancelled=lambda: False, poll=3.0):
     post = _request("POST", "wp/v2/posts", s, data={
         "title": pub.get("title") or e["name"], "status": "draft", "categories": [int(pub["category"])],
         "featured_media": featured, "format": "gallery",
-        "content": post_content(pub.get("intro", ""), media, pub.get("closing", ""), bool(pub.get("captions")))})
+        "content": post_content(pub.get("intro", ""), media, pub.get("closing", ""), bool(pub.get("captions")),
+                                pub.get("gallery") or "carousel")})
     job["done"] += 1
     edit = f"{s['site']}/wp-admin/post.php?post={post['id']}&action=edit"
     preview = f"{s['site']}/?p={post['id']}&preview=true"

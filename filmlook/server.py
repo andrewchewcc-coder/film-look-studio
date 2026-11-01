@@ -712,6 +712,40 @@ def settings_save(body: SettingsIn):
     return s
 
 
+class ClaudeKeyIn(BaseModel):
+    key: str
+
+
+@app.get("/api/claude/status")
+def claude_status():
+    """Is there a Claude API key, and does Anthropic accept it? (The key itself is never sent to the page.)"""
+    from . import claude_ai
+    if not claude_ai.has_key():
+        return {"connected": False}
+    try:
+        claude_ai.check()
+        return {"connected": True, "ok": True, "model": claude_ai.MODEL}
+    except (PermissionError, RuntimeError) as e:
+        return {"connected": True, "ok": False, "error": str(e)}
+
+
+@app.post("/api/claude/key")
+def claude_key(body: ClaudeKeyIn):
+    from . import claude_ai
+    try:
+        claude_ai.save_key(body.key)
+    except (ValueError, PermissionError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
+
+
+@app.post("/api/claude/forget")
+def claude_forget():
+    from . import claude_ai
+    claude_ai.forget()
+    return {"ok": True}
+
+
 @app.get("/api/settings/storage")
 def settings_storage():
     from . import appsettings
@@ -825,6 +859,7 @@ def publish_test():
 
 
 PUBLISH_DEFAULTS = {"title": "", "category": None, "intro": "", "closing": "", "cover": None, "captions": True,
+                    "gallery": "carousel",
                     "size": 2048, "strip_gps": True, "post_id": None, "link": None, "uploaded": None}
 
 
@@ -881,6 +916,7 @@ def essay_publish_preview(eid: int):
     slide_html = "".join(f'<figure class="s{" on" if k == 0 else ""}"><img src="{a}" alt="{H.escape(t)}" loading="lazy">'
                          f'{f"<figcaption>{H.escape(t)}</figcaption>" if t else ""}</figure>' for k, (a, _, t) in enumerate(slides))
     thumbs = "".join(f'<img src="{b}" data-k="{k}" alt="">' for k, (_, b, _) in enumerate(slides))
+    carousel = (pub.get("gallery") or "carousel") != "slideshow"     # Spectra carousel: no thumbnail strip, soft shadow
     page = f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Preview · {H.escape(pub['title'] or e['name'])}</title><style>
 body{{margin:0;background:#fff;color:#334155;font:17px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif}}
@@ -897,6 +933,7 @@ h1{{color:#1e293b;font-size:36px;font-weight:600;margin:6px 0 18px;line-height:1
 .grid{{margin-top:60px;border-top:1px solid #e5e7eb;padding-top:20px;font-size:14px;color:#64748b}}
 .grid .card{{display:inline-block;width:230px;margin:10px 14px 0 0;vertical-align:top;border-radius:6px;overflow:hidden;box-shadow:0 1px 4px #0002}}
 .grid .card img{{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}} .grid .card div{{padding:8px 10px;color:#1e293b;font-weight:600}}
+{".thumbs{display:none} .show img{box-shadow:3px 8px 12px rgb(0 0 0 / 15%)}" if carousel else ""}
 </style></head><body>
 <div class="bar"><b>Preview</b> — roughly how the post will look on your site (your theme decides the exact fonts and spacing). Nothing has been uploaded.</div>
 <header>Andrew Chew CC</header>
@@ -1458,6 +1495,43 @@ def essay_pool_count(body: EssayBriefIn):
     """How many photos a view holds (for the brief form)."""
     c = _lib().con()
     return {"count": len(body.photo_ids) if body.photo_ids else len(_view_ids(c, body.view or {}))}
+
+
+class AiUseIn(BaseModel):
+    field: str
+    text: str
+
+
+@app.get("/api/essays/{eid}/ai")
+def essay_ai_get(eid: int):
+    """The AI editor's last review of this essay (if any) and what a new one would cost."""
+    from . import claude_ai
+    from .library import essay_ai
+    _essay_row(eid)
+    c = _lib().con()
+    return {"connected": claude_ai.has_key(), "plan": essay_ai.plan(c, eid), "review": essay_ai.saved(c, eid)}
+
+
+@app.post("/api/essays/{eid}/ai/review")
+def essay_ai_review(eid: int):
+    """Ask Claude to review the essay (small previews only; takes a minute or two)."""
+    from .library import essay_ai
+    _essay_row(eid)
+    try:
+        return essay_ai.review(_lib().con(), eid)
+    except (ValueError, PermissionError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/essays/{eid}/ai/use")
+def essay_ai_use(eid: int, body: AiUseIn):
+    from .library import essay_ai
+    _essay_row(eid)
+    try:
+        essay_ai.use_for_post(_lib().con(), eid, body.field, body.text)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
 
 
 @app.get("/api/essays/{eid}")

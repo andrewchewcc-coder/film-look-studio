@@ -87,7 +87,8 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
 - `filmlook/publish.py` – WordPress publishing (REST API + Application Password in the macOS Keychain; site/user
   in LIBRARY_DIR/publish.json). Essays → Publish tab: post details saved in essays.source.publish, local
   preview, Upload as draft = web JPGs (GPS stripped) to the Media Library + a DRAFT post copying the
-  site's essay layout (Spectra container + Visual Portfolio fade slider, `VP_SETTINGS`). Only ever adds
+  site's essay layout: Gallery style `carousel` (default; Spectra Image Gallery carousel, `SPECTRA_GALLERY`, from "Fire Dragon
+  Festival 2026") or `slideshow` (Spectra container 89% + Visual Portfolio fade slider, `VP_SETTINGS`, from "Bedok Jetty"). Only ever adds
   media and drafts; never edits or deletes site content.
 - `filmlook/appsettings.py` – ⚙ Settings: defaults (look, export size/quality), storage (preview cache
   capped, default 4 GB, trimmed on start and as it grows; views; old DB copies), backups of your work to
@@ -111,6 +112,12 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   person instance + person segmentation; sky = blue / pale smooth regions touching the top edge), guided-filter edges,
   cached as PNGs in LIBRARY_DIR/masks. `masks.alphas` maps them onto any box of the final frame (crop/straighten
   applied), so `engine._masks_at` feeds previews, zoom tiles and export strips alike. `/api/mask_info`, `/api/mask_overlay`.
+- `filmlook/claude_ai.py` – Claude in the app (phase 2): API key only in the Keychain (⚙ Settings → Claude, checked free via
+  models.list), Anthropic SDK, model claude-opus-5-5 with `fallbacks: "default"`, structured JSON answers (`ask_json`),
+  photos sent only as ≤1024 px re-encoded JPEGs (no EXIF/GPS), cost per call logged by month in LIBRARY_DIR/claude_usage.json.
+  `library/essay_ai.py`: Essays → Arrange → AI editor — Claude reviews the essay like a photobook editor (overall,
+  opening, ending, keep/maybe/cut + note + caption per photo, moves, 3 titles, intro draft), saved in
+  essays.source.ai_review; apply moves / remove / captions → titles / title + intro → the website post.
 - PyTorch model calls must go through `vision` (one at a time: concurrent MPS use segfaults).
 - The app's open folder / collection is global server state: test on another port (e.g. 8766).
 - Library CLI: `./studio library add|scan|status|search|folders`.

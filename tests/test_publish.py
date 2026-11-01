@@ -49,16 +49,31 @@ def test_post_content_matches_existing_essays():
     import re
     media = [{"id": 11, "url": "https://x/a.jpg", "thumb": "https://x/a-1024.jpg", "title": "Lamp"},
              {"id": 12, "url": "https://x/b.jpg", "thumb": None, "title": "Door"}]
-    html = publish.post_content("First para.\n\nSecond <para>.", media, "The end.", captions=False)
+    html = publish.post_content("First para.\n\nSecond <para>.", media, "The end.", captions=False, style="slideshow")
     assert html.count("<!-- wp:paragraph -->") == 3 and "Second &lt;para&gt;." in html
     vp = json.loads(re.search(r"<!-- wp:visual-portfolio/block (\{.*?\}) /-->", html).group(1))
     assert vp["layout"] == "slider" and vp["slider_effect"] == "fade" and vp["slider_thumbnails"] is True
     assert vp["images_titles_source"] == "none"
     assert [i["id"] for i in vp["images"]] == [11, 12] and vp["images"][1]["imgThumbnailUrl"] == "https://x/b.jpg"
     c = json.loads(re.search(r"<!-- wp:uagb/container (\{.*?\}) -->", html).group(1))
-    assert c["widthDesktop"] == 80 and f"uagb-block-{c['block_id']}" in html
+    assert c["widthDesktop"] == 89 and f"uagb-block-{c['block_id']}" in html          # as "A Morning Walk at Bedok Jetty"
     assert json.loads(re.search(r"<!-- wp:visual-portfolio/block (\{.*?\}) /-->",
-                                publish.post_content("", media, captions=True)).group(1))["images_titles_source"] == "title"
+                                publish.post_content("", media, captions=True, style="slideshow")).group(1))["images_titles_source"] == "title"
+
+
+def test_carousel_matches_fire_dragon_post():
+    import re
+    media = [{"id": 11, "url": "https://x/a.jpg", "thumb": None, "title": "Lamp", "alt": "Essay, photo 1",
+              "link": "https://x/a/", "sizes": {"full": {"url": "https://x/a.jpg", "width": 2048, "height": 1363}}},
+             {"id": 12, "url": "https://x/b.jpg", "thumb": None, "title": "Door"}]
+    html = publish.post_content("Intro.", media, "The end.", captions=False)        # carousel is the default
+    g = json.loads(re.search(r"<!-- wp:uagb/image-gallery (\{.*?\}) /-->", html).group(1))
+    assert g["feedLayout"] == "carousel" and g["columnsDesk"] == 1 and g["imageClickEvent"] == "lightbox"
+    assert g["mediaIDs"] == [11, 12] and g["mediaGallery"][0]["alt"] == "Essay, photo 1" and not g["imageDisplayCaption"]
+    assert html.index("Intro.") < html.index("image-gallery") < html.index("The end.")
+    g2 = json.loads(re.search(r"<!-- wp:uagb/image-gallery (\{.*?\}) /-->",
+                              publish.post_content("", media, captions=True)).group(1))
+    assert g2["imageDisplayCaption"] and g2["mediaGallery"][1]["caption"] == "Door"
 
 
 def test_upload_creates_a_draft_and_never_edits(monkeypatch, tmp_path):
@@ -93,7 +108,7 @@ def test_upload_creates_a_draft_and_never_edits(monkeypatch, tmp_path):
     r = publish.upload_essay(con, 1)
     post = [c for c in calls if c[1] == "wp/v2/posts"][0][2]
     assert post["status"] == "draft" and post["categories"] == [7] and post["featured_media"] == 102   # cover = photo 2
-    assert '"id": 101' in post["content"] and '"title": "Tram"' in post["content"] and "<p>Hello.</p>" in post["content"]
+    assert '"id": 101' in post["content"] and '"caption": "Tram"' in post["content"] and "<p>Hello.</p>" in post["content"]
     assert all(m in ("GET", "POST") for m, _, _ in calls)                              # never PUT/PATCH/DELETE
     assert not any(p.startswith("wp/v2/posts/") or p.startswith("wp/v2/pages") for _, p, _ in calls)  # no existing post touched
     assert r["post_id"] == 555 and "post=555" in r["edit"]
