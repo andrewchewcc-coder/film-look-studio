@@ -487,6 +487,8 @@
   <div class="row"><button id="addRoot">Add folder…</button><button id="setScan">Scan for new photos</button></div>
   <h4>Website (WordPress)</h4>
   <div id="setPub" class="small"></div>
+  <h4>XMP files</h4>
+  <div id="setXmp" class="small"></div>
   <h4>Claude (AI)</h4>
   <div id="setClaude" class="small"></div>
   <h4>Defaults</h4>
@@ -771,6 +773,13 @@
     <div class="row"><button id="cropBtn" title="C">Crop &amp; straighten</button><button id="cropResetSaved" title="Back to the full, unrotated photo">Reset</button></div>
     <div id="cropInfo" class="small"></div>
     <div class="row"><button id="copyRatio" title="Give the ticked photos this crop's aspect ratio">Copy ratio to ticked</button></div>
+
+    <h2>Describe the grade</h2>
+    <div id="aiGradeBox">
+      <textarea id="aiGradeText" rows="2" placeholder="e.g. warmer, like late-afternoon Saul Leiter · darken the sky a little · calm the blue sign" style="width:100%;background:#0f0f0f;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px 8px;font:inherit;font-size:13px;box-sizing:border-box"></textarea>
+      <div class="row"><button id="aiGradeGo" class="primary" title="Claude sets the look, sliders, colour mixer and masks (⌘Enter)">Ask Claude</button></div>
+      <div id="aiGradeNote" class="small">Claude looks at this photo (small preview only) and sets the controls; Undo goes back. About 2–4¢ a time.</div>
+    </div>
 
     <h2>Adjust</h2>
     <div id="sliders"></div>
@@ -1166,6 +1175,23 @@ function grRedo() {
   const h = grHist(); if (!h.redo.length) return status("Nothing to redo.");
   h.undo.push(S.lastSaved); grSet(h.redo.pop()); status("Redone.");
 }
+async function aiGrade() {
+  const text = $("aiGradeText").value.trim();
+  if (!S.current || !text) return;
+  const name = S.current, b = $("aiGradeGo");
+  saveGradeNow();
+  b.disabled = true; b.textContent = "Claude is grading…"; $("aiGradeNote").textContent = "Looking at the photo…";
+  try {
+    const r = await (await api("/api/grade_ai", esJSON({ name, request: text, look: S.look, adjust: S.adjust }))).json();
+    if (S.current !== name) return;
+    const h = grHist(); h.undo.push(S.lastSaved); h.redo = [];
+    grSet({ look: r.look, adjust: r.adjust });
+    $("aiGradeNote").textContent = `${r.explanation} (cost ${r.cost < 0.01 ? "under 1¢" : "$" + r.cost.toFixed(2)} · ⌘Z to undo)`;
+  } catch (e) { $("aiGradeNote").textContent = e.message; }
+  finally { b.disabled = false; b.textContent = "Ask Claude"; }
+}
+$("aiGradeGo").onclick = aiGrade;
+$("aiGradeText").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); aiGrade(); } });
 function grClip() { try { return JSON.parse(localStorage.getItem("fls.gradeClip") || "null"); } catch (e) { return null; } }
 function grCopy() {
   if (!S.current) return;
@@ -3511,6 +3537,7 @@ async function esPublishForm(F, conn) {
       Gallery style <select id="pbGallery" title="Copied from your posts"><option value="carousel">Carousel (like Fire Dragon Festival)</option><option value="slideshow">Slideshow with thumbnails (like Bedok Jetty)</option></select>
       Photo size <select id="pbSize"><option value="1600">1600 px</option><option value="2048">2048 px (recommended)</option><option value="2560">2560 px</option></select>
       <label title="Your photos record where you stood. This removes it from the uploaded copies (camera and lens details stay)."><input type="checkbox" id="pbGps" ${d.strip_gps ? "checked" : ""}> Remove GPS location</label></div>
+    <div id="pbAlt"></div>
     <div class="esRow"><button id="pbPreview">Preview</button><button id="pbUpload" class="primary">Upload as draft…</button><span id="pbSaved" class="small"></span></div>
     <div class="small">${n} photos, in the essay's order. Preview opens in a new browser tab. Nothing is sent to your website until you press Upload as draft and confirm.</div>
     <div id="pbJob"></div>
@@ -3519,17 +3546,42 @@ async function esPublishForm(F, conn) {
   let t = null;
   const save = () => { clearTimeout(t); t = setTimeout(async () => {
     const details = { title: $("pbTitle").value, category: +$("pbCat").value, cover: +$("pbCover").value, intro: $("pbIntro").value,
-                      closing: $("pbClosing").value, captions: $("pbCaptions").checked, size: +$("pbSize").value, strip_gps: $("pbGps").checked, gallery: $("pbGallery").value };
+                      closing: $("pbClosing").value, captions: $("pbCaptions").checked, size: +$("pbSize").value, strip_gps: $("pbGps").checked, gallery: $("pbGallery").value, alt: pbAlt };
     try { await api(`/api/essays/${ES.id}/publish`, esJSON({ details })); $("pbSaved").textContent = "Saved."; } catch (e) { $("pbSaved").textContent = e.message; }
   }, 500); };
   F.querySelectorAll("input, select, textarea").forEach(el => el.addEventListener(el.tagName === "TEXTAREA" || el.type === "text" ? "input" : "change", save));
+  // Alt text: a short description of each photo for screen readers and search engines (Claude can write it).
+  const pbAlt = { ...(d.alt || {}) }, eid = ES.id;
+  const altRender = async () => {
+    const A = $("pbAlt"); if (!A) return;
+    const have = ES.photos.filter(p => pbAlt[p.id]).length;
+    let est = null, connected = false;
+    try { const r = await (await api(`/api/essays/${eid}/ai/alt`)).json(); est = r.estimate; connected = r.connected; } catch (e) {}
+    A.innerHTML = `<div class="esRow"><b>Alt text</b> <span class="small">(a short description of each photo for screen readers and search engines: ${have} of ${ES.photos.length} written)</span>
+      ${connected ? `<button id="pbAltGo">${have ? "Rewrite" : "Write"} alt text with Claude${est !== null ? ` (about $${est.toFixed(2)})` : ""}</button>` : `<span class="small">Connect Claude in ⚙ Settings to have it written for you.</span>`}
+      ${have ? `<button id="pbAltShow">${A.dataset.open ? "Hide" : "Show / edit"}</button>` : ""}</div><div id="pbAltList"></div>`;
+    const list = () => {
+      $("pbAltList").innerHTML = ES.photos.map((p, k) => `<div class="esRow" style="align-items:center"><img src="/api/essays/thumb/${p.id}" alt="" style="height:44px;border-radius:3px">
+        <span class="small">#${k + 1}</span><input type="text" data-id="${p.id}" value="${esc(pbAlt[p.id] || "")}" maxlength="250" placeholder="Describe the photo" style="flex:1"></div>`).join("");
+      $("pbAltList").querySelectorAll("input").forEach(i => i.addEventListener("input", () => { pbAlt[i.dataset.id] = i.value; save(); }));
+    };
+    if (A.dataset.open) list();
+    if ($("pbAltShow")) $("pbAltShow").onclick = () => { A.dataset.open = A.dataset.open ? "" : "1"; altRender(); };
+    if ($("pbAltGo")) $("pbAltGo").onclick = async (ev) => {
+      const b = ev.target; b.disabled = true; b.textContent = `Claude is looking at ${ES.photos.length} photos…`;
+      try { const r = await (await api(`/api/essays/${eid}/ai/alt`, { method: "POST" })).json();
+        Object.assign(pbAlt, r.alt); A.dataset.open = "1"; $("pbSaved").textContent = `Alt text written (cost ${r.cost < 0.01 ? "under 1¢" : "$" + r.cost.toFixed(2)}). Edit any line below.`; altRender(); }
+      catch (e) { b.disabled = false; b.textContent = "Write alt text with Claude"; $("pbSaved").textContent = e.message; }
+    };
+  };
+  altRender();
   $("pbPreview").onclick = async (ev) => {
     clearTimeout(esSaveTimer);                // the essay's latest order, titles and post details first
     const locked = {}, titles = {};
     ES.photos.forEach(p => { locked[p.id] = p.locked; titles[p.id] = p.title || ""; });
     await api(`/api/essays/${ES.id}/order`, esJSON({ order: ES.photos.map(p => p.id), locked, titles }));
     const details = { title: $("pbTitle").value, category: +$("pbCat").value, cover: +$("pbCover").value, intro: $("pbIntro").value,
-                      closing: $("pbClosing").value, captions: $("pbCaptions").checked, size: +$("pbSize").value, strip_gps: $("pbGps").checked, gallery: $("pbGallery").value };
+                      closing: $("pbClosing").value, captions: $("pbCaptions").checked, size: +$("pbSize").value, strip_gps: $("pbGps").checked, gallery: $("pbGallery").value, alt: pbAlt };
     await api(`/api/essays/${ES.id}/publish`, esJSON({ details }));
     if (!(ev && ev.noOpen)) window.open(`/api/essays/${ES.id}/preview`, "_blank");
   };
@@ -3777,7 +3829,7 @@ async function openSettings(anchor) {
   const looks = [{ id: "neutral", name: "Neutral (no look)" }, ...(S.looks || [])];
   $("setLook").innerHTML = looks.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join("");
   $("setLook").value = st.default_look; $("setSize").value = st.export_size; $("setQuality").value = st.export_quality;
-  setPubRender(); setClaudeRender(); setStorage(st); setDrives(st);
+  setPubRender(); setClaudeRender(); setXmpRender(); setStorage(st); setDrives(st);
   if (anchor && $(anchor)) $(anchor).scrollIntoView({ block: "start" });
 }
 async function saveSetting(changes) { try { await api("/api/settings", esJSON({ changes })); } catch (e) { alert(e.message); } }
@@ -3799,6 +3851,22 @@ async function setPubRender() {
   $("spChange").onclick = () => esPublishSettings(P, st, setPubRender);
   $("spForget").onclick = async () => { if (!confirm("Disconnect from your website? The saved application password is removed from this Mac (revoke it in WordPress to cancel it completely).")) return;
     await api("/api/publish/forget", { method: "POST" }); setPubRender(); };
+}
+async function setXmpRender(msg = "") {
+  const X = $("setXmp"), st = await (await api("/api/xmp")).json();
+  X.innerHTML = `<div class="stRow"><span>Write your stars, picks and rejects to small <b>.xmp</b> files next to your photos, so ON1, Lightroom and
+    other apps can see them. Your photos are never changed, and XMP files made by ON1 or another app are left alone.
+    ${st.on ? `<br>✓ On${st.pending ? ` · ${st.pending} waiting (their drive is offline, or just changed)` : " · up to date"}.` : ""}${msg ? `<br>${msg}` : ""}</span>
+    <button id="xmpSwitch" class="${st.on ? "" : "primary"}">${st.on ? "Turn off" : "Turn on"}</button></div>`;
+  $("xmpSwitch").onclick = async () => {
+    const on = !st.on;
+    if (on && !confirm("Write .xmp files next to your photos on your drives?\n\nOnly for photos you've starred, picked or rejected. Your photos aren't changed, and XMP files from ON1 or other apps are left alone.")) return;
+    $("xmpSwitch").disabled = true; $("xmpSwitch").textContent = on ? "Writing…" : "…";
+    const r = await (await api("/api/xmp", esJSON({ on }))).json(), c = r.counts || {};
+    const bits = [c.written && `${c.written} written`, c.skipped && `${c.skipped} left alone (another app's XMP file is there)`,
+                  c.offline && `${c.offline} waiting for their drive`].filter(Boolean);
+    setXmpRender(on ? (bits.length ? bits.join(" · ") + "." : "Nothing to write yet.") : "Off: existing .xmp files stay where they are.");
+  };
 }
 async function setClaudeRender() {
   const C = $("setClaude");

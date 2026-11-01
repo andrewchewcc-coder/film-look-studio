@@ -296,7 +296,9 @@ def upload_essay(con, essay_id, job=None, cancelled=lambda: False, poll=3.0):
                 return None
             job["current"] = f"uploading {it['file']}"
             title = (it["title"] or it["stem"]).strip()
-            m = upload_media(dst, title, it["title"] or f"{pub.get('title') or e['name']}, photo {it['pos']}", s)
+            alt = ((pub.get("alt") or {}).get(str(it["photo_id"])) or it["title"]
+                   or f"{pub.get('title') or e['name']}, photo {it['pos']}")              # Claude's / yours, else a label
+            m = upload_media(dst, title, alt, s)
             media.append({**m, "title": title if pub.get("captions") else it["stem"], "photo_id": it["photo_id"]})
             job["uploaded"].append(m["id"])
             job["done"] += 1

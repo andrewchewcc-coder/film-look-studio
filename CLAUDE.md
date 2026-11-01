@@ -42,7 +42,11 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   Grade and Essays tabs, in workflow order (the old Second look tab was removed; its views live in the Library). Library → Cull this shoot /
   Grade picks; Cull summary lists `cull.second_look` frames.
 - `filmlook/library/` – searchable archive. Database + thumbnails live in
-  `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos).
+  `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos — the one exception
+  is `xmp_out.py`: when ⚙ Settings → XMP files is on (Andrew agreed, off by default), `<name>.xmp` beside the
+  original with stars (reject = -1) and the keyword Picked, marked xmp:CreatorTool="Film Look Studio"; only our own
+  files are ever rewritten, other apps' XMP files are skipped; queue `xmp_dirty` (marks.set_mark) flushed by
+  server `_xmp_watch` every 15 s; sidecars.read ignores our own files).
   `db.py` schema (photos ← files, sidecars, embeddings; later features attach to `photos.id`),
   `drives.py` (drives by volume UUID; offline = not mounted), `scan.py` (incremental, stoppable),
   `pairing.py` (RAW + copies + exported JPGs = one photo; a camera JPG from RAW+JPG mode — firmware in
@@ -118,6 +122,11 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   `library/essay_ai.py`: Essays → Arrange → AI editor — Claude reviews the essay like a photobook editor (overall,
   opening, ending, keep/maybe/cut + note + caption per photo, moves, 3 titles, intro draft), saved in
   essays.source.ai_review; apply moves / remove / captions → titles / title + intro → the website post.
+  `grade_ai.py`: Grade → Describe the grade — Claude sees the current render + settings + your looks and returns a
+  complete grade (look, sliders, colour mixer, masks; curve kept), clamped to the slider ranges (`/api/grade_ai`); the page
+  applies it as one undo step.
+  Alt text: Publish → Write alt text with Claude (`essay_ai.write_alt_text`, one request for the essay, effort low) →
+  publish.alt {photo_id: text}, editable in the Publish panel; Upload as draft sets each photo's WordPress alt_text from it.
 - PyTorch model calls must go through `vision` (one at a time: concurrent MPS use segfaults).
 - The app's open folder / collection is global server state: test on another port (e.g. 8766).
 - Library CLI: `./studio library add|scan|status|search|folders`.

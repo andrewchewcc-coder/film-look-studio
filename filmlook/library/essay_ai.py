@@ -152,3 +152,52 @@ def use_for_post(con, essay_id, field, text):
     src = _source(con, essay_id)
     src.setdefault("publish", {})[field] = text
     _save_source(con, essay_id, src)
+
+
+# --- alt text for the website ---------------------------------------------------------------------
+
+ALT_SYSTEM = """You write alt text for a street photographer's website: a short, factual description of each photo for \
+people using screen readers (and for search engines). Describe what is visible: who or what, doing what, where \
+(the kind of place, light, weather), and anything that makes the picture what it is (a reflection, a shadow, a \
+gesture, a colour). Plain words, present tense, no "image of" or "photo of", no guesses about names, ethnicity, \
+religion or feelings you can't see, no hashtags. One sentence, at most 125 characters."""
+
+ALT_SCHEMA = {
+    "type": "object", "additionalProperties": False, "required": ["alts"],
+    "properties": {"alts": {"type": "array", "items": {
+        "type": "object", "additionalProperties": False, "required": ["number", "alt"],
+        "properties": {"number": {"type": "integer"}, "alt": {"type": "string"}}}}},
+}
+
+
+def alt_plan(con, essay_id):
+    n = min(len(essay.items(con, essay_id)), MAX_PHOTOS)
+    return round(claude_ai.estimate(n, out_tokens=60 * n + 200), 2)
+
+
+def write_alt_text(con, essay_id):
+    """Claude's alt text for every photo, saved in the post details (publish.alt: {photo_id: text})."""
+    name, look = con.execute("SELECT name, look FROM essays WHERE id=?", (essay_id,)).fetchone()
+    ids = [i["photo_id"] for i in essay.items(con, essay_id)][:MAX_PHOTOS]
+    if not ids:
+        raise ValueError("This essay has no photos.")
+    content = [{"type": "text", "text": f"The photos of the essay “{name}”:"}]
+    sent = {}
+    for n, (pid, (when, folder)) in enumerate(zip(ids, _context(con, ids)), 1):
+        im = _image(con, pid, look)
+        if im is None:
+            continue
+        content.append({"type": "text", "text": f"Photo {n}" + (f" — {folder}" if folder else "")})
+        content.append(claude_ai.preview_block(im))
+        sent[n] = pid
+    if not sent:
+        raise RuntimeError("None of the photos are available (is the photo drive connected?).")
+    content.append({"type": "text", "text": "Write the alt text for every photo above."})
+    answer, cost = claude_ai.ask_json(ALT_SYSTEM, content, ALT_SCHEMA, effort="low", max_tokens=8000)
+    alts = {str(sent[a["number"]]): a["alt"].strip()[:250] for a in answer.get("alts", [])
+            if a.get("number") in sent and (a.get("alt") or "").strip()}
+    src = _source(con, essay_id)
+    pub = src.setdefault("publish", {})
+    pub["alt"] = {**(pub.get("alt") or {}), **alts}
+    _save_source(con, essay_id, src)
+    return {"alt": pub["alt"], "cost": round(cost, 3)}

@@ -185,6 +185,8 @@ CREATE TABLE IF NOT EXISTS marks (
     rating     INTEGER,                 -- your 1-5 stars (ON1's stay separate in photos.rating)
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- Photos whose XMP file (xmp_out) needs writing: added when a mark changes, removed once written.
+CREATE TABLE IF NOT EXISTS xmp_dirty (photo_id INTEGER PRIMARY KEY);
 -- Every decision, in order (for learning and agreement rates).
 CREATE TABLE IF NOT EXISTS cull_log (
     id         INTEGER PRIMARY KEY,

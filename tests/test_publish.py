@@ -80,7 +80,7 @@ def test_upload_creates_a_draft_and_never_edits(monkeypatch, tmp_path):
     from filmlook.library import db, essay_out
     con = db.connect(tmp_path / "lib.db")
     src = {"publish": {"title": "Lisbon", "category": 7, "intro": "Hello.", "cover": 2, "captions": True,
-                       "size": 1600, "strip_gps": True}}
+                       "size": 1600, "strip_gps": True, "alt": {"2": "A tram on a steep street at dusk."}}}
     con.execute("INSERT INTO essays (id, name, look, source) VALUES (1, 'Lisbon', 'leica-m9', ?)", (json.dumps(src),))
     con.commit()
     items = [{"pos": 1, "photo_id": 1, "title": "Tram", "stem": "L1", "file": "01_Tram.jpg", "src": "x", "online": True, "drive": "SSD"},
@@ -109,6 +109,8 @@ def test_upload_creates_a_draft_and_never_edits(monkeypatch, tmp_path):
     post = [c for c in calls if c[1] == "wp/v2/posts"][0][2]
     assert post["status"] == "draft" and post["categories"] == [7] and post["featured_media"] == 102   # cover = photo 2
     assert '"id": 101' in post["content"] and '"caption": "Tram"' in post["content"] and "<p>Hello.</p>" in post["content"]
+    alts = [d["alt_text"] for m, p, d in calls if p.startswith("wp/v2/media/")]
+    assert alts == ["Tram", "A tram on a steep street at dusk."]                     # your title, else Claude's alt text
     assert all(m in ("GET", "POST") for m, _, _ in calls)                              # never PUT/PATCH/DELETE
     assert not any(p.startswith("wp/v2/posts/") or p.startswith("wp/v2/pages") for _, p, _ in calls)  # no existing post touched
     assert r["post_id"] == 555 and "post=555" in r["edit"]

@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 from PIL import Image, ImageOps
 from pydantic import BaseModel
 
-from . import edits, engine, geometry, lut, pipeline, raw, recipes, reference
+from . import appsettings, edits, engine, geometry, lut, pipeline, raw, recipes, reference
 
 STATIC = Path(__file__).parent / "static"
 app = FastAPI(title="Film Look Studio")
@@ -176,6 +176,23 @@ def mask_overlay(name: str, kind: str, invert: bool = False, width: int = 1600):
     buf = io.BytesIO()
     masks.overlay(p, kind, edits.get(p), max(64, min(width, 2400)), invert).save(buf, "PNG")
     return Response(buf.getvalue(), media_type="image/png")
+
+
+class GradeAiIn(BaseModel):
+    name: str
+    request: str
+    look: str = "neutral"
+    adjust: dict = {}
+
+
+@app.post("/api/grade_ai")
+def grade_ai(body: GradeAiIn):
+    """Grade in plain English: Claude's settings for the request (the page applies them; Undo goes back)."""
+    from . import grade_ai as g
+    try:
+        return g.suggest(_photo(body.name), body.request, body.look, body.adjust)
+    except (ValueError, PermissionError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
 
 
 @app.get("/api/auto_straighten")
@@ -859,7 +876,7 @@ def publish_test():
 
 
 PUBLISH_DEFAULTS = {"title": "", "category": None, "intro": "", "closing": "", "cover": None, "captions": True,
-                    "gallery": "carousel",
+                    "gallery": "carousel", "alt": {},
                     "size": 2048, "strip_gps": True, "post_id": None, "link": None, "uploaded": None}
 
 
@@ -1523,6 +1540,25 @@ def essay_ai_review(eid: int):
         raise HTTPException(400, str(e))
 
 
+@app.get("/api/essays/{eid}/ai/alt")
+def essay_ai_alt_plan(eid: int):
+    from . import claude_ai
+    from .library import essay_ai
+    _essay_row(eid)
+    return {"connected": claude_ai.has_key(), "estimate": essay_ai.alt_plan(_lib().con(), eid)}
+
+
+@app.post("/api/essays/{eid}/ai/alt")
+def essay_ai_alt(eid: int):
+    """Claude writes alt text for each photo (saved with the post details; editable in Publish)."""
+    from .library import essay_ai
+    _essay_row(eid)
+    try:
+        return essay_ai.write_alt_text(_lib().con(), eid)
+    except (ValueError, PermissionError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+
+
 @app.post("/api/essays/{eid}/ai/use")
 def essay_ai_use(eid: int, body: AiUseIn):
     from .library import essay_ai
@@ -1970,6 +2006,43 @@ def quit_app(force: bool = False):
     return {"ok": True}
 
 
+def _xmp_watch():
+    """Keep XMP files next to your photos up to date while ⚙ Settings → XMP files is on (every 15 s;
+    offline drives catch up when they're back)."""
+    import time as _t
+    from .library import service, xmp_out
+    while True:
+        _t.sleep(15)
+        try:
+            if appsettings.load().get("write_xmp"):
+                xmp_out.flush(service.con())
+        except Exception as e:                    # never let a bad file stop the app
+            print("XMP files:", e)
+
+
+@app.get("/api/xmp")
+def xmp_status():
+    from .library import xmp_out
+    return {"on": bool(appsettings.load().get("write_xmp")), "pending": xmp_out.pending(_lib().con())}
+
+
+class XmpIn(BaseModel):
+    on: bool
+
+
+@app.post("/api/xmp")
+def xmp_switch(body: XmpIn):
+    """Switch XMP files on (queues every photo you've marked, writes those on connected drives now) or off."""
+    from .library import xmp_out
+    appsettings.save({"write_xmp": body.on})
+    c = _lib().con()
+    counts = {}
+    if body.on:
+        xmp_out.queue_all(c)
+        counts = xmp_out.flush(c, limit=100000)
+    return {"on": body.on, "counts": counts, "pending": xmp_out.pending(c)}
+
+
 def _auto_stop_watch():
     import time as _t
     while True:
@@ -1986,6 +2059,7 @@ def run(folder=None, port=8765, open_browser=True, auto_stop=False):
     _last_seen[0] = _t.time()
     if auto_stop:
         threading.Thread(target=_auto_stop_watch, daemon=True).start()
+    threading.Thread(target=_xmp_watch, daemon=True).start()
     _lib().warm_model()
     if folder:
         set_folder(FolderIn(folder=folder))
