@@ -6,3 +6,4 @@ __pycache__/
 *.dng
 *.DNG
 graded/
+.playwright-browsers/

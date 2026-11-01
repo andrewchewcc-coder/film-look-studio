@@ -40,7 +40,8 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
 - `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only): Library (search + browse in one, sidebar filters; Show: Worth a
   second look / On this day via `/api/library/second` → `secondlook.suggestions(undecided=True)`), Cull,
   Grade and Essays tabs, in workflow order (the old Second look tab was removed; its views live in the Library). Library → Cull this shoot /
-  Grade picks; Cull summary lists `cull.second_look` frames.
+  Grade picks; Cull summary lists `cull.second_look` frames. Cull Compare (C / Compare button): two frames of the
+  group at 100% from `/api/cull/full`, panned together by a shared centre fraction (`CMP`); P/X/0–5 mark the chosen side.
 - `filmlook/library/` – searchable archive. Database + thumbnails live in
   `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos — the one exception
   is `xmp_out.py`: when ⚙ Settings → XMP files is on (Andrew agreed, off by default), `<name>.xmp` beside the
@@ -102,7 +103,9 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   a slider to reset, list filter, Next not graded, before/after split; when a camera JPG sits beside the RAW
   (`server._camera_jpg`, `pairing.is_camera_jpg`), Hold: camera JPG (J) and Split camera JPG / grade
   (`/api/render?source=camera`: the JPG as shot, with the photo's crop).
-  Colour mixer (HSL: Hue / Saturation / Luminance × 8 bands) = adjust `hsl` → recipe `color.user_hsl`, applied after the
+  Grade side panel sections fold by their headings (and Tone curve / Colour mixer / Masks boxes; `foldSetup`, state
+  in localStorage fls.gradeFold; badges show masks / mixer in use); the status line sits at the top of the aside so
+  it shows in crop mode too. Colour mixer (HSL: Hue / Saturation / Luminance × 8 bands) = adjust `hsl` → recipe `color.user_hsl`, applied after the
   look's own `color.hsl` with sharper tent bands (`pipeline._tent_weights`; looks keep their soft bands). Colour looks only.
   Detail sliders (Noise reduction / Colour noise / Sharpen) = adjust → recipe `detail` → `detail.py` on the neutral image
   (before the look, so grain isn't touched), sized in full-res pixels via `detail_scale`; strips / tiles borrow
@@ -135,4 +138,10 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
 
 ```bash
 .venv/bin/python -m pytest -q
+FLS_E2E=1 .venv/bin/python -m pytest tests/test_e2e.py -q   # before every upload: clicks through every tab
 ```
+
+`tests/test_e2e.py` runs the app on a throwaway library (FILMLOOK_LIBRARY in a temp folder, generated JPGs) in
+Playwright's headless Chromium (`.playwright-browsers/`, not in git; `PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers
+.venv/bin/python -m playwright install --only-shell chromium` to reinstall) and fails on any /api/ 404 / 5xx or page
+error. Extend it when adding a tab, panel or button that calls the server.

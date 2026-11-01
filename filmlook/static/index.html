@@ -147,7 +147,16 @@
   #curve { width: 100%; aspect-ratio: 1; display: block; background: #0f0f0f; border: 1px solid var(--line); border-radius: 6px; cursor: crosshair; touch-action: none; }
   .row { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
   .row > * { flex: 1; }
-  #status { font-size: 12px; color: var(--muted); min-height: 18px; margin-top: 8px; word-break: break-all; }
+  #status { font-size: 12px; color: var(--muted); margin: 0 0 8px; word-break: break-word; }
+  #status:empty { display: none; }
+  #status:not(:empty) { position: sticky; top: 0; z-index: 2; background: var(--panel, #161616); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; }
+  aside h2.fold { cursor: pointer; user-select: none; display: flex; justify-content: space-between; }
+  aside h2.fold::after { content: "▾"; font-size: 11px; }
+  aside h2.fold.closed::after { content: "▸"; }
+  aside h2.fold .badge, .curveHead .badge { color: var(--accent); text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 6px; }
+  .curveHead.fold > span:first-child { cursor: pointer; user-select: none; }
+  .curveHead.fold > span:first-child::before { content: "▾ "; }
+  .curveHead.fold.closed > span:first-child::before { content: "▸ "; }
   #status.err { color: var(--danger); }
   .small { font-size: 12px; color: var(--muted); }
   input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
@@ -307,6 +316,15 @@
   #cuNavImg { width: 100%; display: block; }
   #cuNavBox { position: absolute; border: 2px solid var(--accent); box-shadow: 0 0 0 999px #0006; pointer-events: none; }
   #cuNav { overflow: hidden; }
+  #cuCmp { position: absolute; inset: 0; background: #0b0b0b; z-index: 5; display: flex; gap: 4px; }
+  #cuCmp[hidden] { display: none; }
+  .cmpPane { position: relative; flex: 1; overflow: hidden; cursor: grab; touch-action: none; outline: 2px solid transparent; outline-offset: -2px; }
+  .cmpPane.active { outline-color: var(--accent); }
+  .cmpPane.dragging { cursor: grabbing; }
+  .cmpPane img { position: absolute; left: 0; top: 0; max-width: none; user-select: none; }
+  .cmpPane .lab { position: absolute; left: 10px; bottom: 10px; background: #000c; padding: 3px 8px; border-radius: 4px; font-size: 12px; z-index: 1; }
+  .cmpPane .lab .p { color: #6c6; font-weight: 600; } .cmpPane .lab .x { color: #e66; font-weight: 600; }
+  #cuCmpNote { position: absolute; left: 50%; transform: translateX(-50%); top: 10px; background: #000c; padding: 4px 10px; border-radius: 4px; font-size: 12px; z-index: 2; white-space: nowrap; }
   #cuZoomNote { position: absolute; left: 16px; top: 12px; background: #000c; padding: 4px 9px; border-radius: 4px; font-size: 12px; z-index: 1; }
   #cuStrip { display: flex; gap: 5px; overflow-x: auto; padding: 4px 16px 10px; flex: 0 0 auto; }
   .cuTile { flex: 0 0 auto; position: relative; border: 2px solid #2a2a2a; border-radius: 3px; cursor: pointer; opacity: .9; }
@@ -510,7 +528,7 @@
     <div><h4>Marking (Library, viewer, Cull)</h4><p><b>P</b> pick · <b>X</b> reject · <b>U</b> unmark<br><b>0–5</b> stars (0 clears)<br><b>N</b> not now (Worth a second look)</p></div>
     <div><h4>Library</h4><p><b>Click</b> select · <b>⌘-click</b> add · <b>Shift-click</b> range<br><b>⌘A</b> select all · <b>Esc</b> clear<br><b>Arrows</b> move · <b>Space / Enter</b> view large<br><b>F</b> show in Finder</p></div>
     <div><h4>Big viewer</h4><p><b>← →</b> previous / next<br><b>Click / Z</b> zoom to 100% (drag to move)<br><b>G</b> graded / original · <b>S</b> side by side<br><b>Esc / Space</b> close</p></div>
-    <div><h4>Cull</h4><p><b>← →</b> frame · <b>↑ ↓</b> group<br><b>Enter</b> next group · <b>Shift+Enter</b> previous<br><b>Z</b> zoom where you point · <b>Shift+P</b> pick and stay</p></div>
+    <div><h4>Cull</h4><p><b>← →</b> frame · <b>↑ ↓</b> group<br><b>Enter</b> next group · <b>Shift+Enter</b> previous<br><b>Z</b> zoom where you point · <b>C</b> compare two frames at 100% · <b>Shift+P</b> pick and stay</p></div>
     <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>J</b> (hold) camera JPG · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
     <div><h4>Essays</h4><p><b>⌘Z</b> undo · drag to reorder<br><b>🔒</b> lock a photo · <b>⇄</b> replace</p></div>
   </div>
@@ -628,7 +646,7 @@
       <button id="cuBack" title="Back to the cull list (progress is saved)">Back</button>
     </div>
     <div id="cuFrames"></div>
-    <div id="cuFoot"><button id="cuPrev" title="Previous group (↑ or Shift+Enter)">◀ Previous</button><span id="cuWhy"></span>
+    <div id="cuFoot"><button id="cuPrev" title="Previous group (↑ or Shift+Enter)">◀ Previous</button><button id="cuCmpBtn" title="Compare two frames of this group at 100%, zoomed together (C)">Compare</button><span id="cuWhy"></span>
       <span class="small" id="cuKeys">P pick · X reject · U unmark · 1–5 stars · ← → frame · ↑ ↓ group · Z zoom where you point</span>
       <button id="cuNextBtn" title="Next group (↓ or Enter)">Next ▶</button></div>
     <div id="cuStrip"></div>
@@ -643,6 +661,11 @@
     <div id="cuPane"><img id="cuZoomImg" alt="" draggable="false"></div>
     <div id="cuNav" title="Click to jump there"><img id="cuNavImg" alt="" draggable="false"><div id="cuNavBox"></div></div>
     <div id="cuZoomNote"></div>
+  </div>
+  <div id="cuCmp" hidden>
+    <div class="cmpPane active" data-s="0"><img alt="" draggable="false"><div class="lab"></div></div>
+    <div class="cmpPane" data-s="1"><img alt="" draggable="false"><div class="lab"></div></div>
+    <div id="cuCmpNote"></div>
   </div>
 </section>
 <section id="essayView" hidden>
@@ -740,6 +763,7 @@
     <div id="looks"></div>
   </section>
   <aside>
+  <div id="status"></div>
   <div id="cropPanel" hidden>
     <h2>Crop &amp; straighten</h2>
     <div class="field"><span class="small">Aspect ratio</span>
@@ -819,7 +843,6 @@
     <h2>Export full-res JPG</h2>
     <div class="row"><button id="exportone" class="primary">This photo</button><button id="exportsel">Ticked (0)</button></div>
     <div class="small">Saved to a <b>graded</b> folder next to your photos, with your crop. Originals are never changed.</div>
-    <div id="status"></div>
 
     <h2>Match a reference photo</h2>
     <div class="small">Any image whose colour or tone you love — your own JPG, a film scan, a photo you saved.</div>
@@ -902,6 +925,7 @@ let maskShown = -1;
 function maskLabel(k, v) { return k === "saturation" ? (v > 0 ? "+" : "") + Math.round(v * 100) + "%" : (v > 0 ? "+" : "") + (Number.isInteger(v) ? v : v.toFixed(2)); }
 function buildMasks() {
   const list = S.adjust.masks || [];
+  if ($("maskBox").querySelector(".curveHead.fold")) foldBadge("maskBox", list.length ? `${list.length} in use` : "");
   if (maskShown >= list.length) maskShown = -1;
   $("maskCards").innerHTML = "";
   list.forEach((m, i) => {
@@ -957,10 +981,12 @@ function mixSet(band, v) {
   const hsl = S.adjust.hsl = { ...(S.adjust.hsl || {}) }, b = { ...(hsl[band] || {}) };
   if (v) b[mixMode] = v; else delete b[mixMode];
   if (Object.keys(b).length) hsl[band] = b; else delete hsl[band];
+  if ($("mixBox").querySelector(".curveHead.fold")) foldBadge("mixBox", Object.keys(hsl).length ? "changed" : "");
 }
 function mixLabel(v) { return mixMode === "hue" ? (v > 0 ? "+" : "") + v + "°" : (v > 0 ? "+" : "") + Math.round(v * 100) + "%"; }
 function buildMixer() {
   const [min, max, step] = MIX_RANGE[mixMode];
+  if ($("mixBox").querySelector(".curveHead.fold")) foldBadge("mixBox", Object.keys(S.adjust.hsl || {}).length ? "changed" : "");
   document.querySelectorAll("#mixMode button").forEach(b => b.classList.toggle("on", b.dataset.m === mixMode));
   $("mixSliders").innerHTML = "";
   for (const [band, label, dot] of MIX_BANDS) {
@@ -1192,6 +1218,36 @@ async function aiGrade() {
 }
 $("aiGradeGo").onclick = aiGrade;
 $("aiGradeText").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); aiGrade(); } });
+// Tidy side panel: each section folds open / shut by its heading; the app remembers which you keep open.
+const FOLD_DEFAULT_CLOSED = ["Save", "Match a reference photo", "Colour mixer", "Masks"];
+function foldState() { try { return JSON.parse(localStorage.getItem("fls.gradeFold") || "{}"); } catch (e) { return {}; } }
+function foldSave(name, closed) { const st = foldState(); st[name] = closed; try { localStorage.setItem("fls.gradeFold", JSON.stringify(st)); } catch (e) {} }
+function foldIsClosed(name) { const st = foldState(); return name in st ? st[name] : FOLD_DEFAULT_CLOSED.includes(name); }
+(function foldSetup() {
+  const panel = $("gradePanel");
+  for (const h of [...panel.querySelectorAll(":scope > h2")]) {
+    const name = h.textContent.trim(), body = document.createElement("div");
+    body.className = "foldBody";
+    while (h.nextSibling && !(h.nextSibling.tagName === "H2")) body.appendChild(h.nextSibling);
+    h.after(body); h.classList.add("fold");
+    const set = (closed) => { h.classList.toggle("closed", closed); body.hidden = closed; };
+    set(foldIsClosed(name));
+    h.onclick = () => { const closed = !h.classList.contains("closed"); set(closed); foldSave(name, closed); };
+  }
+  for (const box of ["mixBox", "maskBox", "curveBox"]) {          // the boxes inside Adjust fold the same way
+    const head = $(box).querySelector(".curveHead"), name = head.querySelector("span").textContent.trim();
+    const rest = [...$(box).children].filter(c => c !== head);
+    head.classList.add("fold");
+    const set = (closed) => { head.classList.toggle("closed", closed); rest.forEach(c => c.hidden = closed); };
+    set(foldIsClosed(name));
+    head.querySelector("span").onclick = () => { const closed = !head.classList.contains("closed"); set(closed); foldSave(name, closed); };
+  }
+})();
+function foldBadge(box, text) {                // e.g. "Masks · 2 in use" even when folded shut
+  const span = $(box).querySelector(".curveHead > span");
+  let b = span.querySelector(".badge"); if (!b) { b = document.createElement("span"); b.className = "badge"; span.appendChild(b); }
+  b.textContent = text;
+}
 function grClip() { try { return JSON.parse(localStorage.getItem("fls.gradeClip") || "null"); } catch (e) { return null; } }
 function grCopy() {
   if (!S.current) return;
@@ -2729,6 +2785,82 @@ async function cuZoom(id, fx, fy, raw = false) {
       (ZM.canFull ? " · Z again for a true 100% from the RAW" : "") + " · Esc to close";
   } catch (e) { $("cuZoomNote").textContent = e.message || "Couldn't load the full-size photo."; }
 }
+// Compare: two frames of a group at 100%, zoomed and moved together (C). The same point of both
+// frames stays in the middle, so focus, eyes and gesture can be judged side by side.
+const CMP = { on: false, ids: [null, null], img: [null, null], fx: 0.5, fy: 0.4, act: 0, drag: null };
+function cmpPanes() { return [...document.querySelectorAll("#cuCmp .cmpPane")]; }
+function cmpPlace() {
+  cmpPanes().forEach((p, s) => {
+    const im = p.querySelector("img"), w = im.naturalWidth, h = im.naturalHeight;
+    if (!w) return;
+    let x = p.clientWidth / 2 - CMP.fx * w, y = p.clientHeight / 2 - CMP.fy * h;
+    x = w > p.clientWidth ? Math.min(0, Math.max(p.clientWidth - w, x)) : (p.clientWidth - w) / 2;
+    y = h > p.clientHeight ? Math.min(0, Math.max(p.clientHeight - h, y)) : (p.clientHeight - h) / 2;
+    im.style.transform = `translate(${x}px, ${y}px)`;
+  });
+}
+function cmpLabels() {
+  cmpPanes().forEach((p, s) => {
+    const id = CMP.ids[s], f = CU.frames[id], g = cuGroup();
+    if (!f) return;
+    p.classList.toggle("active", s === CMP.act);
+    p.querySelector(".lab").innerHTML = `#${g.ids.indexOf(id) + 1} · ${esc(f.name)}${id === g.suggested && g.ids.length > 1 ? " · ★ suggested" : ""}` +
+      (f.flag === "pick" ? ` · <span class="p">PICK</span>` : f.flag === "reject" ? ` · <span class="x">REJECT</span>` : "") + (f.rating ? " · " + "★".repeat(f.rating) : "");
+  });
+}
+async function cmpLoad(s, id) {
+  CMP.ids[s] = id; cmpLabels();
+  const im = cmpPanes()[s].querySelector("img");
+  if (!CU.frames[id].online) { im.removeAttribute("src"); $("cuCmpNote").textContent = "That frame's drive is offline."; return; }
+  try {
+    const r = await api(`/api/cull/full/${id}`);
+    const url = URL.createObjectURL(await r.blob());
+    await new Promise((res, rej) => { im.onload = res; im.onerror = rej; im.src = url; });
+    if (CMP.ids[s] === id) cmpPlace();
+  } catch (e) { $("cuCmpNote").textContent = e.message || "Couldn't load the full-size photo."; }
+}
+function cuCompare() {
+  const g = cuGroup(); if (!g) return;
+  if (g.ids.length < 2) { $("cuWhy").textContent = "Only one frame in this group: nothing to compare."; return; }
+  const a = g.ids[CU.fi], other = CU.fi + 1 < g.ids.length ? CU.fi + 1 : CU.fi - 1;
+  const f = (CU.hover && CU.hover.id === a) ? [CU.hover.fx, CU.hover.fy] : (CU.frames[a].focus || [0.5, 0.4]);
+  CMP.on = true; CMP.act = 0; [CMP.fx, CMP.fy] = f;
+  $("cuCmp").hidden = false;
+  $("cuCmpNote").textContent = "Compare at 100% · drag to move both · click a side to choose it · P / X / 0–5 mark it · ← → change the right frame · C or Esc to close";
+  cmpLoad(0, a); cmpLoad(1, g.ids[other]);
+}
+function cuCompareClose() {
+  CMP.on = false; $("cuCmp").hidden = true;
+  cmpPanes().forEach(p => p.querySelector("img").removeAttribute("src"));
+  cuShow();
+}
+function cmpOther(step) {                     // the right-hand frame: the next / previous other frame in the group
+  const g = cuGroup(), ids = g.ids.filter(id => id !== CMP.ids[0]);
+  const i = ids.indexOf(CMP.ids[1]);
+  cmpLoad(1, ids[(i + step + ids.length) % ids.length]);
+}
+cmpPanes().forEach((p, s) => {
+  p.addEventListener("pointerdown", (e) => {
+    CMP.act = s; cmpLabels();
+    const im = p.querySelector("img");
+    CMP.drag = { x0: e.clientX, y0: e.clientY, fx: CMP.fx, fy: CMP.fy, w: im.naturalWidth || 1, h: im.naturalHeight || 1 };
+    p.setPointerCapture(e.pointerId); p.classList.add("dragging");
+  });
+  p.addEventListener("pointermove", (e) => {
+    if (!CMP.drag) return;
+    CMP.fx = Math.min(1, Math.max(0, CMP.drag.fx - (e.clientX - CMP.drag.x0) / CMP.drag.w));
+    CMP.fy = Math.min(1, Math.max(0, CMP.drag.fy - (e.clientY - CMP.drag.y0) / CMP.drag.h));
+    cmpPlace();
+  });
+  p.addEventListener("pointerup", () => { CMP.drag = null; p.classList.remove("dragging"); });
+  p.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const im = p.querySelector("img");
+    CMP.fx = Math.min(1, Math.max(0, CMP.fx + e.deltaX / (im.naturalWidth || 1)));
+    CMP.fy = Math.min(1, Math.max(0, CMP.fy + e.deltaY / (im.naturalHeight || 1))); cmpPlace();
+  }, { passive: false });
+});
+window.addEventListener("resize", () => { if (CMP.on) cmpPlace(); });
 function cuZoomClose() { $("cuZoom").hidden = true; ZM.id = null; $("cuZoomImg").removeAttribute("src"); }
 function cuZoomKey() {                      // Z: zoom where the pointer is (or the eyes / subject)
   const g = cuGroup(); if (!g) return;
@@ -2755,11 +2887,24 @@ $("cuNav").addEventListener("click", (e) => {
 });
 window.addEventListener("resize", () => { if (ZM.id) zmPlace(); });
 $("cuPrev").onclick = () => cuNext(-1);
+$("cuCmpBtn").onclick = () => cuCompare();
 $("cuNextBtn").onclick = () => cuNext(1);
 
 document.addEventListener("keydown", (e) => {
   if ($("cullView").hidden || $("cuRun").hidden || typing(e) || e.metaKey || e.ctrlKey) return;
   const k = e.key, g = cuGroup();
+  if (CMP.on) {
+    const id = CMP.ids[CMP.act], i = g ? g.ids.indexOf(id) : -1;
+    if (k === "Escape" || k === "c" || k === "C") cuCompareClose();
+    else if (k === "ArrowRight") cmpOther(1);
+    else if (k === "ArrowLeft") cmpOther(-1);
+    else if (i >= 0 && (k === "p" || k === "P" || k === "x" || k === "X" || k === "u" || k === "U" || /^[0-5]$/.test(k))) {
+      CU.fi = i;
+      cuMark(/^[0-5]$/.test(k) ? "rate" : { p: "pick", x: "reject", u: "unmark" }[k.toLowerCase()], /^[0-5]$/.test(k) ? +k : undefined);
+      setTimeout(cmpLabels, 50);
+    } else return;
+    e.preventDefault(); return;
+  }
   if (ZM.id) {
     const step = e.shiftKey ? 600 : 200;
     if (k === "Escape") cuZoomClose();
@@ -2785,6 +2930,7 @@ document.addEventListener("keydown", (e) => {
   else if (k === "ArrowUp") { e.preventDefault(); cuNext(-1); }
   else if (k === "ArrowDown") { e.preventDefault(); cuNext(1); }
   else if (k === "z" || k === "Z") { e.preventDefault(); cuZoomKey(); }
+  else if (k === "c" || k === "C") { e.preventDefault(); cuCompare(); }
 });
 
 // --- Grade: variable zoom and pan --------------------------------------------------------
