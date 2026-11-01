@@ -127,7 +127,7 @@ def save_user_look(look_id, recipe):
 
 
 ADJUST_KEYS = ("strength", "exposure", "warmth", "tint", "contrast", "highlights", "shadows", "whites", "blacks",
-               "saturation", "grain", "vignette", "tone", "curve")
+               "saturation", "grain", "vignette", "tone", "curve", "hsl", "noise", "color_noise", "sharpen", "masks")
 
 
 def apply_adjust(recipe, adj):
@@ -139,13 +139,34 @@ def apply_adjust(recipe, adj):
     whites/blacks: added to tone.white/black (whites > 0 brighter, blacks > 0 faded/matte, < 0 crushed)
     curve: [[x, y], ...] points of your tone curve, applied after the look's tone (tone.user_curve)
     tone: scales the split-tone strength (e.g. the gold of Tri-X Gold), -1..1
+    hsl: {band: {hue (degrees), sat, lum (-1..1)}}: the colour mixer -> color.user_hsl (sharper bands than
+         the look's own color.hsl, applied after it)
+    noise / color_noise / sharpen: 0..1, added to the recipe's `detail` (see detail.py)
+    masks: [{kind: subject / people / sky, invert, exposure, contrast, warmth, saturation}] -> recipe
+           `masks` (local adjustments, see masks.py and pipeline.local)
     """
     r = copy.deepcopy(recipe)
     curve = (adj or {}).get("curve")
     if isinstance(curve, list) and len(curve) >= 2:
         r["tone"]["user_curve"] = [[float(x), float(y)] for x, y in curve]
+    ms = (adj or {}).get("masks")
+    if isinstance(ms, list):
+        from .masks import KINDS
+        r["masks"] = [{"kind": m["kind"], "invert": bool(m.get("invert")),
+                       **{k: float(m.get(k) or 0.0) for k in ("exposure", "contrast", "warmth", "saturation")}}
+                      for m in ms[:6] if isinstance(m, dict) and m.get("kind") in KINDS]
+    hsl = (adj or {}).get("hsl")
+    if isinstance(hsl, dict) and hsl:
+        bands = dict(r["color"].get("user_hsl") or {})
+        for band, v in hsl.items():
+            if band in HSL_BANDS and isinstance(v, dict):
+                cur = dict(bands.get(band) or {})
+                for k in ("hue", "sat", "lum"):
+                    cur[k] = cur.get(k, 0.0) + float(v.get(k) or 0.0)
+                bands[band] = cur
+        r["color"]["user_hsl"] = bands
     adj = {k: float(v) for k, v in (adj or {}).items()
-           if k in ADJUST_KEYS and k != "curve" and v not in (None, "")}
+           if k in ADJUST_KEYS and k not in ("curve", "hsl", "masks") and v not in (None, "")}
     if "strength" in adj:
         r["strength"] = max(0.0, min(1.0, adj["strength"]))
     r["exposure"] = r.get("exposure", 0.0) + adj.get("exposure", 0.0)
@@ -159,6 +180,11 @@ def apply_adjust(recipe, adj):
     r["color"]["saturation"] = r["color"].get("saturation", 1.0) * (1 + adj.get("saturation", 0.0))
     r["grain"]["amount"] = max(0.0, r["grain"].get("amount", 0.0) + adj.get("grain", 0.0))
     r["vignette"]["amount"] = r["vignette"].get("amount", 0.0) + adj.get("vignette", 0.0)
+    if any(adj.get(k) for k in ("noise", "color_noise", "sharpen")):
+        d = dict(r.get("detail") or {})
+        for k in ("noise", "color_noise", "sharpen"):
+            d[k] = max(0.0, min(1.0, d.get(k, 0.0) + adj.get(k, 0.0)))
+        r["detail"] = d
     if adj.get("tone"):
         for zone in (r["color"].get("split") or {}).values():
             zone["amount"] = max(0.0, zone.get("amount", 0.0) * (1 + adj["tone"]))

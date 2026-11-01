@@ -1,6 +1,7 @@
 """Previews, contact sheets and full-resolution export."""
 import hashlib
 import io
+import math
 import json
 import shutil
 import os
@@ -13,7 +14,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageCms, ImageDraw, ImageFont
 
-from . import geometry, lut, pipeline, raw
+from . import detail, geometry, lut, pipeline, raw
 
 CACHE_DIR = Path.home() / ".cache" / "filmlook"
 PREVIEW_EDGE = 1600
@@ -127,6 +128,15 @@ def to_image(display):
     return Image.fromarray((np.clip(display, 0, 1) * 255 + 0.5).astype(np.uint8))
 
 
+def _masks_at(path, recipe, geom, frame_size, x0=0, x1=None, y_off=0):
+    """For render_threaded: rows -> each mask's strength there (None when the grade has no masks)."""
+    if not any(any(m.get(k) for k in pipeline.MASK_KEYS) for m in recipe.get("masks") or []):
+        return None
+    from . import masks
+    x1 = frame_size[0] if x1 is None else x1
+    return lambda a, b: masks.alphas(path, recipe, geom, frame_size, (x0, y_off + a, x1, y_off + b))
+
+
 def render_preview(path, recipe, edge=None, geom=None):
     """Preview with the look and (optionally) a crop/straighten edit applied.
 
@@ -142,25 +152,41 @@ def render_preview(path, recipe, edge=None, geom=None):
         h, w = lin.shape[:2]
         s = edge / max(h, w)
         lin = raw.resize_float(lin, (max(1, round(w * s)), max(1, round(h * s))), Image.BILINEAR)
-    return to_image(render_threaded(lin, recipe, gain, display=raw.is_display_referred(path)))
+    scale = 1.0
+    if detail.active(recipe, 0.05):              # noise reduction / sharpening: at this size's scale
+        scale = lin.shape[1] / geometry.output_size(*raw.full_size(path), geom)[0]
+    return to_image(render_threaded(lin, recipe, gain, display=raw.is_display_referred(path), detail_scale=scale,
+                                    masks_at=_masks_at(path, recipe, geom, (lin.shape[1], lin.shape[0]))))
 
 
-def render_threaded(lin, recipe, gain, display=False, y0=0, x0=0, full_size=None, match_src=None):
+def render_threaded(lin, recipe, gain, display=False, y0=0, x0=0, full_size=None, match_src=None,
+                    detail_scale=1.0, pad=(0, 0, 0, 0), masks_at=None):
     """pipeline.render split into strips over a few cores: the same picture, several times faster.
     (x0, y0) / full_size place a tile within the whole frame. A reference match needs whole-image
-    statistics, so unless given they're measured once up front."""
-    h, w = lin.shape[:2]
+    statistics, so unless given they're measured once up front. `pad` = context rows / columns
+    (top, bottom, left, right) around the area to render, for noise reduction / sharpening.
+    `masks_at(r0, r1)`: the masks' strengths for rows r0..r1 of the area (see _masks_at)."""
+    pt, pb, pl, pr = pad
+    H, W = lin.shape[:2]
+    h, w = H - pt - pb, W - pl - pr
     full_size = full_size or (h, w)
     if match_src is None and full_size == (h, w):
-        match_src = pipeline.match_source_stats(lin[::2, ::2], recipe, gain, display)
+        match_src = pipeline.match_source_stats(lin[pt:H - pb:2, pl:W - pr:2], recipe, gain, display)
+    m = detail.margin(recipe, detail_scale)
+
+    def part(r0, r1):                         # rows r0..r1 of the area, with context from around them
+        a, b = max(0, pt + r0 - m), min(H, pt + r1 + m)
+        return pipeline.render(lin[a:b], recipe, gain, y0=y0 + r0, x0=x0, full_size=full_size, match_src=match_src,
+                               display=display, detail_scale=detail_scale, pad=(pt + r0 - a, b - pt - r1, pl, pr),
+                               mask_alpha=masks_at(r0, r1) if masks_at else None)
+
     if h < 2 * WORKERS * 16:
-        return pipeline.render(lin, recipe, gain, y0=y0, x0=x0, full_size=full_size, match_src=match_src, display=display)
+        return part(0, h)
     rows = -(-h // (WORKERS * 2))
     out = np.empty((h, w, 3), dtype=np.float32)
 
     def strip(r0):
-        out[r0:r0 + rows] = pipeline.render(lin[r0:r0 + rows], recipe, gain, y0=y0 + r0, x0=x0, full_size=full_size,
-                                            match_src=match_src, display=display)
+        out[r0:r0 + rows] = part(r0, min(h, r0 + rows))
 
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         list(pool.map(strip, range(0, h, rows)))
@@ -209,8 +235,13 @@ def render_region(path, recipe, geom, box, out_w):
     fh, fw = frame.shape[:2]
     x0, y0 = int(bx * fw), int(by * fh)
     x1, y1 = max(x0 + 1, int(round((bx + bw) * fw))), max(y0 + 1, int(round((by + bh) * fh)))
-    tile = frame[y0:y1, x0:x1]
+    scale = (fw * (need if need < 0.75 else 1)) / W              # rendered pixels per full-res pixel
+    m = detail.margin(recipe, scale)
+    mf = int(math.ceil(m / need)) if m and need < 0.75 else m    # that context in this frame's pixels
+    ty0, ty1, tx0, tx1 = max(0, y0 - mf), min(fh, y1 + mf), max(0, x0 - mf), min(fw, x1 + mf)
+    tile = frame[ty0:ty1, tx0:tx1]
     tile = raw.to_float(tile) if tile.dtype == np.uint16 else tile
+    pad = (y0 - ty0, ty1 - y1, x0 - tx0, tx1 - x1)
     match_src = None
     if recipe.get("match"):
         plin, _ = preview_linear(path)
@@ -221,7 +252,12 @@ def render_region(path, recipe, geom, box, out_w):
         tw, th = max(1, round(tile.shape[1] * need)), max(1, round(tile.shape[0] * need))
         tile = raw.resize_float(tile, (tw, th), Image.BOX)
         x0, y0, fh, fw = round(x0 * need), round(y0 * need), round(fh * need), round(fw * need)
-    out = render_threaded(tile, recipe, gain, display=display, y0=y0, x0=x0, full_size=(fh, fw), match_src=match_src)
+        pt, pb, pl, pr = (round(v * need) for v in pad)
+        pt, pl = min(pt, th - 1), min(pl, tw - 1)
+        pad = (pt, max(0, min(pb, th - pt - 1)), pl, max(0, min(pr, tw - pl - 1)))
+    out = render_threaded(tile, recipe, gain, display=display, y0=y0, x0=x0, full_size=(fh, fw), match_src=match_src,
+                          detail_scale=scale, pad=pad,
+                          masks_at=_masks_at(path, recipe, geom, (fw, fh), x0, x0 + tile.shape[1] - pad[2] - pad[3], y0))
     img = to_image(out)
     out_h = max(1, round(out_w * img.height / img.width))
     return img.resize((max(1, int(out_w)), out_h), Image.LANCZOS) if abs(img.width - out_w) > 1 else img
@@ -315,11 +351,15 @@ def render_full(src, recipe, geom=None, progress=None):
     out = np.empty((h, w, 3), dtype=np.uint8)
     starts = list(range(0, h, STRIP_ROWS))
     done = [0]
+    m = detail.margin(recipe)                     # noise reduction / sharpening borrow rows around each strip
+    masks_at = _masks_at(src, recipe, geom, (w, h))
 
     def strip(y0):
         y1 = min(h, y0 + STRIP_ROWS)
-        d = pipeline.render(raw.to_float(rgb16[y0:y1]), recipe, gain, y0=y0, full_size=(h, w),
-                            look_fn=lambda img: lut.apply(img, table), display=display)
+        a, b = max(0, y0 - m), min(h, y1 + m)
+        d = pipeline.render(raw.to_float(rgb16[a:b]), recipe, gain, y0=y0, full_size=(h, w),
+                            look_fn=lambda img: lut.apply(img, table), display=display, pad=(y0 - a, b - y1, 0, 0),
+                            mask_alpha=masks_at(y0, y1) if masks_at else None)
         out[y0:y1] = (d * 255 + 0.5).astype(np.uint8)
         done[0] += 1
         if progress:

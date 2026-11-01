@@ -14,6 +14,7 @@ import math
 import numpy as np
 
 from .color import LUMA, linear_to_oklab, oklab_to_linear, srgb_decode, srgb_encode
+from . import detail
 from .recipes import HSL_BANDS
 
 _BAND_SRGB = {
@@ -24,6 +25,26 @@ _BAND_SRGB = {
 _lab = linear_to_oklab(np.array([_BAND_SRGB[b] for b in HSL_BANDS], dtype=np.float32))
 BAND_HUES = np.degrees(np.arctan2(_lab[:, 2], _lab[:, 1])) % 360
 BAND_WIDTH = 25.0
+_ORDER = np.argsort(BAND_HUES)
+_GAP_NEXT = np.empty(len(HSL_BANDS), np.float32)   # degrees to the next band round the colour wheel
+_GAP_PREV = np.empty(len(HSL_BANDS), np.float32)
+for _k, _i in enumerate(_ORDER):
+    _GAP_NEXT[_i] = (BAND_HUES[_ORDER[(_k + 1) % len(_ORDER)]] - BAND_HUES[_i]) % 360
+    _GAP_PREV[_i] = (BAND_HUES[_i] - BAND_HUES[_ORDER[_k - 1]]) % 360
+
+
+def _soft_weights(h):
+    """Looks' colour bands: soft, overlapping (how the built-in looks were tuned)."""
+    diff = (h[..., None] - BAND_HUES + 180) % 360 - 180
+    w = np.exp(-0.5 * (diff / BAND_WIDTH) ** 2)
+    return w / (w.sum(axis=-1, keepdims=True) + 1e-6)
+
+
+def _tent_weights(h):
+    """Colour mixer bands: a colour at a band's centre belongs wholly to it, fading linearly to the
+    neighbours (as in Lightroom), so -100% Blue makes blue grey."""
+    diff = (h[..., None] - BAND_HUES + 180) % 360 - 180
+    return np.clip(np.where(diff >= 0, 1 - diff / _GAP_NEXT, 1 + diff / _GAP_PREV), 0, 1)
 
 
 def _scurve(x, contrast, pivot):
@@ -146,11 +167,11 @@ def look_lab(d, recipe):
     a, b = lab[..., 1], lab[..., 2]
     c = np.hypot(a, b)
     h = np.degrees(np.arctan2(b, a))
-    hsl = color.get("hsl") or {}
-    if hsl:
-        diff = (h[..., None] - BAND_HUES + 180) % 360 - 180
-        w = np.exp(-0.5 * (diff / BAND_WIDTH) ** 2)
-        w /= w.sum(axis=-1, keepdims=True) + 1e-6
+    for key, weights in (("hsl", _soft_weights), ("user_hsl", _tent_weights)):   # the look's, then the mixer's
+        hsl = color.get(key) or {}
+        if not any(hsl.values()):
+            continue
+        w = weights(h)
         dh = np.zeros_like(c); ds = np.zeros_like(c); dl = np.zeros_like(c)
         for i, band in enumerate(HSL_BANDS):
             adj = hsl.get(band)
@@ -270,16 +291,59 @@ def finish(d, recipe, y0=0, full_size=None, x0=0):
 
 # ---------------------------------------------------------------- full render
 
-def render(linear, recipe, gain, y0=0, full_size=None, match_src=None, look_fn=None, display=False, x0=0):
+MASK_KEYS = ("exposure", "contrast", "warmth", "saturation")
+
+
+def local(d, recipe, alphas):
+    """Grade → Masks: each mask's exposure / contrast / warmth / saturation, applied where its
+    alpha says (0..1 per pixel), one after another, on the finished picture."""
+    for m, a in zip(recipe.get("masks") or [], alphas or []):
+        if not any(m.get(k) for k in MASK_KEYS) or not a.any():
+            continue
+        x = d
+        t, ev = m.get("warmth", 0.0) / 100.0, m.get("exposure", 0.0)
+        if t or ev:
+            lin = srgb_decode(x)
+            if t:
+                gains = np.array([1 + 0.25 * t, 1.0, 1 - 0.25 * t], dtype=np.float32)
+                lin = lin * (gains / float(gains @ LUMA))
+            if ev:
+                lin = lin * np.float32(2.0 ** ev)
+                lin = lin / (1 + np.maximum(lin - 1, 0))          # roll off instead of clipping hard
+            x = srgb_encode(np.clip(lin, 0, 1))
+        c = m.get("contrast", 0.0)
+        if c:
+            x = np.clip(0.5 + (x - 0.5) * (1 + c), 0, 1)
+        sat = m.get("saturation", 0.0)
+        if sat:
+            lab = linear_to_oklab(srgb_decode(x))
+            lab[..., 1:] *= max(0.0, 1 + sat)
+            x = srgb_encode(np.clip(oklab_to_linear(lab), 0, 1))
+        d = d + a[..., None] * (x - d)
+    return np.clip(d, 0, 1).astype(np.float32)
+
+
+def render(linear, recipe, gain, y0=0, full_size=None, match_src=None, look_fn=None, display=False, x0=0,
+           detail_scale=1.0, pad=(0, 0, 0, 0), mask_alpha=None):
     """Full render. `look_fn` can replace stage B (e.g. a baked LUT for fast exports).
-    (x0, y0) / full_size place a strip or tile within the whole frame (grain, vignette)."""
+    (x0, y0) / full_size place a strip or tile within the whole frame (grain, vignette).
+    Noise reduction / sharpening (`detail`) run on the neutral image at `detail_scale` (rendered
+    pixels per full-resolution pixel); `pad` = (top, bottom, left, right) context rows / columns
+    around the strip in `linear`, used by those filters and cropped off (see detail.margin).
+    `mask_alpha`: per-pixel strengths of recipe['masks'] for the strip (see masks.alphas)."""
     neutral = base(linear, gain, recipe.get("exposure", 0.0), display)
+    neutral = detail.apply(neutral, recipe, detail_scale)
+    t, b, l, r = pad
+    if any(pad):
+        neutral = neutral[t:neutral.shape[0] - b, l:neutral.shape[1] - r]
     graded = look_fn(neutral) if look_fn else look(neutral, recipe, match_src)
     graded = finish(graded, recipe, y0, full_size, x0)
     s = recipe.get("strength", 1.0)
-    if s >= 1.0:
-        return graded
-    return np.clip(neutral + s * (graded - neutral), 0, 1)
+    if s < 1.0:
+        graded = np.clip(neutral + s * (graded - neutral), 0, 1)
+    if mask_alpha:                                  # local adjustments: whatever the look's strength
+        graded = local(graded, recipe, mask_alpha)
+    return graded
 
 
 def match_source_stats(linear_sample, recipe, gain, display=False):

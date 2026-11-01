@@ -244,3 +244,42 @@ def test_tone_curve_is_smooth_monotone_and_applied():
     assert curved[50] > plain[50] + 0.05 and abs(curved[0] - plain[0]) < 0.01
     t = lut.bake(recipes.apply_adjust(base, {"curve": [[0, 0], [0.5, 0.62], [1, 1]]}), size=17)
     assert t[(8 * 17 + 8) * 17 + 8].mean() > 0.55                               # LUTs include your curve
+
+
+def test_colour_mixer_adds_to_the_look_and_changes_only_that_colour():
+    from filmlook import edits
+    r = recipes.load_look("neutral")
+    a = recipes.apply_adjust(r, {"hsl": {"blue": {"sat": -1.0}, "nonsense": {"sat": 1}}})
+    assert a["color"]["user_hsl"] == {"blue": {"hue": 0.0, "sat": -1.0, "lum": 0.0}}
+    img = np.zeros((1, 2, 3), np.float32)
+    img[0, 0] = (0.1, 0.2, 0.8)              # blue
+    img[0, 1] = (0.8, 0.2, 0.1)              # red
+    plain, mixed = pipeline.look_lab(img, r), pipeline.look_lab(img, a)
+    chroma = lambda lab: np.hypot(lab[..., 1], lab[..., 2])[0]
+    assert chroma(mixed)[0] < chroma(plain)[0] * 0.1          # blue drained
+    assert abs(chroma(mixed)[1] - chroma(plain)[1]) < 0.01    # red untouched
+    assert edits.is_plain("neutral", {"hsl": {"blue": {"sat": 0}}})
+    assert not edits.is_plain("neutral", {"hsl": {"blue": {"sat": -0.2}}})
+
+
+def test_noise_reduction_and_sharpening_are_seamless_across_strips():
+    from filmlook import detail, engine
+    rng = np.random.default_rng(1)
+    lin = np.full((300, 120, 3), 0.18, np.float32)
+    lin[:, 60:] = 0.5                                            # an edge
+    lin = np.clip(lin + rng.normal(0, 0.02, lin.shape).astype(np.float32), 0, 1)
+    plain = recipes.load_look("neutral")
+    r = recipes.apply_adjust(plain, {"noise": 0.6, "color_noise": 0.5, "sharpen": 0.5})
+    assert r["detail"] == {"noise": 0.6, "color_noise": 0.5, "sharpen": 0.5} and detail.margin(r) > 0
+    whole = pipeline.render(lin, r, 1.0)
+    strips = engine.render_threaded(lin, r, 1.0)
+    assert np.abs(whole - strips).max() < 1e-5                 # same picture however it's split
+    before = pipeline.render(lin, plain, 1.0)
+    flat = (slice(20, 280), slice(5, 50))
+    assert whole[flat].std() < before[flat].std() * 0.6       # quieter
+    sharp = pipeline.render(np.clip(lin * 0 + np.where(np.arange(120) < 60, 0.18, 0.5)[None, :, None], 0, 1)
+                            .astype(np.float32), recipes.apply_adjust(plain, {"sharpen": 1}), 1.0)
+    soft = pipeline.render(np.full_like(lin, 0) + np.where(np.arange(120) < 60, 0.18, 0.5)[None, :, None].astype(np.float32),
+                           plain, 1.0)
+    assert sharp[150, 61, 1] > soft[150, 61, 1] and sharp[150, 58, 1] < soft[150, 58, 1]   # crisper edge
+    assert not detail.active(r, 0.05)                           # a tiny preview: invisible, skipped

@@ -125,6 +125,22 @@
   .slider label span { color: var(--text); font-variant-numeric: tabular-nums; }
   .slider input { width: 100%; accent-color: var(--accent); }
   #curveBox { margin: 12px 0 4px; }
+  #mixBox { margin: 12px 0 4px; }
+  #maskBox { margin: 12px 0 4px; }
+  #maskBox .addRow { display: flex; gap: 4px; margin: 4px 0 6px; }
+  #maskBox .addRow button { flex: 1; font-size: 12px; padding: 4px 0; }
+  .maskCard { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; margin: 6px 0; }
+  .maskCard .mh { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .maskCard .mh b { flex: 1; }
+  .maskCard .mh button { font-size: 11px; padding: 2px 6px; }
+  .maskCard .mh button.on { border-color: var(--accent); background: #2a2a2a; }
+  .maskCard .slider label span:first-child { color: var(--muted); }
+  #stage #maskOverlay { position: absolute; pointer-events: none; user-select: none; z-index: 2; }
+  #mixBox .seg { display: flex; gap: 4px; margin-bottom: 6px; }
+  #mixBox .seg button { flex: 1; padding: 3px 0; font-size: 12px; }
+  #mixBox .seg button.on { border-color: var(--accent); background: #2a2a2a; }
+  #mixBox .slider label span:first-child { color: var(--muted); }
+  #mixBox .slider label i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
   .curveHead { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
   .curveHead span { white-space: nowrap; margin-right: 8px; }
   .curveHead select { min-width: 0; max-width: 65%; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); border-radius: 5px; font: inherit; font-size: 12px; padding: 2px 4px; }
@@ -491,7 +507,7 @@
     <div><h4>Library</h4><p><b>Click</b> select · <b>⌘-click</b> add · <b>Shift-click</b> range<br><b>⌘A</b> select all · <b>Esc</b> clear<br><b>Arrows</b> move · <b>Space / Enter</b> view large<br><b>F</b> show in Finder</p></div>
     <div><h4>Big viewer</h4><p><b>← →</b> previous / next<br><b>Click / Z</b> zoom to 100% (drag to move)<br><b>G</b> graded / original · <b>S</b> side by side<br><b>Esc / Space</b> close</p></div>
     <div><h4>Cull</h4><p><b>← →</b> frame · <b>↑ ↓</b> group<br><b>Enter</b> next group · <b>Shift+Enter</b> previous<br><b>Z</b> zoom where you point · <b>Shift+P</b> pick and stay</p></div>
-    <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
+    <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>J</b> (hold) camera JPG · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
     <div><h4>Essays</h4><p><b>⌘Z</b> undo · drag to reorder<br><b>🔒</b> lock a photo · <b>⇄</b> replace</p></div>
   </div>
   <div class="small">Press <b>?</b> any time to see this.</div>
@@ -690,6 +706,7 @@
       <img id="big" alt="" hidden draggable="false">
       <img id="bigTile" alt="" hidden draggable="false">
       <img id="bigSplit" alt="" hidden draggable="false">
+      <img id="maskOverlay" alt="" hidden draggable="false">
       <div id="splitLine" hidden><span class="l">Before</span><span class="r">After</span></div>
       <div id="zoomBar" hidden>
         <button id="zFit" title="Fit the whole photo (0)">Fit</button>
@@ -735,6 +752,7 @@
     <div class="slider"><label>Straighten<span id="crAngleVal">0.0°</span></label>
       <input type="range" id="crAngle" min="-45" max="45" step="0.05" value="0"></div>
     <div class="row"><button id="crMinus" title="−0.1° ( [ )">−0.1°</button><button id="crPlus" title="+0.1° ( ] )">+0.1°</button><button id="crLevel" title="Draw along a horizon or building edge">📏 Draw level line</button></div>
+    <div class="row"><button id="crAuto" title="Stand the verticals (buildings, poles, door frames) up straight">Auto-straighten</button></div>
     <div class="row"><button id="crRotL" title="Rotate 90° left">⟲ 90°</button><button id="crRotR" title="Rotate 90° right">⟳ 90°</button><button id="crFlipH" title="Flip left-right">⇋ Flip</button><button id="crFlipV" title="Flip upside down">⇵ Flip</button></div>
     <div id="crSize" class="small"></div>
     <div class="row" style="margin-top:14px"><button id="crReset" title="R">Reset</button><button id="crCancel" title="Esc">Cancel</button><button id="crDone" class="primary" title="Enter">Done</button></div>
@@ -745,6 +763,7 @@
     <div id="lookname">Neutral</div>
     <div id="lookdesc"></div>
     <div class="row"><button id="compare" title="Hold to see the original: no look, no crop (or hold B)">Hold: before</button><button id="splitBtn" title="Before and after side by side on the photo: drag the line">Split before / after</button></div>
+    <div class="row" id="camRow" hidden><button id="camBtn" title="Hold to see the JPG your camera saved with this RAW: its own colour, with your crop (or hold J)">Hold: camera JPG</button><button id="splitCamBtn" title="The camera's JPG and your grade side by side: drag the line">Split camera JPG / grade</button></div>
 
     <h2>Crop &amp; straighten</h2>
     <div class="row"><button id="cropBtn" title="C">Crop &amp; straighten</button><button id="cropResetSaved" title="Back to the full, unrotated photo">Reset</button></div>
@@ -763,6 +782,18 @@
         </select></div>
       <canvas id="curve" width="520" height="520"></canvas>
       <div class="small">Click to add a point · drag to move · double-click (or drag off the graph) to remove</div>
+    </div>
+    <div id="mixBox">
+      <div class="curveHead"><span>Colour mixer</span><button id="mixReset" class="small" title="Put every colour back">Reset colours</button></div>
+      <div class="seg" id="mixMode"><button data-m="hue">Hue</button><button data-m="sat" class="on">Saturation</button><button data-m="lum">Luminance</button></div>
+      <div id="mixSliders"></div>
+      <div class="small">Change one colour only: e.g. calm a loud blue sign, deepen a sky, warm skin. Colour looks only (B&amp;W looks ignore it).</div>
+    </div>
+    <div id="maskBox">
+      <div class="curveHead"><span>Masks</span></div>
+      <div class="addRow"><button data-k="subject" title="What stands out: people, a cyclist, a cat…">+ Subject</button><button data-k="people">+ People</button><button data-k="sky">+ Sky</button></div>
+      <div id="maskCards"></div>
+      <div class="small">Adjust just part of the photo, e.g. lift a face in shade, calm a bright sky. Found by your Mac (nothing leaves it). People may miss some faces in a dense crowd.</div>
     </div>
     <div class="row"><button id="grUndo" title="Undo (⌘Z)">↶ Undo</button><button id="grRedo" title="Redo (⇧⌘Z)">↷ Redo</button><button id="reset">Reset all</button></div>
     <div class="row"><button id="grCopy" title="Copy this photo's look, sliders and curve (⌘C)">Copy grade</button><button id="grPaste" title="Give this photo the copied grade (⌘V)" disabled>Paste grade</button></div>
@@ -802,12 +833,21 @@ const SLIDERS = [
   ["tone", "Toning (e.g. gold)", -1, 1, 0.05, 0],
   ["grain", "Grain", -0.5, 1, 0.02, 0],
   ["vignette", "Vignette", -0.3, 0.6, 0.02, 0],
+  ["noise", "Noise reduction", 0, 1, 0.05, 0],
+  ["color_noise", "Colour noise", 0, 1, 0.05, 0],
+  ["sharpen", "Sharpen", 0, 1, 0.05, 0],
 ];
+const DETAIL_KEYS = ["noise", "color_noise", "sharpen"];
 const $ = (id) => document.getElementById(id);
 let S = { photos: [], looks: [], current: null, look: "neutral", adjust: {}, ticked: new Set() };
 let renderTimer = null, renderSeq = 0;
 
-function defaults() { return { ...Object.fromEntries(SLIDERS.map(s => [s[0], s[5]])), curve: [[0, 0], [1, 1]] }; }
+function defaults() { return { ...Object.fromEntries(SLIDERS.map(s => [s[0], s[5]])), curve: [[0, 0], [1, 1]], hsl: {}, masks: [] }; }
+// Colour mixer (HSL): one row per colour band; Hue in degrees, Saturation / Luminance −100…+100 %.
+const MIX_BANDS = [["red", "Red", "#e0453a"], ["orange", "Orange", "#ec8a2f"], ["yellow", "Yellow", "#e6cf3a"], ["green", "Green", "#4fb04a"],
+                   ["aqua", "Aqua", "#3fc0c4"], ["blue", "Blue", "#3a6fe0"], ["purple", "Purple", "#8a4fe0"], ["magenta", "Magenta", "#d64fc0"]];
+const MIX_RANGE = { hue: [-30, 30, 1], sat: [-1, 1, 0.02], lum: [-1, 1, 0.02] };
+let mixMode = "sat";
 S.adjust = defaults();
 
 async function api(path, opts = {}) {
@@ -823,6 +863,11 @@ function buildSliders() {
   for (const [key, label, min, max, step] of SLIDERS) {
     const d = document.createElement("div"); d.className = "slider";
     d.innerHTML = `<label>${label}<span id="v_${key}"></span></label><input type="range" id="s_${key}" min="${min}" max="${max}" step="${step}">`;
+    if (key === "noise") {                   // Detail: only really visible at 100%
+      const h = document.createElement("div"); h.className = "small"; h.style.margin = "10px 0 2px";
+      h.innerHTML = "<b>Detail</b> · zoom to 100% to judge (night shots: try Noise 0.4, Colour noise 0.5)";
+      $("sliders").appendChild(h);
+    }
     $("sliders").appendChild(d);
     const inp = d.querySelector("input");
     inp.addEventListener("input", () => { S.adjust[key] = parseFloat(inp.value); showVal(key); scheduleRender(); });
@@ -833,10 +878,93 @@ function buildSliders() {
 }
 function showVal(key) {
   const v = S.adjust[key];
-  $("v_" + key).textContent = key === "strength" ? Math.round(v * 100) + "%" :
+  $("v_" + key).textContent = key === "strength" || DETAIL_KEYS.includes(key) ? Math.round(v * 100) + "%" :
     (v > 0 && key !== "strength" ? "+" : "") + (Number.isInteger(v) ? v : v.toFixed(2));
 }
-function syncSliders() { for (const [key] of SLIDERS) { $("s_" + key).value = S.adjust[key]; showVal(key); } drawCurve(); }
+function syncSliders() { for (const [key] of SLIDERS) { $("s_" + key).value = S.adjust[key]; showVal(key); } drawCurve(); buildMixer(); buildMasks(); }
+
+// --- Masks: local adjustments in the subject / people / sky (found by Apple Vision on the server) ---
+const MASK_NAMES = { subject: "Subject", people: "People", sky: "Sky" };
+const MASK_SLIDERS = [["exposure", "Exposure (EV)", -2, 2, 0.05], ["contrast", "Contrast", -0.5, 0.5, 0.02],
+                      ["warmth", "Warmth", -50, 50, 1], ["saturation", "Saturation", -1, 1, 0.02]];
+let maskShown = -1;
+function maskLabel(k, v) { return k === "saturation" ? (v > 0 ? "+" : "") + Math.round(v * 100) + "%" : (v > 0 ? "+" : "") + (Number.isInteger(v) ? v : v.toFixed(2)); }
+function buildMasks() {
+  const list = S.adjust.masks || [];
+  if (maskShown >= list.length) maskShown = -1;
+  $("maskCards").innerHTML = "";
+  list.forEach((m, i) => {
+    const c = document.createElement("div"); c.className = "maskCard";
+    c.innerHTML = `<div class="mh"><b>${MASK_NAMES[m.kind]}</b><label class="small"><input type="checkbox" class="inv" ${m.invert ? "checked" : ""}> Invert</label>
+      <button class="show ${maskShown === i ? "on" : ""}" title="Show where this mask applies (in red)">Show</button><button class="del" title="Remove this mask">✕</button></div>`;
+    for (const [k, label, min, max, step] of MASK_SLIDERS) {
+      const d = document.createElement("div"); d.className = "slider";
+      d.innerHTML = `<label><span>${label}</span><span class="mv">${maskLabel(k, m[k] || 0)}</span></label><input type="range" min="${min}" max="${max}" step="${step}" value="${m[k] || 0}">`;
+      const inp = d.querySelector("input"), mv = d.querySelector(".mv");
+      const set = (v) => { S.adjust.masks = S.adjust.masks.map((x, j) => j === i ? { ...x, [k]: v } : x); mv.textContent = maskLabel(k, v); scheduleRender(); };
+      inp.addEventListener("input", () => set(parseFloat(inp.value)));
+      const reset = () => { inp.value = 0; set(0); };
+      inp.addEventListener("dblclick", reset); d.querySelector("label").addEventListener("dblclick", reset);
+      c.appendChild(d);
+    }
+    c.querySelector(".inv").onchange = (e) => { S.adjust.masks = S.adjust.masks.map((x, j) => j === i ? { ...x, invert: e.target.checked } : x); if (maskShown === i) maskOverlayLoad(); scheduleRender(); };
+    c.querySelector(".show").onclick = () => { maskShown = maskShown === i ? -1 : i; buildMasks(); maskOverlayLoad(); };
+    c.querySelector(".del").onclick = () => { S.adjust.masks = S.adjust.masks.filter((_, j) => j !== i); if (maskShown === i) maskShown = -1; buildMasks(); maskOverlayLoad(); scheduleRender(); };
+    $("maskCards").appendChild(c);
+  });
+}
+function maskOverlayLoad() {
+  const m = (S.adjust.masks || [])[maskShown];
+  if (!m || !S.current) { $("maskOverlay").hidden = true; return; }
+  const name = S.current, src = "/api/mask_overlay?" + q({ name, kind: m.kind, invert: !!m.invert, width: 1600, k: S.editKey || 0 });
+  if ($("maskOverlay").getAttribute("src") === src) return maskPlace();
+  const im = new Image();
+  im.onload = () => { if (S.current === name && maskShown >= 0) { $("maskOverlay").src = src; maskPlace(); } };
+  im.src = src;
+}
+function maskPlace() {
+  const on = maskShown >= 0 && !$("big").hidden && !(typeof CR !== "undefined" && CR.on) && !!$("maskOverlay").getAttribute("src");
+  $("maskOverlay").hidden = !on;
+  if (on) { const b = $("big").style; Object.assign($("maskOverlay").style, { left: b.left, top: b.top, width: b.width, height: b.height }); }
+}
+document.querySelectorAll("#maskBox .addRow button").forEach(b => b.onclick = async () => {
+  if (!S.current) return;
+  const kind = b.dataset.k, name = S.current, label = b.textContent;
+  b.disabled = true; b.textContent = "Finding…";
+  try {
+    const r = await (await api("/api/mask_info?" + q({ name, kind }))).json();
+    if (S.current !== name) return;
+    if (!r.found) { status(`No ${MASK_NAMES[kind].toLowerCase()} found in this photo.`); return; }
+    S.adjust.masks = [...(S.adjust.masks || []), { kind, invert: false, exposure: 0, contrast: 0, warmth: 0, saturation: 0 }];
+    maskShown = S.adjust.masks.length - 1; buildMasks(); maskOverlayLoad();
+    status(`${MASK_NAMES[kind]} found (${Math.max(1, Math.round(r.coverage * 100))}% of the photo, shown in red). Move its sliders; click Show to hide the red.`);
+  } catch (e) { status(e.message, true); }
+  finally { b.disabled = false; b.textContent = label; }
+});
+function mixGet(band) { return ((S.adjust.hsl || {})[band] || {})[mixMode] || 0; }
+function mixSet(band, v) {
+  const hsl = S.adjust.hsl = { ...(S.adjust.hsl || {}) }, b = { ...(hsl[band] || {}) };
+  if (v) b[mixMode] = v; else delete b[mixMode];
+  if (Object.keys(b).length) hsl[band] = b; else delete hsl[band];
+}
+function mixLabel(v) { return mixMode === "hue" ? (v > 0 ? "+" : "") + v + "°" : (v > 0 ? "+" : "") + Math.round(v * 100) + "%"; }
+function buildMixer() {
+  const [min, max, step] = MIX_RANGE[mixMode];
+  document.querySelectorAll("#mixMode button").forEach(b => b.classList.toggle("on", b.dataset.m === mixMode));
+  $("mixSliders").innerHTML = "";
+  for (const [band, label, dot] of MIX_BANDS) {
+    const d = document.createElement("div"); d.className = "slider";
+    d.innerHTML = `<label><span><i style="background:${dot}"></i>${label}</span><span class="mv"></span></label><input type="range" min="${min}" max="${max}" step="${step}">`;
+    const inp = d.querySelector("input"), mv = d.querySelector(".mv");
+    inp.value = mixGet(band); mv.textContent = mixLabel(mixGet(band));
+    inp.addEventListener("input", () => { const v = parseFloat(inp.value); mixSet(band, v); mv.textContent = mixLabel(v); scheduleRender(); });
+    const reset = () => { mixSet(band, 0); inp.value = 0; mv.textContent = mixLabel(0); scheduleRender(); };
+    inp.addEventListener("dblclick", reset); d.querySelector("label").addEventListener("dblclick", reset);
+    $("mixSliders").appendChild(d);
+  }
+}
+document.querySelectorAll("#mixMode button").forEach(b => b.onclick = () => { mixMode = b.dataset.m; buildMixer(); });
+$("mixReset").onclick = () => { S.adjust.hsl = {}; buildMixer(); scheduleRender(); };
 
 // --- Tone curve -------------------------------------------------------------------------------
 // Same monotone cubic as the engine (pipeline.curve_table), so the line drawn is the curve applied.
@@ -992,7 +1120,9 @@ async function select(name) {
   S.current = name; S.editKey = Date.now();
   document.querySelectorAll(".thumb").forEach(t => t.classList.toggle("active", t.dataset.name === name));
   $("empty").hidden = true; $("big").hidden = false;
-  S.beforeSrc = null; S.afterSrc = null; S.stripFor = null;
+  S.beforeSrc = null; S.afterSrc = null; S.stripFor = null; S.camSrc = null; S.camImg = null;
+  maskShown = -1; $("maskOverlay").hidden = true; $("maskOverlay").removeAttribute("src");
+  camCheck(name);
   await loadEdit();                           // its own crop, look and sliders
   if (S.current !== name) return;
   showLookInfo(); renderBig();
@@ -1081,6 +1211,7 @@ function afterFirstRender() {               // the big preview is up: now the ex
   const name = S.current, pre = new Image();  // "Hold: before" ready in advance
   pre.onload = () => { if (S.current === name) { S.beforeSrc = pre.src; S.beforeImg = pre; } };
   pre.src = "/api/render?" + q({ name, look: "neutral", crop: "none", edge: 1600 });
+  camPreload();
   setTimeout(() => { if (S.current === name && !$("gradeView").hidden)          // full size ready for zooming
     api("/api/warm_full", esJSON({ name })).catch(() => {}); }, 1200);
   const names = S.photos, i = names.indexOf(name);
@@ -1120,7 +1251,7 @@ function renderBig(before = false) {
   img.onload = () => {
     if (seq !== renderSeq) return;
     $("big").src = img.src; $("busy").textContent = "";
-    if (before) { $("bigTile").hidden = true; } else { S.afterSrc = img.src; if (!GZ.fit) { GZ.tile = null; layoutBig(); } afterFirstRender(); setTimeout(() => curveHistogram(img), 0); splitLoad(); }
+    if (before) { $("bigTile").hidden = true; } else { S.afterSrc = img.src; if (!GZ.fit) { GZ.tile = null; layoutBig(); } afterFirstRender(); setTimeout(() => curveHistogram(img), 0); splitLoad(); if (maskShown >= 0) maskOverlayLoad(); }
   };
   img.onerror = () => { if (seq === renderSeq) { $("busy").textContent = "render failed"; if (!before) afterFirstRender(); } };
   img.src = "/api/render?" + q({ ...params, edge: 1600, t: seq });
@@ -2123,6 +2254,20 @@ function setAngle(a) {
   CR.box = fit({ ...CR.base });          // trims as you rotate, grows back when you return
   drawCrop();
 }
+$("crAuto").onclick = async () => {
+  if (!S.current) return;
+  const name = S.current, btn = $("crAuto");
+  btn.disabled = true; btn.textContent = "Looking for verticals…";
+  try {
+    const t = { rot90: CR.g.rot90, flip_h: CR.g.flip_h, flip_v: CR.g.flip_v };
+    const r = await (await api("/api/auto_straighten?" + q({ name, turn: JSON.stringify(t) }))).json();
+    if (S.current !== name || !CR.on) return;
+    if (r.angle === null) status("No clear vertical lines to go by: try 📏 Draw level line along an edge you know is straight.");
+    else if (!r.sure) status(`Not sure (only a few straight lines): it would be ${r.angle > 0 ? "+" : ""}${r.angle.toFixed(2)}°. Left as it was; try 📏 Draw level line.`);
+    else { setAngle(r.angle); status(`Straightened ${r.angle > 0 ? "+" : ""}${r.angle.toFixed(2)}° so the verticals stand up. Adjust with −0.1° / +0.1° if needed.`); }
+  } catch (e) { status(e.message, true); }
+  finally { btn.disabled = false; btn.textContent = "Auto-straighten"; }
+};
 function applyRatio() {
   const r = currentRatio();
   $("crCustom").hidden = $("crRatio").value !== "custom";
@@ -3476,7 +3621,8 @@ $("nextTodo").onclick = () => {
 };
 S.split = false; S.splitAt = 0.5;
 function splitPlace() {
-  const on = S.split && GZ.fit && !$("big").hidden && !(typeof CR !== "undefined" && CR.on) && !bDown;
+  maskPlace();
+  const on = S.split && GZ.fit && !$("big").hidden && !(typeof CR !== "undefined" && CR.on) && !bDown && !jDown;
   $("bigSplit").hidden = $("splitLine").hidden = !on;
   if (!on) return;
   const b = $("big").style, l = parseFloat(b.left), t = parseFloat(b.top), w = parseFloat(b.width), h = parseFloat(b.height);
@@ -3484,19 +3630,72 @@ function splitPlace() {
     clipPath: `inset(0 ${(1 - S.splitAt) * 100}% 0 0)` });
   Object.assign($("splitLine").style, { left: l + S.splitAt * w - 1 + "px", top: t + "px", height: h + "px" });
 }
-function splitLoad() {                       // the photo with no look and no changes, but with its crop
+function splitLoad() {                       // the photo with no look and no changes (or the camera's JPG), with its crop
   if (!S.split || !S.current) return;
-  const name = S.current, src = "/api/render?" + q({ name, look: "neutral", crop: "saved", edge: 1600, k: S.editKey || 0 });
+  const name = S.current, cam = S.splitWith === "camera" && S.camJpg;
+  $("splitLine").querySelector(".l").textContent = cam ? "Camera JPG" : "Before";
+  $("splitLine").querySelector(".r").textContent = cam ? "Your grade" : "After";
+  const src = cam ? camURL(name) : "/api/render?" + q({ name, look: "neutral", crop: "saved", edge: 1600, k: S.editKey || 0 });
   if ($("bigSplit").dataset.src === src) return splitPlace();
   const im = new Image();
   im.onload = () => { if (S.current === name) { $("bigSplit").src = src; $("bigSplit").dataset.src = src; splitPlace(); } };
   im.src = src;
 }
-$("splitBtn").onclick = () => {
-  S.split = !S.split; $("splitBtn").classList.toggle("on", S.split);
+S.splitWith = "before";
+function splitToggle(withWhat) {
+  S.split = !(S.split && S.splitWith === withWhat); S.splitWith = withWhat;
+  $("splitBtn").classList.toggle("on", S.split && withWhat === "before");
+  $("splitCamBtn").classList.toggle("on", S.split && withWhat === "camera");
   if (S.split && !GZ.fit) status("Split works on the whole photo: zoom back to Fit to see it.");
   S.split ? splitLoad() : splitPlace();
-};
+}
+$("splitBtn").onclick = () => splitToggle("before");
+$("splitCamBtn").onclick = () => splitToggle("camera");
+
+// The camera's own JPG (RAW + JPG mode): hold J or the button to see the camera's colour in place of your grade.
+const camURL = (name) => "/api/render?" + q({ name, source: "camera", crop: "saved", edge: 1600, k: S.editKey || 0 });
+async function camCheck(name) {
+  S.camJpg = false; $("camRow").hidden = true;
+  let r = null;
+  try { r = await (await api("/api/camera_jpg?" + q({ name }))).json(); } catch (e) { return; }
+  if (S.current !== name) return;
+  S.camJpg = r.found; $("camRow").hidden = !r.found;
+  $("camBtn").title = r.found ? `Hold to see ${r.file}, the JPG your camera saved with this RAW: its own colour, with your crop (or hold J)` : "";
+  if (!r.found && S.split && S.splitWith === "camera") splitToggle("camera");
+  if (r.found) { camPreload(); if (S.split && S.splitWith === "camera") splitLoad(); }
+}
+function camPreload() {
+  if (!S.camJpg || !S.current || S.stripFor !== S.current) return;
+  const name = S.current, src = camURL(name), im = new Image();
+  if (S.camSrc === src) return;
+  im.onload = () => { if (S.current === name) { S.camSrc = src; S.camImg = im; } };
+  im.src = src;
+}
+let jDown = false;
+function showCamera(on) {
+  if (!S.current || !S.camJpg) return;
+  jDown = on;
+  if (on) {
+    $("badge").hidden = false; $("badge").textContent = "Camera JPG";
+    const src = camURL(S.current);           // follows a changed crop
+    renderSeq++;                              // a slider render still on its way mustn't replace it
+    $("bigTile").hidden = true; $("bigSplit").hidden = $("splitLine").hidden = true;
+    const ready = S.camSrc === src && S.camImg;
+    if (!ready) $("busy").textContent = "loading the camera JPG…";
+    const im = ready ? S.camImg : Object.assign(new Image(), { src });
+    const show = () => { if (jDown) { $("big").src = src; $("busy").textContent = ""; } };
+    im.complete ? show() : (im.onload = show);
+  } else {
+    $("busy").textContent = "";
+    if (S.afterSrc) { $("big").src = S.afterSrc; $("badge").textContent = $("lookname").textContent + (S.adjust.strength < 1 ? ` · ${Math.round(S.adjust.strength * 100)}%` : ""); layoutBig(); splitPlace(); }
+    else renderBig();
+  }
+}
+const camB = $("camBtn");
+camB.addEventListener("mousedown", () => showCamera(true));
+["mouseup", "mouseleave"].forEach(ev => camB.addEventListener(ev, () => { if (jDown) showCamera(false); }));
+document.addEventListener("keydown", e => { if (e.key === "j" && !jDown && !typing(e) && !CR.on && !$("gradeView").hidden && S.camJpg) showCamera(true); });
+document.addEventListener("keyup", e => { if (e.key === "j" && jDown) showCamera(false); });
 $("splitLine").addEventListener("pointerdown", (e) => {
   e.preventDefault(); e.stopPropagation(); $("splitLine").setPointerCapture(e.pointerId);
   const move = (ev) => { const b = $("big").getBoundingClientRect();

@@ -74,6 +74,14 @@ def is_plain(look, adjust):
             pts = [[round(float(x), 4), round(float(y), 4)] for x, y in (v or [])]
             if pts and pts != [[0.0, 0.0], [1.0, 1.0]]:
                 return False
+        elif k == "masks":
+            if any(isinstance(m, dict) and any(abs(float(m.get(x) or 0)) > 1e-9
+                                              for x in ("exposure", "contrast", "warmth", "saturation")) for m in v or []):
+                return False
+        elif k == "hsl":
+            if any(abs(float(x or 0)) > 1e-9 for band in (v or {}).values() if isinstance(band, dict)
+                   for x in band.values()):
+                return False
         elif v not in (None, "") and abs(float(v) - ADJUST_DEFAULTS.get(k, 0.0)) > 1e-9:
             return False
     return True

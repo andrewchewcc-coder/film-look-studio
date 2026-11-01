@@ -94,7 +94,23 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   <drive>/Film Look Studio Backups (newest 10). Header: activity indicator (`/api/activity`), ? shortcuts.
 - Essays panel groups: Arrange (pairs, bench, fill the gap) · Brief · Output (export, book PDF, contact
   sheet, publish). Essays are made from the Library only. Grade: undo/redo, copy/paste a grade, double-click
-  a slider to reset, list filter, Next not graded, before/after split.
+  a slider to reset, list filter, Next not graded, before/after split; when a camera JPG sits beside the RAW
+  (`server._camera_jpg`, `pairing.is_camera_jpg`), Hold: camera JPG (J) and Split camera JPG / grade
+  (`/api/render?source=camera`: the JPG as shot, with the photo's crop).
+  Colour mixer (HSL: Hue / Saturation / Luminance × 8 bands) = adjust `hsl` → recipe `color.user_hsl`, applied after the
+  look's own `color.hsl` with sharper tent bands (`pipeline._tent_weights`; looks keep their soft bands). Colour looks only.
+  Detail sliders (Noise reduction / Colour noise / Sharpen) = adjust → recipe `detail` → `detail.py` on the neutral image
+  (before the look, so grain isn't touched), sized in full-res pixels via `detail_scale`; strips / tiles borrow
+  `detail.margin` rows of context (`pad`) so exports have no seams. Invisible at fit size: judge at 100%.
+  Crop & straighten → Auto-straighten: `straighten.estimate` (Canny + fine Hough on near-vertical lines, robust fit
+  lean = tilt + k·offset so keystone from looking up isn't read as tilt) via `/api/auto_straighten`; below
+  `straighten.SURE` confidence it only reports. Checked against Andrew's hand-set angles: within 0.5° on 11 of 17.
+  Masks (subject / people / sky) = adjust `masks` [{kind, invert, exposure, contrast, warmth, saturation}] → recipe
+  `masks` → `pipeline.local` at the end of `pipeline.render` (after the look strength). `masks.py`: found once per photo
+  on a 1536 px neutral preview (Vision foreground instances; people = instances overlapping VNDetectHumanRectangles +
+  person instance + person segmentation; sky = blue / pale smooth regions touching the top edge), guided-filter edges,
+  cached as PNGs in LIBRARY_DIR/masks. `masks.alphas` maps them onto any box of the final frame (crop/straighten
+  applied), so `engine._masks_at` feeds previews, zoom tiles and export strips alike. `/api/mask_info`, `/api/mask_overlay`.
 - PyTorch model calls must go through `vision` (one at a time: concurrent MPS use segfaults).
 - The app's open folder / collection is global server state: test on another port (e.g. 8766).
 - Library CLI: `./studio library add|scan|status|search|folders`.

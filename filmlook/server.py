@@ -101,13 +101,52 @@ def thumb(name: str):
     return Response(_thumbs[k], media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 
+_camera_jpgs = {}
+
+
+def _camera_jpg(p):
+    """The camera's own JPG saved beside this RAW (RAW + JPG mode), or None. Read only."""
+    if not raw.is_raw(p):
+        return None
+    from .library import pairing, scan
+    for q in p.parent.iterdir():
+        if q.stem != p.stem or not raw.is_jpeg(q) or q.name.startswith("."):
+            continue
+        key = (str(q), q.stat().st_mtime)
+        if key not in _camera_jpgs:
+            x = scan.read_exif([q]).get(str(q), {})
+            _camera_jpgs[key] = pairing.is_camera_jpg({"rel_path": q.name, "kind": "jpg",
+                                                       "capture_time": scan._capture_time(x),
+                                                       "exif": json.dumps(scan._exif_fields(x))})
+        if _camera_jpgs[key]:
+            return q
+    return None
+
+
+@app.get("/api/camera_jpg")
+def camera_jpg(name: str):
+    """Does this photo have the camera's own JPG beside it? (Grade's Hold: camera JPG.)"""
+    try:
+        q = _camera_jpg(_photo(name))
+    except OSError:
+        q = None
+    return {"found": bool(q), "file": q.name if q else None}
+
+
 @app.get("/api/render")
 def render(name: str, look: str = "neutral", adjust: str = "{}", edge: int = 1400, crop: str = "saved",
-           turn: str = ""):
+           turn: str = "", source: str = ""):
     """crop=saved applies the stored crop/straighten; crop=none shows the whole frame (before
     view); crop=turn applies only flips / 90-degree turns (given in `turn` as JSON, else the
-    stored ones) — the crop screen draws rotation and the crop box itself."""
+    stored ones) — the crop screen draws rotation and the crop box itself.
+    source=camera shows the camera's own JPG instead, as shot (no look), with this photo's crop."""
     p = _photo(name)
+    if source == "camera":
+        q = _camera_jpg(p)
+        if not q:
+            raise HTTPException(404, "no camera JPG beside this photo")
+        g = edits.get(p) if crop == "saved" else None
+        return _jpeg(engine.render_preview(q, _recipe("neutral", "{}"), edge=min(edge, engine.PREVIEW_EDGE), geom=g))
     if crop == "saved":
         g = edits.get(p)
     elif crop == "turn":
@@ -116,6 +155,40 @@ def render(name: str, look: str = "neutral", adjust: str = "{}", edge: int = 140
     else:
         g = None
     return _jpeg(engine.render_preview(p, _recipe(look, adjust), edge=min(edge, engine.PREVIEW_EDGE), geom=g))
+
+
+@app.get("/api/mask_info")
+def mask_info(name: str, kind: str):
+    """Find (once, then cached) this photo's subject / people / sky mask; how much of the frame it covers."""
+    from . import masks
+    if kind not in masks.KINDS:
+        raise HTTPException(400, "unknown mask")
+    cov = masks.coverage(_photo(name), kind)
+    return {"kind": kind, "coverage": round(cov, 4), "found": cov > 0.002}
+
+
+@app.get("/api/mask_overlay")
+def mask_overlay(name: str, kind: str, invert: bool = False, width: int = 1600):
+    """The mask in red over the photo (with its crop), for Grade's Show."""
+    from . import masks
+    import io
+    p = _photo(name)
+    buf = io.BytesIO()
+    masks.overlay(p, kind, edits.get(p), max(64, min(width, 2400)), invert).save(buf, "PNG")
+    return Response(buf.getvalue(), media_type="image/png")
+
+
+@app.get("/api/auto_straighten")
+def auto_straighten(name: str, turn: str = "{}"):
+    """How much to rotate this photo so its verticals stand straight (`straighten.estimate`), measured
+    on the photo with its flips / 90-degree turns but no fine rotation. sure=False: not enough lines."""
+    from . import straighten
+    t = json.loads(turn or "{}")
+    g = {"rot90": t.get("rot90", 0), "flip_h": t.get("flip_h", False), "flip_v": t.get("flip_v", False)}
+    img = engine.render_preview(_photo(name), _recipe("neutral", "{}"), edge=straighten.WORK_EDGE, geom=g)
+    import numpy as np
+    angle, conf = straighten.estimate(np.asarray(img, np.float32) / 255)
+    return {"angle": angle, "confidence": conf, "sure": angle is not None and conf >= straighten.SURE}
 
 
 _warm_queue = []
