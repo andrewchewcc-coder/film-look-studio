@@ -6,8 +6,22 @@
 <title>Film Look Studio</title>
 <style>
   :root {
+    color-scheme: dark;
     --bg: #141414; --panel: #1d1d1d; --line: #2c2c2c; --text: #e8e6e3; --muted: #9a9792;
     --accent: #e0b34a; --accent-ink: #1a1408; --danger: #e06a5a;
+    --field: #0f0f0f; --raised: #2a2a2a; --btnline: #383838; --hoverline: #555; --linesoft: #222; --hover: #262626;
+    --card: #181818; --stage: #0b0b0b; --faint: #666; --curvegrid: #262626; --curvediag: #444;
+  }
+  /* Light: follows the Mac's Appearance setting (System Settings › Appearance). Photos sit on a soft grey,
+     never pure white, so their brightness is still judged fairly. */
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+      --bg: #f3f2ef; --panel: #ffffff; --line: #d8d5cf; --text: #1d1c1a; --muted: #66625b;
+      --accent: #c8962c; --accent-ink: #1a1408; --danger: #c4473a;
+      --field: #ffffff; --raised: #e7e5e1; --btnline: #cdc9c2; --hoverline: #9f9a91; --linesoft: #e4e1dc; --hover: #ebe9e5;
+      --card: #e9e7e3; --stage: #d9d7d3; --faint: #a39f97; --curvegrid: #e2dfda; --curvediag: #bdb8af;
+    }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
@@ -25,9 +39,9 @@
   .setHead h3 { margin: 0; font-size: 17px; }
   #setBox h4, #keysBox h4 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 20px 0 8px; font-weight: 600; }
   .setGrid { display: grid; grid-template-columns: 1fr 220px; gap: 8px 12px; align-items: center; font-size: 13px; }
-  #setBox select, #setBox input { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; font-size: 13px; }
+  #setBox select, #setBox input { background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; font-size: 13px; }
   #setBox .row button { flex: 0 0 auto; }
-  .stRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 4px 0; border-bottom: 1px solid #222; }
+  .stRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--linesoft); }
   .stRow button { padding: 2px 9px; font-size: 12px; }
   .keysGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; font-size: 13px; }
   .keysGrid p { margin: 0; line-height: 1.7; }
@@ -39,9 +53,9 @@
   button.linkish:hover { color: var(--text); }
   #folderName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
   #folderName b { color: var(--text); font-weight: 600; }
-  input[type=text] { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 7px 10px; border-radius: 6px; font: inherit; }
-  button { background: #2a2a2a; color: var(--text); border: 1px solid #383838; padding: 7px 12px; border-radius: 6px; font: inherit; cursor: pointer; }
-  button:hover { border-color: #555; }
+  input[type=text] { background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 7px 10px; border-radius: 6px; font: inherit; }
+  button { background: var(--raised); color: var(--text); border: 1px solid var(--btnline); padding: 7px 12px; border-radius: 6px; font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--hoverline); }
   button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
   button:disabled { opacity: .45; cursor: default; }
   /* The page never scrolls on a desktop: each view fills the window below the header and
@@ -54,7 +68,7 @@
   #film { border-right: 1px solid var(--line); overflow-y: auto; padding: 10px; }
   #film .hint { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
   .filmHead { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-  .filmHead select { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 5px; border-radius: 6px; font: inherit; font-size: 12px; }
+  .filmHead select { background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 5px; border-radius: 6px; font: inherit; font-size: 12px; }
   .filmHead button { font-size: 12px; padding: 5px; }
   .tickRow { display: flex; gap: 5px; } .tickRow button { flex: 1; }
   #stage #bigSplit { position: absolute; pointer-events: none; user-select: none; }
@@ -62,7 +76,7 @@
   #splitLine::before { content: ""; position: absolute; left: -14px; right: -14px; top: 0; bottom: 0; }
   #splitLine span { position: absolute; top: 8px; font-size: 11px; background: #000b; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
   #splitLine .l { right: 8px; } #splitLine .r { left: 8px; }
-  #splitBtn.on { background: #2a2a2a; border-color: var(--accent); }
+  #splitBtn.on { background: var(--raised); border-color: var(--accent); }
   .thumb { position: relative; margin-bottom: 10px; cursor: pointer; border: 2px solid transparent; border-radius: 4px; }
   .thumb.active { border-color: var(--accent); }
   .thumb img { width: 100%; display: block; border-radius: 2px; }
@@ -111,12 +125,12 @@
   #rotBadge { position: absolute; transform: translate(-50%, -50%); background: #000c; color: #fff; font-size: 13px; padding: 4px 9px; border-radius: 4px; pointer-events: none; z-index: 3; }
   #looks { display: flex; gap: 10px; overflow-x: auto; padding: 10px 12px 14px; border-top: 1px solid var(--line); }
   .look { flex: 0 0 168px; cursor: pointer; }
-  .look img { width: 168px; height: 112px; object-fit: cover; display: block; border-radius: 3px; border: 2px solid transparent; background: #222; }
+  .look img { width: 168px; height: 112px; object-fit: cover; display: block; border-radius: 3px; border: 2px solid transparent; background: var(--raised); }
   .look.active img { border-color: var(--accent); }
   .look .nm { font-size: 12px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .look .nm small { color: var(--accent); }
   aside { border-left: 1px solid var(--line); overflow-y: auto; padding: 14px; }
-  aside h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
+  aside h2 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
   aside h2:first-child { margin-top: 0; }
   #lookname { font-size: 16px; font-weight: 600; }
   #lookdesc { color: var(--muted); font-size: 12px; margin-top: 3px; }
@@ -126,6 +140,11 @@
   .slider input { width: 100%; accent-color: var(--accent); }
   #curveBox { margin: 12px 0 4px; }
   #mixBox { margin: 12px 0 4px; }
+  .sgroup { font-size: 12px; font-weight: 600; color: var(--text); margin: 12px 0 2px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .sgroup span { font-weight: 400; color: var(--muted); }
+  #histo { width: 100%; height: 78px; display: block; background: var(--stage); border: 1px solid var(--line); border-radius: 6px; margin-bottom: 4px; }
+  #histoNote { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 6px; }
+  #histoNote b { font-weight: 500; color: #ff8a7a; }
   #maskBox { margin: 12px 0 4px; }
   #maskBox .addRow { display: flex; gap: 4px; margin: 4px 0 6px; }
   #maskBox .addRow button { flex: 1; font-size: 12px; padding: 4px 0; }
@@ -133,18 +152,18 @@
   .maskCard .mh { display: flex; align-items: center; gap: 6px; font-size: 12px; }
   .maskCard .mh b { flex: 1; }
   .maskCard .mh button { font-size: 11px; padding: 2px 6px; }
-  .maskCard .mh button.on { border-color: var(--accent); background: #2a2a2a; }
+  .maskCard .mh button.on { border-color: var(--accent); background: var(--raised); }
   .maskCard .slider label span:first-child { color: var(--muted); }
   #stage #maskOverlay { position: absolute; pointer-events: none; user-select: none; z-index: 2; }
   #mixBox .seg { display: flex; gap: 4px; margin-bottom: 6px; }
   #mixBox .seg button { flex: 1; padding: 3px 0; font-size: 12px; }
-  #mixBox .seg button.on { border-color: var(--accent); background: #2a2a2a; }
+  #mixBox .seg button.on { border-color: var(--accent); background: var(--raised); }
   #mixBox .slider label span:first-child { color: var(--muted); }
   #mixBox .slider label i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
   .curveHead { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
   .curveHead span { white-space: nowrap; margin-right: 8px; }
-  .curveHead select { min-width: 0; max-width: 65%; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); border-radius: 5px; font: inherit; font-size: 12px; padding: 2px 4px; }
-  #curve { width: 100%; aspect-ratio: 1; display: block; background: #0f0f0f; border: 1px solid var(--line); border-radius: 6px; cursor: crosshair; touch-action: none; }
+  .curveHead select { min-width: 0; max-width: 65%; background: var(--field); border: 1px solid var(--line); color: var(--text); border-radius: 5px; font: inherit; font-size: 12px; padding: 2px 4px; }
+  #curve { width: 100%; aspect-ratio: 1; display: block; background: var(--field); border: 1px solid var(--line); border-radius: 6px; cursor: crosshair; touch-action: none; }
   .row { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
   .row > * { flex: 1; }
   #status { font-size: 12px; color: var(--muted); margin: 0 0 8px; word-break: break-word; }
@@ -162,15 +181,27 @@
   input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
 
   /* --- tabs + library --- */
-  .tabs { display: flex; gap: 2px; background: #0f0f0f; border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+  .tabs { display: flex; gap: 2px; background: var(--field); border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
   .tabs button { border: 0; background: transparent; padding: 5px 14px; color: var(--muted); }
-  .tabs button.on { background: #2a2a2a; color: var(--text); }
+  .tabs button.on { background: var(--raised); color: var(--text); }
   [hidden] { display: none !important; }
-  #libView { display: grid; grid-template-columns: 230px 1fr; grid-template-rows: minmax(0, 1fr); position: relative; color-scheme: dark; }
+  #libView { display: grid; grid-template-columns: 280px 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
   #libSide { border-right: 1px solid var(--line); overflow-y: auto; padding: 4px 14px 14px; }
   #libSide > label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
-  #libSide select, #libSide input[type=date], #libSide input[type=text] { width: 100%; height: 32px; box-sizing: border-box; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 0 8px; border-radius: 6px; font: inherit; font-size: 13px; }
+  #libSide select, #libSide input[type=date], #libSide input[type=text] { width: 100%; height: 32px; box-sizing: border-box; background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 0 8px; border-radius: 6px; font: inherit; font-size: 13px; }
   #libSide input[type=range] { width: 100%; }
+  #libSide label.chk { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); margin: 8px 0 0; }
+  #lbTree { max-height: 46vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; padding: 4px; font-size: 13px; }
+  #lbTree .row { display: flex; align-items: center; gap: 2px; padding: 3px 4px; border-radius: 5px; cursor: default; line-height: 1.25; }
+  #lbTree .row:hover { background: #ffffff10; }
+  #lbTree .row.on { background: #ffffff1f; box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
+  #lbTree .tw { width: 16px; flex: none; text-align: center; color: var(--muted); cursor: pointer; font-size: 10px; }
+  #lbTree .nm { flex: 1; min-width: 0; overflow-wrap: break-word; }
+  #lbTree .kids .nm { font-size: 12.5px; }
+  #lbTree .n { flex: none; align-self: flex-start; padding-top: 1px; white-space: nowrap; }
+  #lbTree .n { color: var(--muted); font-size: 11px; margin-left: 6px; font-variant-numeric: tabular-nums; }
+  #lbTree .kids .row { padding-left: 18px; }
+  #lbTree .n { margin-left: 4px; }
   .dates2 { display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; align-items: center; font-size: 12px; color: var(--muted); }
   #libTools { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
   #libTools button { width: 100%; height: 32px; font-size: 13px; }
@@ -179,13 +210,13 @@
   #addEsBox .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; width: min(420px, 100%); }
   #addEsBox h3 { margin: 0 0 4px; font-size: 16px; }
   #addEsBox label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
-  #addEsBox select { width: 100%; height: 34px; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 0 8px; border-radius: 6px; font: inherit; }
+  #addEsBox select { width: 100%; height: 34px; background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 0 8px; border-radius: 6px; font: inherit; }
   #briefBox { position: absolute; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center; z-index: 6; padding: 16px; }
   #briefBox[hidden] { display: none; }
   #briefBox .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; width: min(460px, 100%); max-height: 90vh; overflow-y: auto; }
   #briefBox h3 { margin: 0 0 4px; font-size: 16px; }
   #briefBox label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
-  #briefBox input, #briefBox select { width: 100%; height: 34px; box-sizing: border-box; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 0 8px; border-radius: 6px; font: inherit; }
+  #briefBox input, #briefBox select { width: 100%; height: 34px; box-sizing: border-box; background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 0 8px; border-radius: 6px; font: inherit; }
   #brMsg { margin-top: 10px; min-height: 18px; }
   .dates { display: flex; flex-direction: column; gap: 6px; }
   .root { font-size: 12px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; margin: 6px 0; word-break: break-word; }
@@ -193,12 +224,25 @@
   .pill { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 9px; margin-right: 4px; vertical-align: 1px; }
   .pill.on { background: #1f3a26; color: #8fd19e; }
   .pill.off { background: #3a2a1f; color: #e3a36f; }
-  .bar { height: 5px; background: #2a2a2a; border-radius: 3px; overflow: hidden; margin: 6px 0; }
+  .bar { height: 5px; background: var(--raised); border-radius: 3px; overflow: hidden; margin: 6px 0; }
   .bar div { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
   #libMain { overflow-y: auto; padding: 0 16px 30px; min-width: 0; }
   #libHead { position: sticky; top: 0; z-index: 2; background: var(--bg, #111); display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
   #libHead button { padding: 5px 10px; font-size: 13px; }
   #lbTitle { font-size: 15px; font-weight: 600; }
+  #lbSearchRow { padding: 12px 0 0; }
+  #libq { width: 100%; max-width: 720px; height: 38px; box-sizing: border-box; padding: 0 12px 0 36px; font: inherit; font-size: 14px;
+          color: var(--text); background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a9792' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 12px center;
+          border: 1px solid var(--line); border-radius: 9px; }
+  #libq:focus { outline: none; border-color: var(--accent); }
+  #lbSteer { max-width: 720px; margin-top: 6px; }
+  /* Calm grid: photos first. File names only when you ask for them; marks as small round icons. */
+  #grid:not(.names) .cell .nm:not(.why) { display: none; }
+  #grid:not(.names) .cell img { height: 100% !important; }
+  #grid:not(.names) .cell .tags { bottom: 5px !important; }
+  .cell .tl span.ic, .cell .tr span.ic { width: 18px; height: 18px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+                                         font-size: 11px; font-weight: 700; box-shadow: 0 0 0 1px #0006; }
+  .cell .tr span.ic.g { background: var(--accent); color: #111; } .cell .tr span.ic.ed { background: #5d8fd6; color: #fff; }
   #lbNote { min-height: 16px; margin: 4px 0 8px; }
   .selInfo { color: var(--accent); }
   #lbNew { background: #1e1a10; border: 1px solid #5a4a1e; border-radius: 6px; padding: 9px 12px; margin: 8px 0 4px; font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -221,8 +265,8 @@
   .cell .tr .g { color: var(--accent); } .cell .tr .ed { color: #9ec5ff; } .cell .tr .o { color: #e3a36f; } .cell .tr .dl { color: #ff7b7b; }
   .cell:hover .tl, .cell:hover .tr { visibility: hidden; }
   .cell .nm.why { color: var(--text); }
-  .cell { position: relative; aspect-ratio: 1; background: #1b1b1b; border-radius: 4px; overflow: hidden; cursor: pointer; border: 2px solid transparent; }
-  .cell:hover { border-color: #555; }
+  .cell { position: relative; aspect-ratio: 1; background: var(--card); border-radius: 4px; overflow: hidden; cursor: pointer; border: 2px solid transparent; }
+  .cell:hover { border-color: var(--hoverline); }
   .cell img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .cell.offline img { opacity: .55; }
   .cell .tags { position: absolute; left: 5px; bottom: 5px; display: flex; gap: 4px; flex-wrap: wrap; }
@@ -238,17 +282,17 @@
   .cell:hover .acts { display: flex; }
   .cell .steer { position: absolute; left: 0; right: 0; bottom: 0; display: none; gap: 3px; padding: 5px; justify-content: center; }
   .cell:hover .steer { display: flex; }
-  .cell .steer button { padding: 1px 7px; font-size: 12px; background: #000c; border-color: #555; }
+  .cell .steer button { padding: 1px 7px; font-size: 12px; background: #000c; border-color: var(--hoverline); }
   .cell .steer button.on { background: var(--accent); color: #000; border-color: var(--accent); }
   .cell.liked { outline: 2px solid var(--accent); outline-offset: -2px; }
   .cell.unliked img { opacity: 0.35; }
   #lbSteer { font-size: 12px; color: var(--muted); margin: -4px 0 8px; line-height: 1.5; }
   #lbSteer button { padding: 0 6px; font-size: 11px; margin-left: 4px; }
-  .cell .acts button { padding: 1px 7px; font-size: 12px; background: #000a; border-color: #555; }
+  .cell .acts button { padding: 1px 7px; font-size: 12px; background: #000a; border-color: var(--hoverline); }
   .cell .acts button.on[data-f="pick"] { background: #1f6b35; border-color: #2e9c4f; }
   .cell .acts button.on[data-f="reject"] { background: #7a2a22; border-color: #a33b30; }
   .cell .acts .st { margin-left: auto; font-size: 14px; letter-spacing: 1px; }
-  .cell .acts .st b { color: #777; cursor: pointer; font-weight: normal; }
+  .cell .acts .st b { color: var(--faint); cursor: pointer; font-weight: normal; }
   .cell .acts .st b.on { color: var(--accent); }
   .cell .tags .o { color: #e3a36f; }
   #more { display: block; margin: 16px auto; }
@@ -257,17 +301,17 @@
   #libEmpty { color: var(--muted); text-align: center; margin-top: 80px; }
   table.folders { width: 100%; border-collapse: collapse; font-size: 13px; }
   table.folders th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
-  table.folders td { padding: 6px 8px; border-bottom: 1px solid #222; vertical-align: middle; }
+  table.folders td { padding: 6px 8px; border-bottom: 1px solid var(--linesoft); vertical-align: middle; }
   table.folders td.counts { color: var(--muted); font-size: 12px; }
   table.folders a { color: var(--text); text-decoration: underline dotted; cursor: pointer; }
-  table.folders select { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 4px 6px; border-radius: 5px; font: inherit; }
+  table.folders select { background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 4px 6px; border-radius: 5px; font: inherit; }
   #cullView { position: relative; display: flex; flex-direction: column; min-height: 0; }
   #cuStart { display: grid; grid-template-columns: minmax(260px, 380px) minmax(260px, 1fr); gap: 32px; padding: 20px 24px; overflow-y: auto; }
   .cuCol h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
   .cuCol h2:first-child { margin-top: 0; }
   .cuCol label.opt, .cuCol label.chk { display: flex; align-items: center; gap: 7px; margin: 8px 0 4px; cursor: pointer; }
   .cuCol input[type=radio], .cuCol input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
-  .cuCol select, .cuCol input[type=date] { width: 100%; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; }
+  .cuCol select, .cuCol input[type=date] { width: 100%; background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; }
   .cuCol .field { margin: 0 0 6px 22px; }
   .cuCol .dates { display: flex; gap: 6px; }
   .cuSess { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 6px 0; display: flex; align-items: center; gap: 10px; color: var(--text); }
@@ -279,8 +323,8 @@
   #cuBarWrap { flex: 1; max-width: 360px; margin: 0; }
   .cuToggle { display: flex; align-items: center; gap: 6px; cursor: pointer; }
   .cuToggle input { accent-color: var(--accent); }
-  #cuFrames { flex: 1; min-height: 0; display: flex; gap: 12px; padding: 14px 16px; }
-  .cuCard { flex: 1; min-width: 0; display: flex; flex-direction: column; border: 2px solid transparent; border-radius: 6px; background: #181818; position: relative; }
+  #cuFrames { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, 1fr); gap: 12px; padding: 14px 16px; }
+  .cuCard { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 2px solid transparent; border-radius: 6px; background: var(--card); position: relative; }
   .cuCard.focus { border-color: #8a8a8a; }
   .cuCard.sugg { box-shadow: 0 0 0 2px var(--accent) inset; }
   .cuCard .ph { flex: 1; min-height: 0; position: relative; }
@@ -300,15 +344,15 @@
   #cuSecond h3 { font-size: 15px; margin: 26px 0 4px; }
   #cuSecond .sub { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
   .slGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
-  .slCard { background: #181818; border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
-  .slCard img { width: 100%; aspect-ratio: 3 / 2; object-fit: contain; background: #111; display: block; cursor: zoom-in; }
+  .slCard { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
+  .slCard img { width: 100%; aspect-ratio: 3 / 2; object-fit: contain; background: var(--stage); display: block; cursor: zoom-in; }
   .slCard .why { font-size: 12px; margin: 6px 2px; min-height: 32px; }
   .slCard .nm { font-size: 11px; color: var(--muted); margin: 0 2px 6px; }
   .slCard .acts { display: flex; gap: 5px; }
   .slCard .acts button { flex: 1; padding: 4px 0; font-size: 12px; }
   .slCard.done { opacity: .45; }
   #cuSummary { font-size: 15px; line-height: 1.7; margin-bottom: 14px; }
-  #cuZoom { position: absolute; inset: 0; background: #0b0b0b; z-index: 5; }
+  #cuZoom { position: absolute; inset: 0; background: var(--stage); z-index: 5; }
   #cuPane { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: none; }
   #cuPane.dragging { cursor: grabbing; }
   #cuZoomImg { position: absolute; left: 0; top: 0; max-width: none; user-select: none; }
@@ -316,7 +360,7 @@
   #cuNavImg { width: 100%; display: block; }
   #cuNavBox { position: absolute; border: 2px solid var(--accent); box-shadow: 0 0 0 999px #0006; pointer-events: none; }
   #cuNav { overflow: hidden; }
-  #cuCmp { position: absolute; inset: 0; background: #0b0b0b; z-index: 5; display: flex; gap: 4px; }
+  #cuCmp { position: absolute; inset: 0; background: var(--stage); z-index: 5; display: flex; gap: 4px; }
   #cuCmp[hidden] { display: none; }
   .cmpPane { position: relative; flex: 1; overflow: hidden; cursor: grab; touch-action: none; outline: 2px solid transparent; outline-offset: -2px; }
   .cmpPane.active { outline-color: var(--accent); }
@@ -327,14 +371,14 @@
   #cuCmpNote { position: absolute; left: 50%; transform: translateX(-50%); top: 10px; background: #000c; padding: 4px 10px; border-radius: 4px; font-size: 12px; z-index: 2; white-space: nowrap; }
   #cuZoomNote { position: absolute; left: 16px; top: 12px; background: #000c; padding: 4px 9px; border-radius: 4px; font-size: 12px; z-index: 1; }
   #cuStrip { display: flex; gap: 5px; overflow-x: auto; padding: 4px 16px 10px; flex: 0 0 auto; }
-  .cuTile { flex: 0 0 auto; position: relative; border: 2px solid #2a2a2a; border-radius: 3px; cursor: pointer; opacity: .9; }
+  .cuTile { flex: 0 0 auto; position: relative; border: 2px solid var(--raised); border-radius: 3px; cursor: pointer; opacity: .9; }
   .cuTile img { height: 52px; display: block; border-radius: 1px; }
   .cuTile.pick { border-color: #2e9c4f; } .cuTile.rej { border-color: #a33b30; }
   .cuTile.done:not(.pick):not(.rej) { opacity: .5; }
   .cuTile.cur { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
   .cuTile b { position: absolute; right: 2px; bottom: 2px; font-size: 10px; background: #000b; padding: 0 4px; border-radius: 2px; font-weight: 500; }
   .cuTile i { position: absolute; left: 2px; top: 2px; font-size: 9px; background: #3a2a1f; color: #e3a36f; padding: 0 3px; border-radius: 2px; font-style: normal; }
-  #brViewer { position: absolute; inset: 0; background: #0b0b0b; display: flex; flex-direction: column; z-index: 5; }
+  #brViewer { position: absolute; inset: 0; background: var(--stage); display: flex; flex-direction: column; z-index: 5; }
   #brViewer[hidden] { display: none; }
   #brVTop { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   #brVTop button { padding: 4px 10px; font-size: 13px; }
@@ -345,13 +389,13 @@
   #brVPanel .seg3 button { flex: 1; padding: 6px 0; font-size: 13px; }
   #brVPanel .seg3 button.pk { background: #1f6b35; border-color: #2e9c4f; color: #fff; }
   #brVPanel .seg3 button.rj { background: #7a2a22; border-color: #a33b30; color: #fff; }
-  #brVPanel .seg3 button.on { background: #2a2a2a; border-color: var(--accent); color: var(--text); }
-  #brVPanel .vstars b { font-size: 26px; cursor: pointer; color: #555; font-weight: normal; margin-right: 2px; }
+  #brVPanel .seg3 button.on { background: var(--raised); border-color: var(--accent); color: var(--text); }
+  #brVPanel .vstars b { font-size: 26px; cursor: pointer; color: var(--faint); font-weight: normal; margin-right: 2px; }
   #brVPanel .vstars b.on { color: var(--accent); }
   #brVPanel .gchip { display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 12px; }
   #brVPanel .gchip.exp { background: #2a2414; color: var(--accent); }
   #brVPanel .gchip.edit { background: #1d2430; color: #9ec5ff; }
-  #brVPanel .gchip.none { background: #222; color: var(--muted); }
+  #brVPanel .gchip.none { background: var(--raised); color: var(--muted); }
   #brVPanel .kv { display: grid; grid-template-columns: 62px 1fr; gap: 3px 8px; font-size: 12px; }
   #brVPanel .kv span:nth-child(odd) { color: var(--muted); }
   #brVPanel .kv span { word-break: break-word; }
@@ -366,13 +410,13 @@
   #brVImgs figure { flex: 1; margin: 0; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
   #brVImgs img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
   #brVImgs figcaption { text-align: center; font-size: 12px; color: var(--muted); padding-top: 4px; }
-  #essayView { color-scheme: dark; display: grid; grid-template-columns: 270px 1fr; grid-template-rows: minmax(0, 1fr); }
+  #essayView { display: grid; grid-template-columns: 270px 1fr; grid-template-rows: minmax(0, 1fr); }
   #esSide { border-right: 1px solid var(--line); overflow-y: auto; padding: 14px; }
   #esSide h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
   #esSide h2:first-child { margin-top: 0; }
   #esSide .field { margin: 7px 0; }
   #esSide .field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
-  #esSide select, #esSide input[type=text], #esSide input[type=date], #esSide input[type=number] { width: 100%; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; }
+  #esSide select, #esSide input[type=text], #esSide input[type=date], #esSide input[type=number] { width: 100%; background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; }
   #esSide .dates { display: flex; gap: 6px; }
   #esSide label.chk { display: flex; gap: 7px; align-items: center; font-size: 13px; }
   .esItem { padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; margin: 5px 0; cursor: pointer; color: var(--text); }
@@ -387,22 +431,22 @@
   #esTitle:hover, #esTitle:focus { border-color: var(--line); }
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
   .seg button { border: 0; border-radius: 0; background: transparent; color: var(--muted); }
-  .seg button.on { background: #2a2a2a; color: var(--text); }
-  #esVersions { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 5px; border-radius: 6px; max-width: 170px; }
+  .seg button.on { background: var(--raised); color: var(--text); }
+  #esVersions { background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 5px; border-radius: 6px; max-width: 170px; }
   #esNote { padding: 6px 14px; min-height: 18px; }
   #esBoard { flex: 1; min-height: 0; overflow: auto; padding: 10px 14px; }
   .esStrip { display: flex; align-items: flex-start; gap: 0; height: 100%; }
-  .esCard { flex: 0 0 auto; position: relative; background: #181818; border: 2px solid transparent; border-radius: 5px; padding: 4px; cursor: grab; }
+  .esCard { flex: 0 0 auto; position: relative; background: var(--card); border: 2px solid transparent; border-radius: 5px; padding: 4px; cursor: grab; }
   .esCard.locked { border-color: #6b5a2a; cursor: default; }
   .esCard.drop { border-color: var(--accent); }
   .esCard img { display: block; height: 220px; max-width: 340px; object-fit: contain; }
   .esContact .esCard img { height: 150px; max-width: 220px; }
   .esCard .num { position: absolute; left: 8px; top: 8px; background: #000c; font-size: 12px; padding: 1px 7px; border-radius: 3px; }
   .esCard .tools { position: absolute; right: 8px; top: 8px; display: flex; gap: 4px; }
-  .esCard .tools button { padding: 1px 6px; font-size: 12px; background: #000b; border-color: #555; }
+  .esCard .tools button { padding: 1px 6px; font-size: 12px; background: #000b; border-color: var(--hoverline); }
   .esCard .tools .lk.on { background: #6b5a2a; color: #fff; }
   .esCard .cap { font-size: 11px; color: var(--muted); padding: 3px 2px 0; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .esCard input.ttl { width: 100%; margin-top: 3px; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); font-size: 12px; padding: 3px 5px; border-radius: 4px; }
+  .esCard input.ttl { width: 100%; margin-top: 3px; background: var(--field); border: 1px solid var(--line); color: var(--text); font-size: 12px; padding: 3px 5px; border-radius: 4px; }
   .esCard .gr { position: absolute; left: 8px; bottom: 26px; font-size: 10px; background: #000b; color: var(--accent); padding: 0 5px; border-radius: 3px; }
   .esGap { flex: 0 0 96px; align-self: center; text-align: center; font-size: 11px; color: var(--muted); padding: 0 4px; }
   .esGap .why { display: block; min-height: 30px; }
@@ -411,23 +455,23 @@
   .esGap.sel button { background: var(--accent); color: var(--accent-ink); }
   .esContact { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
   .esSpreads { display: flex; flex-direction: column; gap: 18px; align-items: center; }
-  .esSpread { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; background: #0d0d0d; padding: 10px; border-radius: 4px; width: min(900px, 100%); }
+  .esSpread { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; background: var(--stage); padding: 10px; border-radius: 4px; width: min(900px, 100%); }
   .esPage { aspect-ratio: 3 / 2.1; background: #f1efe9; display: flex; align-items: center; justify-content: center; position: relative; }
   .esPage.blank { background: #2a2826; }
   .esPage img { max-width: 86%; max-height: 82%; object-fit: contain; box-shadow: 0 1px 4px #0005; }
-  .esPage .pn { position: absolute; bottom: 5px; font-size: 10px; color: #777; }
+  .esPage .pn { position: absolute; bottom: 5px; font-size: 10px; color: var(--faint); }
   .esPage.left .pn { left: 8px; } .esPage.right .pn { right: 8px; }
   .esSpreadWhy { grid-column: 1 / -1; text-align: center; font-size: 11px; color: var(--muted); padding-top: 4px; }
   #esPanel.tall #esPanelBody { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
   #esPanel { border-top: 1px solid var(--line); height: var(--esPanelH, 320px); display: flex; flex-direction: column; flex: 0 0 auto; position: relative; }
   #esGrip { position: absolute; left: 0; right: 0; top: -5px; height: 10px; cursor: ns-resize; z-index: 4; }
-  #esGrip::after { content: ""; position: absolute; left: 50%; top: 3px; width: 44px; height: 4px; margin-left: -22px; border-radius: 2px; background: #555; }
+  #esGrip::after { content: ""; position: absolute; left: 50%; top: 3px; width: 44px; height: 4px; margin-left: -22px; border-radius: 2px; background: var(--faint); }
   #esGrip:hover::after { background: var(--accent); }
   .esPanelHead { display: flex; align-items: center; gap: 12px; margin: 8px 14px; flex-wrap: wrap; }
   #esPanelGroups button { font-weight: 600; }
   #esPanelTabs { align-self: flex-start; }
   #esPanelBody { flex: 1; overflow-x: auto; overflow-y: auto; padding: 0 14px 10px; display: flex; gap: 12px; align-items: flex-start; }
-  .esPair, .esCand { flex: 0 0 auto; background: #181818; border-radius: 5px; padding: 6px; }
+  .esPair, .esCand { flex: 0 0 auto; background: var(--card); border-radius: 5px; padding: 6px; }
   .esPair .imgs { display: flex; gap: 3px; cursor: pointer; }
   .esPair .acts, .esCand .acts { margin-bottom: 5px; }
   .esCard.flash { border-color: #6fd28a; box-shadow: 0 0 0 3px #6fd28a55; }
@@ -456,7 +500,7 @@
   .esPair.good { outline: 2px solid #2e9c4f; }
   .esExp { display: flex; flex-direction: column; gap: 7px; max-width: 640px; color: var(--text); font-size: 13px; }
   .esExp .esRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .esExp select { background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 5px; border-radius: 6px; }
+  .esExp select { background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 5px; border-radius: 6px; }
   .esExp .warn { color: #e3a36f; }
   .esExp progress { width: 320px; }
   @media (max-width: 800px) { #essayView { grid-template-columns: 1fr; } }
@@ -465,12 +509,12 @@
   #picker h3 { margin: 0 0 12px; font-size: 16px; }
   #picker .prow { display: flex; gap: 8px; margin: 8px 0; }
   #picker .prow.end { justify-content: flex-end; }
-  #picker select { flex: 1; background: #0f0f0f; border: 1px solid var(--line); color: var(--text); padding: 7px 8px; border-radius: 6px; font: inherit; }
+  #picker select { flex: 1; background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 7px 8px; border-radius: 6px; font: inherit; }
   #picker input { width: 100%; margin: 8px 0; }
   #pkPath { word-break: break-all; }
   #pkList { height: 45vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; }
-  #pkList div { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #222; }
-  #pkList div:hover { background: #262626; }
+  #pkList div { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--linesoft); }
+  #pkList div:hover { background: var(--hover); }
   #pkList div::before { content: "📁 "; }
   #pkList .none { color: var(--muted); cursor: default; }
   #pkList .none::before { content: ""; }
@@ -478,7 +522,7 @@
   .root button { float: right; padding: 1px 7px; font-size: 11px; margin-left: 6px; }
   #lightbox { position: fixed; inset: 0; background: #000d; display: flex; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
   #lightbox .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; max-width: 760px; width: 100%; }
-  #lightbox img { width: 100%; max-height: 60vh; object-fit: contain; background: #111; display: block; }
+  #lightbox img { width: 100%; max-height: 60vh; object-fit: contain; background: var(--stage); display: block; }
   #lightbox .msg { margin: 10px 0 4px; color: #e3a36f; }
   #lightbox .meta { color: var(--muted); font-size: 12px; }
   @media (max-width: 800px) {
@@ -505,8 +549,6 @@
   <div class="row"><button id="addRoot">Add folder…</button><button id="setScan">Scan for new photos</button></div>
   <h4>Website (WordPress)</h4>
   <div id="setPub" class="small"></div>
-  <h4>XMP files</h4>
-  <div id="setXmp" class="small"></div>
   <h4>Claude (AI)</h4>
   <div id="setClaude" class="small"></div>
   <h4>Defaults</h4>
@@ -536,11 +578,9 @@
 </div></div>
 <section id="libView" hidden>
   <div id="libSide">
-    <label for="libq">Search</label>
-    <input type="text" id="libq" placeholder="rain at night" spellcheck="false">
-    <div id="lbSteer" hidden></div>
     <label for="lbWhere">Browse</label>
-    <select id="lbWhere"><option value="">All shoots</option></select>
+    <select id="lbWhere" hidden><option value="">All shoots</option></select>
+    <div id="lbTree"></div>
     <label for="lbMode">Show</label>
     <select id="lbMode"><option value="">All photos</option><option value="second">Worth a second look</option><option value="this_day">On this day</option></select>
     <label>Dates</label>
@@ -555,6 +595,7 @@
     <select id="lbView"><option value="graded">Graded versions</option><option value="original">Originals</option></select>
     <label for="lbSize">Thumbnail size</label>
     <input type="range" id="lbSize" min="120" max="420" step="10" value="180">
+    <label class="chk"><input type="checkbox" id="lbNames"> Show file names</label>
     <label for="fCamera">Camera</label>
     <select id="fCamera"><option value="">All cameras</option></select>
     <div id="libTools">
@@ -566,6 +607,8 @@
     </div>
   </div>
   <div id="libMain">
+    <div id="lbSearchRow"><input type="search" id="libq" placeholder="Search your photos: rain at night, red umbrella, black and white, 2025, Chinatown…" spellcheck="false" title="Search (⌘F)">
+      <div id="lbSteer" hidden></div></div>
     <div id="libHead">
       <div><div id="lbTitle">All shoots</div><div id="lbSub" class="small"></div></div>
       <span style="flex:1"></span>
@@ -729,7 +772,7 @@
     <div class="hint">Tick photos to batch-export.</div><div id="thumbs"></div></section>
   <section id="center">
     <div id="stage">
-      <div id="empty">Open a folder of photos (RAW or JPG) to start.<br><br>Click <b>Choose folder…</b> at the top right, or click any photo in the Library.</div>
+      <div id="empty">Open a folder of photos (RAW or JPG) to start.<br><br>Open a photo from the <b>Library</b> (double-click it, then <b>Open in Grade</b>), or click <b>Open a folder…</b> at the top.</div>
       <img id="big" alt="" hidden draggable="false">
       <img id="bigTile" alt="" hidden draggable="false">
       <img id="bigSplit" alt="" hidden draggable="false">
@@ -787,6 +830,8 @@
     <div class="small">Keys: <b>Enter</b> done · <b>Esc</b> cancel · <b>R</b> reset · <b>X</b> swap · <b>[ ]</b> rotate 0.1° (Shift: 1°). Drag corners or edges to resize, inside to move. <b>Drag just outside a corner</b> (or anywhere outside the frame) to rotate.</div>
   </div>
   <div id="gradePanel">
+    <canvas id="histo" width="560" height="156" title="Histogram of the photo as graded: dark tones left, bright right"></canvas>
+    <div id="histoNote"><span id="histoLo"></span><span id="histoHi"></span></div>
     <h2>Look</h2>
     <div id="lookname">Neutral</div>
     <div id="lookdesc"></div>
@@ -800,7 +845,7 @@
 
     <h2>Describe the grade</h2>
     <div id="aiGradeBox">
-      <textarea id="aiGradeText" rows="2" placeholder="e.g. warmer, like late-afternoon Saul Leiter · darken the sky a little · calm the blue sign" style="width:100%;background:#0f0f0f;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px 8px;font:inherit;font-size:13px;box-sizing:border-box"></textarea>
+      <textarea id="aiGradeText" rows="2" placeholder="e.g. warmer, like late-afternoon Saul Leiter · darken the sky a little · calm the blue sign" style="width:100%;background:var(--field);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px 8px;font:inherit;font-size:13px;box-sizing:border-box"></textarea>
       <div class="row"><button id="aiGradeGo" class="primary" title="Claude sets the look, sliders, colour mixer and masks (⌘Enter)">Ask Claude</button></div>
       <div id="aiGradeNote" class="small">Claude looks at this photo (small preview only) and sets the controls; Undo goes back. About 2–4¢ a time.</div>
     </div>
@@ -856,13 +901,13 @@
 const SLIDERS = [
   ["strength", "Look strength", 0, 1, 0.05, 1],
   ["exposure", "Exposure (EV)", -2, 2, 0.1, 0],
-  ["warmth", "Warmth", -50, 50, 1, 0],
-  ["tint", "Tint (green ↔ magenta)", -30, 30, 1, 0],
   ["contrast", "Contrast", -0.5, 0.5, 0.02, 0],
   ["highlights", "Highlights", -1, 1, 0.02, 0],
   ["shadows", "Shadows", -1, 1, 0.02, 0],
   ["whites", "Whites", -0.3, 0.3, 0.01, 0],
   ["blacks", "Blacks (− crush · + fade)", -0.15, 0.2, 0.01, 0],
+  ["warmth", "Warmth", -50, 50, 1, 0],
+  ["tint", "Tint (green ↔ magenta)", -30, 30, 1, 0],
   ["saturation", "Saturation", -0.6, 0.6, 0.02, 0],
   ["tone", "Toning (e.g. gold)", -1, 1, 0.05, 0],
   ["grain", "Grain", -0.5, 1, 0.02, 0],
@@ -872,6 +917,8 @@ const SLIDERS = [
   ["sharpen", "Sharpen", 0, 1, 0.05, 0],
 ];
 const DETAIL_KEYS = ["noise", "color_noise", "sharpen"];
+const SLIDER_GROUPS = { exposure: "Light", warmth: "Colour", tone: "Effects",
+                        noise: "Detail <span>· zoom to 100% to judge (night shots: try Noise 0.4, Colour noise 0.5)</span>" };
 const $ = (id) => document.getElementById(id);
 let S = { photos: [], looks: [], current: null, look: "neutral", adjust: {}, ticked: new Set() };
 let renderTimer = null, renderSeq = 0;
@@ -897,9 +944,9 @@ function buildSliders() {
   for (const [key, label, min, max, step] of SLIDERS) {
     const d = document.createElement("div"); d.className = "slider";
     d.innerHTML = `<label>${label}<span id="v_${key}"></span></label><input type="range" id="s_${key}" min="${min}" max="${max}" step="${step}">`;
-    if (key === "noise") {                   // Detail: only really visible at 100%
-      const h = document.createElement("div"); h.className = "small"; h.style.margin = "10px 0 2px";
-      h.innerHTML = "<b>Detail</b> · zoom to 100% to judge (night shots: try Noise 0.4, Colour noise 0.5)";
+    const group = SLIDER_GROUPS[key];         // Light · Colour · Effects · Detail, as in Lightroom
+    if (group) {
+      const h = document.createElement("div"); h.className = "sgroup"; h.innerHTML = group;
       $("sliders").appendChild(h);
     }
     $("sliders").appendChild(d);
@@ -1032,6 +1079,8 @@ function curveEval(pts) {                    // -> function x => y
   };
 }
 const CV = { drag: -1, removing: false, hist: null };
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => { try { drawCurve(); } catch (e) {} });   // the Mac switched light / dark
 function curvePts() { return S.adjust.curve || [[0, 0], [1, 1]]; }
 function drawCurve() {
   const c = $("curve"); if (!c) return;
@@ -1039,12 +1088,12 @@ function drawCurve() {
   g.clearRect(0, 0, W, H);
   if (CV.hist) {                              // the photo's brightness spread, behind the curve
     const mx = Math.max(...CV.hist) || 1, bw = W / CV.hist.length;
-    g.fillStyle = "#2a2a2a";
+    g.fillStyle = cssVar("--raised");
     CV.hist.forEach((v, i) => { const hh = (v / mx) * H * 0.9; g.fillRect(i * bw, H - hh, bw + 0.5, hh); });
   }
-  g.strokeStyle = "#262626"; g.lineWidth = 1;
+  g.strokeStyle = cssVar("--curvegrid"); g.lineWidth = 1;
   for (let k = 1; k < 4; k++) { g.beginPath(); g.moveTo(k * W / 4, 0); g.lineTo(k * W / 4, H); g.moveTo(0, k * H / 4); g.lineTo(W, k * H / 4); g.stroke(); }
-  g.strokeStyle = "#444"; g.setLineDash([6, 6]); g.beginPath(); g.moveTo(0, H); g.lineTo(W, 0); g.stroke(); g.setLineDash([]);
+  g.strokeStyle = cssVar("--curvediag"); g.setLineDash([6, 6]); g.beginPath(); g.moveTo(0, H); g.lineTo(W, 0); g.stroke(); g.setLineDash([]);
   const f = curveEval(pts);
   g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#e0b34a"; g.lineWidth = 3;
   g.beginPath();
@@ -1052,8 +1101,8 @@ function drawCurve() {
   g.stroke();
   pts.forEach((p, i) => {
     g.beginPath(); g.arc(p[0] * W, (1 - p[1]) * H, i === CV.drag ? 10 : 8, 0, Math.PI * 2);
-    g.fillStyle = i === CV.drag && CV.removing ? "#7a2a22" : "#e8e6e3"; g.fill();
-    g.strokeStyle = "#111"; g.lineWidth = 2; g.stroke();
+    g.fillStyle = i === CV.drag && CV.removing ? "#7a2a22" : cssVar("--text"); g.fill();
+    g.strokeStyle = cssVar("--bg"); g.lineWidth = 2; g.stroke();
   });
 }
 function curveHistogram(im) {                // from the graded preview on screen
@@ -1065,7 +1114,31 @@ function curveHistogram(im) {                // from the graded preview on scree
     const px = cx.getImageData(0, 0, cv.width, cv.height).data, hist = new Array(64).fill(0);
     for (let i = 0; i < px.length; i += 4) hist[Math.min(63, Math.floor((0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 4))]++;
     CV.hist = hist; drawCurve();
+    drawHisto(px);
   } catch (e) {}
+}
+// Histogram at the top of the Grade panel (Lightroom / Capture One style): red, green and blue
+// overlaid, with a warning when shadows or highlights are clipped.
+function drawHisto(px) {
+  const c = $("histo"), g = c.getContext("2d"), W = c.width, H = c.height, N = 128;
+  const ch = [new Array(N).fill(0), new Array(N).fill(0), new Array(N).fill(0)];
+  let lo = 0, hi = 0, n = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    for (let k = 0; k < 3; k++) ch[k][px[i + k] >> 1]++;
+    const y = 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
+    if (y <= 2) lo++; if (y >= 253) hi++; n++;
+  }
+  const top = Math.max(1, ...ch.map(h => [...h].sort((a, b) => b - a)[2]));   // ignore single spikes
+  g.clearRect(0, 0, W, H); g.globalCompositeOperation = "lighter";
+  ["rgba(220,70,60,0.55)", "rgba(70,190,90,0.55)", "rgba(70,110,230,0.6)"].forEach((col, k) => {
+    g.fillStyle = col; g.beginPath(); g.moveTo(0, H);
+    for (let b = 0; b < N; b++) g.lineTo(b * W / (N - 1), H - Math.min(1, ch[k][b] / top) * (H - 6));
+    g.lineTo(W, H); g.closePath(); g.fill();
+  });
+  g.globalCompositeOperation = "source-over";
+  const pct = (v) => v / n * 100;
+  $("histoLo").innerHTML = pct(lo) >= 0.5 ? `<b>◀ ${pct(lo).toFixed(1)}% pure black</b>` : "";
+  $("histoHi").innerHTML = pct(hi) >= 0.5 ? `<b>${pct(hi).toFixed(1)}% pure white ▶</b>` : "";
 }
 function curveAt(e) {
   const r = $("curve").getBoundingClientRect();
@@ -1489,6 +1562,41 @@ function lbWhereFill() {
   if (undated.length) html += `<optgroup label="Undated">` + undated.map(x => `<option value="f:${x.id}">${esc(x.name)}</option>`).join("") + `</optgroup>`;
   $("lbWhere").innerHTML = html;
   $("lbWhere").value = [...$("lbWhere").options].some(o => o.value === cur) ? cur : "";
+  lbTreeDraw();
+}
+// Browse like Finder: year folders that open and close, shoots inside. Click a year or a shoot to show it.
+function lbTreeOpen() { try { return JSON.parse(localStorage.getItem("fls.treeOpen") || "null"); } catch (e) { return null; } }
+function lbTreeDraw() {
+  const T = $("lbTree"), cur = $("lbWhere").value, years = [...new Set(L.shoots.map(x => x.year).filter(Boolean))];
+  let open = lbTreeOpen();
+  if (!open) open = years.length ? { [years[0]]: true } : {};          // first time: the newest year open
+  const curShoot = cur.startsWith("f:") ? L.shoots.find(x => x.id === +cur.slice(2)) : null;
+  if (curShoot) open[curShoot.year || "Undated"] = true;                // the shoot you're in is always visible
+  const total = L.shoots.reduce((a, x) => a + (x.photos || 0), 0);
+  const row = (v, name, n, tw, full) => `<div class="row${v === cur ? " on" : ""}" data-v="${v}">${tw}<span class="nm" title="${esc(full || name)}">${esc(name)}</span>${n ? `<span class="n">${n.toLocaleString()}</span>` : ""}</div>`;
+  let html = row("", "All shoots", total, `<span class="tw"></span>`);
+  const groups = years.map(y => [String(y), "y:" + y, L.shoots.filter(x => x.year === y)]);
+  const undated = L.shoots.filter(x => !x.year);
+  if (undated.length) groups.push(["Undated", null, undated]);
+  for (const [name, v, shoots] of groups) {
+    const isOpen = !!open[name], n = shoots.reduce((a, x) => a + (x.photos || 0), 0);
+    html += (v !== null ? row(v, name, n, `<span class="tw" data-y="${name}">${isOpen ? "▼" : "▶"}</span>`)
+                        : `<div class="row" data-y="${name}"><span class="tw" data-y="${name}">${isOpen ? "▼" : "▶"}</span><span class="nm">${name}</span></div>`);
+    if (isOpen) html += `<div class="kids">` + shoots.map(x => row("f:" + x.id, x.name.startsWith(name + " ") ? x.name.slice(name.length + 1) : x.name, x.photos, "", x.name)).join("")   // inside 2026, "2026 11 01 Orchard" reads "11 01 Orchard" + `</div>`;
+  }
+  T.innerHTML = html;
+  T.onclick = (e) => {
+    const tw = e.target.closest("[data-y]"), r = e.target.closest(".row");
+    if (tw && (e.target.classList.contains("tw") || !r.dataset.v)) {    // the arrow: open / close the year
+      const st = lbTreeOpen() || open; st[tw.dataset.y] = !open[tw.dataset.y];
+      try { localStorage.setItem("fls.treeOpen", JSON.stringify(st)); } catch (err) {}
+      return lbTreeDraw();
+    }
+    if (!r || r.dataset.v === undefined) return;
+    $("lbWhere").value = r.dataset.v; $("lbWhere").dispatchEvent(new Event("change"));
+  };
+  T.ondblclick = (e) => { const r = e.target.closest(".row[data-v^='y:']"); if (r) r.querySelector(".tw").click(); };
+  const on = T.querySelector(".row.on"); if (on) on.scrollIntoView({ block: "nearest" });
 }
 
 function showJob(j) {
@@ -1631,6 +1739,7 @@ async function runSearch(more = false, atLeast = 0) {
   if (!more) L.offset = 0;
   const p = params(L.offset);
   if (atLeast > p.limit) p.limit = atLeast;
+  lbTreeDraw();
   const where = $("lbWhere").selectedOptions[0];
   $("lbTitle").textContent = where ? where.textContent.replace(/ \(\d+\)$/, "") : "All shoots";
   if (!more) $("lbSub").textContent = p.q ? "Searching…" : "Loading…";
@@ -1709,6 +1818,7 @@ async function runSecond(more = false) {
   if (!more) L.offset = 0;
   const p = { mode, folder_id: lbFolder() || 0, year: v.startsWith("y:") ? v.slice(2) : "", date_from: $("fFrom").value,
               date_to: $("fTo").value, offset: L.offset, limit: 120 };
+  lbTreeDraw();
   const where = $("lbWhere").selectedOptions[0];
   $("lbTitle").textContent = (mode === "this_day" ? "On this day · " : "Worth a second look · ") + (where ? where.textContent.replace(/ \(\d+\)$/, "") : "All shoots");
   if (!more) $("lbSub").textContent = "Looking… (the first time after opening the app takes about 15 seconds)";
@@ -1746,10 +1856,10 @@ function cell(r, i) {
     + (L.like.includes(r.id) ? " liked" : "") + (L.unlike.includes(r.id) ? " unliked" : "");
   d.dataset.id = r.id; d.dataset.i = i;
   const tags = [], tl = [], tr = [];             // decision top-left · graded top-right · stars bottom
-  if (r.mark === "pick") tl.push(`<span class="pk" title="Picked">✓ Picked</span>`);
-  if (r.mark === "reject") tl.push(`<span class="rj" title="Rejected">✕ Rejected</span>`);
-  if (r.graded) tr.push(`<span class="g" title="Exported JPG">Graded</span>`);
-  else if (r.edited) tr.push(`<span class="ed" title="Graded in the app, not exported yet">Edited</span>`);
+  if (r.mark === "pick") tl.push(`<span class="pk ic" title="Picked">✓</span>`);
+  if (r.mark === "reject") tl.push(`<span class="rj ic" title="Rejected">✕</span>`);
+  if (r.graded) tr.push(`<span class="g ic" title="Graded: exported JPG">G</span>`);
+  else if (r.edited) tr.push(`<span class="ed ic" title="Edited in the app, not exported yet">E</span>`);
   if (r.deleted) tr.push(`<span class="dl">Deleted from drive</span>`);
   else if (!r.online) tr.push(`<span class="o">Drive offline</span>`);
   if (r.my_rating > 0) tags.push(`<span class="st" title="Your stars">${"★".repeat(r.my_rating)}</span>`);
@@ -1961,6 +2071,9 @@ function lbAfterScan() {                     // a scan finished: the shoots it w
 }
 setInterval(() => { if (!document.hidden && !L.polling) lbCheckNew(); }, 60000);
 setInterval(() => { fetch("/api/ping").catch(() => {}); }, 60000);     // keeps the app running while a page is open
+// In the Mac app's own window: quit with ⌘Q or the window's close button, like any Mac app.
+const NATIVE = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.fls);
+if (NATIVE) { document.documentElement.classList.add("native"); $("quitBtn").hidden = true; }
 $("quitBtn").onclick = async () => {
   if (!confirm("Quit Film Look Studio?")) return;
   let r = await (await api("/api/quit", { method: "POST" })).json();
@@ -1968,7 +2081,7 @@ $("quitBtn").onclick = async () => {
     if (!confirm(`Still working on: ${r.busy.join(", ")}.\n\nQuit anyway? That stops it.`)) return;
     r = await (await api("/api/quit?force=true", { method: "POST" })).json();
   }
-  document.body.innerHTML = `<div style="display:grid;place-items:center;height:100vh;text-align:center;color:#ccc;font:15px -apple-system,sans-serif;background:#111">
+  document.body.innerHTML = `<div style="display:grid;place-items:center;height:100vh;text-align:center;color:var(--muted);font:15px -apple-system,sans-serif;background:var(--bg)">
     <div><h2 style="color:#eee;font-weight:600">Film Look Studio has quit</h2><p>You can close this tab. Click the Film Look Studio icon to open it again.</p></div></div>`;
 };
 $("lbAll").onclick = () => { L.sel = new Set(L.photos.map(r => r.id)); document.querySelectorAll("#grid .cell").forEach(c => c.classList.add("sel")); lbCount(); };
@@ -2132,8 +2245,8 @@ document.addEventListener("keydown", (e) => {
 });
 async function openPhoto(r) {
   try {
-    const st = await (await api("/api/library/open/" + r.id, { method: "POST" })).json();
-    S.current = st.select; setTab("grade"); loadState(st);
+    const st = await (await api("/api/library/grade", esJSON({ photo_ids: [r.id], label: r.name }))).json();   // just this photo, not its folder
+    S.current = null; S.fromLib = true; setTab("grade"); loadState(st);
   } catch (e) {
     $("lbImg").src = "/api/library/thumb/" + r.id;
     $("lbMsg").textContent = e.message;
@@ -2150,6 +2263,12 @@ $("libq").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeo
 ["lbWhere", "lbMode", "fFrom", "fTo", "fCamera", "fGraded", "fFlag", "fStars"].forEach(id => $(id).addEventListener("change", () => { L.sel.clear(); $("lbNote").textContent = ""; runSearch(); }));
 $("lbView").onchange = () => { document.querySelectorAll("#grid .cell").forEach(c => { const r = L.photos[+c.dataset.i]; if (r) c.querySelector("img").src = lbThumb(r); }); };
 $("lbSize").oninput = () => $("grid").style.setProperty("--cs", $("lbSize").value + "px");
+try { $("lbNames").checked = localStorage.getItem("fls.names") === "1"; } catch (e) {}
+$("grid").classList.toggle("names", $("lbNames").checked);
+$("lbNames").onchange = () => { $("grid").classList.toggle("names", $("lbNames").checked); try { localStorage.setItem("fls.names", $("lbNames").checked ? "1" : "0"); } catch (e) {} };
+document.addEventListener("keydown", (e) => {           // ⌘F: search the Library
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f" && !$("libView").hidden) { e.preventDefault(); $("libq").focus(); $("libq").select(); }
+});
 $("showFolders").onclick = () => openSettings("setFolders");
 
 // --- Crop & straighten -----------------------------------------------------------------
@@ -2654,6 +2773,10 @@ function cuShow() {
     img.addEventListener("dblclick", (e) => { const [fx, fy] = at(e); CU.fi = i; cuShow(); cuZoom(id, fx, fy); });
     $("cuFrames").appendChild(d);
   });
+  cuLayout(shown.length);
+  requestAnimationFrame(() => cuLayout(shown.length));
+  const first = $("cuFrames").querySelector(".ph img");
+  if (first) first.addEventListener("load", () => cuLayout(shown.length, first.naturalWidth / first.naturalHeight), { once: true });
   const more = g.ids.length > 4 ? ` · frames ${start + 1}–${start + shown.length} of ${g.ids.length}` : "";
   const why = g.ids.length > 1 ? `Suggested: ${g.reasons.join(" · ")}` : g.reasons.join(" · ");
   $("cuWhy").innerHTML = (g.unsure ? `<span class="u">UNSURE</span>` : "") + esc(why) + more;
@@ -2661,6 +2784,24 @@ function cuShow() {
   const nx = CU.groups[CU.list[CU.gi + 1]];
   if (nx) nx.ids.slice(0, 4).forEach(id => { const im = new Image(); im.src = "/api/cull/view/" + id; });
 }
+// Frames as large as the window allows: side by side, or two rows when that shows them bigger
+// (e.g. four landscape frames in a tall window).
+function cuLayout(n, aspect = 1.5) {
+  if (!(aspect > 0.3 && aspect < 4)) aspect = 1.5;          // photo not loaded yet
+  const F = $("cuFrames"), W = F.clientWidth - 32, H = F.clientHeight - 28;
+  if (W < 100 || H < 100) { F.style.gridTemplateColumns = `repeat(${n}, minmax(0, 1fr))`; return; }   // not on screen yet
+  let best = n, size = 0;
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols), cw = (W - 12 * (cols - 1)) / cols - 16, ch = (H - 12 * (rows - 1)) / rows - 46;
+    const w = Math.min(cw, ch * aspect);
+    if (w > size * 1.03) { size = w; best = cols; }
+  }
+  F.style.gridTemplateColumns = `repeat(${best}, minmax(0, 1fr))`;
+}
+new ResizeObserver(() => {                  // window resized, or the Cull screen just appeared
+  const F = $("cuFrames"), im = F.querySelector(".ph img");
+  if (F.children.length) cuLayout(F.children.length, im && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 1.5);
+}).observe($("cuFrames"));
 async function cuMark(action, value) {
   const g = cuGroup(); if (!g) return;
   const id = g.ids[CU.fi], f = CU.frames[id], before = { flag: f.flag, rating: f.rating };
@@ -3676,9 +3817,9 @@ async function esPublishForm(F, conn) {
       Gallery <select id="pbCat">${cats.map(c => `<option value="${c.id}" ${c.id === cat ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
       Cover <select id="pbCover">${photoOpts}</select></div>
     <div>Write-up (shown above the photos)</div>
-    <textarea id="pbIntro" rows="4" style="width:100%;background:#0f0f0f;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px;font:inherit" placeholder="A few lines about the essay: where, when, what it's about. Ask Claude in the chat if you'd like help writing it.">${esc(d.intro || "")}</textarea>
+    <textarea id="pbIntro" rows="4" style="width:100%;background:var(--field);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px;font:inherit" placeholder="A few lines about the essay: where, when, what it's about. Ask Claude in the chat if you'd like help writing it.">${esc(d.intro || "")}</textarea>
     <div>Closing text (optional, shown after the photos)</div>
-    <textarea id="pbClosing" rows="2" style="width:100%;background:#0f0f0f;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px;font:inherit">${esc(d.closing || "")}</textarea>
+    <textarea id="pbClosing" rows="2" style="width:100%;background:var(--field);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px;font:inherit">${esc(d.closing || "")}</textarea>
     <div class="esRow"><label><input type="checkbox" id="pbCaptions" ${d.captions ? "checked" : ""}> Captions from your photo titles (${titled} of ${n} have one)</label>
       Gallery style <select id="pbGallery" title="Copied from your posts"><option value="carousel">Carousel (like Fire Dragon Festival)</option><option value="slideshow">Slideshow with thumbnails (like Bedok Jetty)</option></select>
       Photo size <select id="pbSize"><option value="1600">1600 px</option><option value="2048">2048 px (recommended)</option><option value="2560">2560 px</option></select>
@@ -3975,7 +4116,7 @@ async function openSettings(anchor) {
   const looks = [{ id: "neutral", name: "Neutral (no look)" }, ...(S.looks || [])];
   $("setLook").innerHTML = looks.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join("");
   $("setLook").value = st.default_look; $("setSize").value = st.export_size; $("setQuality").value = st.export_quality;
-  setPubRender(); setClaudeRender(); setXmpRender(); setStorage(st); setDrives(st);
+  setPubRender(); setClaudeRender(); setStorage(st); setDrives(st);
   if (anchor && $(anchor)) $(anchor).scrollIntoView({ block: "start" });
 }
 async function saveSetting(changes) { try { await api("/api/settings", esJSON({ changes })); } catch (e) { alert(e.message); } }
@@ -3997,22 +4138,6 @@ async function setPubRender() {
   $("spChange").onclick = () => esPublishSettings(P, st, setPubRender);
   $("spForget").onclick = async () => { if (!confirm("Disconnect from your website? The saved application password is removed from this Mac (revoke it in WordPress to cancel it completely).")) return;
     await api("/api/publish/forget", { method: "POST" }); setPubRender(); };
-}
-async function setXmpRender(msg = "") {
-  const X = $("setXmp"), st = await (await api("/api/xmp")).json();
-  X.innerHTML = `<div class="stRow"><span>Write your stars, picks and rejects to small <b>.xmp</b> files next to your photos, so ON1, Lightroom and
-    other apps can see them. Your photos are never changed, and XMP files made by ON1 or another app are left alone.
-    ${st.on ? `<br>✓ On${st.pending ? ` · ${st.pending} waiting (their drive is offline, or just changed)` : " · up to date"}.` : ""}${msg ? `<br>${msg}` : ""}</span>
-    <button id="xmpSwitch" class="${st.on ? "" : "primary"}">${st.on ? "Turn off" : "Turn on"}</button></div>`;
-  $("xmpSwitch").onclick = async () => {
-    const on = !st.on;
-    if (on && !confirm("Write .xmp files next to your photos on your drives?\n\nOnly for photos you've starred, picked or rejected. Your photos aren't changed, and XMP files from ON1 or other apps are left alone.")) return;
-    $("xmpSwitch").disabled = true; $("xmpSwitch").textContent = on ? "Writing…" : "…";
-    const r = await (await api("/api/xmp", esJSON({ on }))).json(), c = r.counts || {};
-    const bits = [c.written && `${c.written} written`, c.skipped && `${c.skipped} left alone (another app's XMP file is there)`,
-                  c.offline && `${c.offline} waiting for their drive`].filter(Boolean);
-    setXmpRender(on ? (bits.length ? bits.join(" · ") + "." : "Nothing to write yet.") : "Off: existing .xmp files stay where they are.");
-  };
 }
 async function setClaudeRender() {
   const C = $("setClaude");

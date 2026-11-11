@@ -5,12 +5,18 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
 
 - When Andrew asks for grading help (suggest a look, tweak in plain English, match a
   reference or a photographer, export, make a LUT), use the `grade` skill.
-- Mac app: `mac-app/make_app.sh` builds /Applications/Film Look Studio.app + a Desktop alias: a plain AppleScript
-  applet that runs `mac-app/launch.sh start` (server in the background with `--auto-stop`, log in
-  ~/Library/Logs/Film Look Studio.log; readiness checked over HTTP — lsof triggers macOS permission prompts),
-  opens the browser and exits. Quit = header Quit button (`/api/quit`); `--auto-stop` stops after 10 min with
-  no page open (pages hit `/api/ping` every minute), never while a scan/export/book/upload runs. Rebuilding
-  changes the ad-hoc signature, so macOS asks for Documents / Removable Volumes again: change launch.sh instead.
+- Mac app: `mac-app/make_app.sh` builds /Applications/Film Look Studio.app + a Desktop alias: a native Swift app
+  (`mac-app/FilmLookStudio.swift`, swiftc; project folder in Info.plist FLSProjectDir) with its own window (WKWebView on
+  http://127.0.0.1:8765, size remembered), Dock icon and menu bar (Edit, View zoom/reload, Help › Open in Browser / Show
+  Log). It runs `mac-app/launch.sh start` (server in the background with `--auto-stop`, log in ~/Library/Logs/Film Look
+  Studio.log; readiness checked over HTTP — lsof triggers macOS permission prompts). ⌘Q / closing the window posts
+  `/api/quit`; if a job runs it finishes in the background. The page hides its Quit button there (`NATIVE`, via the
+  `fls` message handler). JS alert/confirm/prompt, file choosers, downloads (→ ~/Downloads) and other sites / new
+  windows (→ default browser) are handled by the Swift delegate. `--auto-stop` stops after 10 min with no page open
+  (pages hit `/api/ping` every minute), never while a job runs. Rebuilding changes the ad-hoc signature, so macOS
+  asks for Documents / Removable Volumes again: change launch.sh or the page instead when possible.
+- Colours: every colour in index.html comes from the :root tokens (dark) and their `prefers-color-scheme: light`
+  twins, so the page follows the Mac's Appearance; canvases read them with `cssVar()`. Overlays on photos stay dark.
 - Run the app with `./studio <command>` (see `./studio -h`). First-time setup: `./setup.sh`.
 - Never modify or delete source RAW files; exports go to `graded/` next to them.
 
@@ -40,14 +46,16 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
 - `filmlook/server.py` + `static/index.html` – local browser app (127.0.0.1 only): Library (search + browse in one, sidebar filters; Show: Worth a
   second look / On this day via `/api/library/second` → `secondlook.suggestions(undecided=True)`), Cull,
   Grade and Essays tabs, in workflow order (the old Second look tab was removed; its views live in the Library). Library → Cull this shoot /
-  Grade picks; Cull summary lists `cull.second_look` frames. Cull Compare (C / Compare button): two frames of the
+  Grade picks; Library Browse = a Finder-style tree (`lbTreeDraw`: year folders open / close, state in
+  localStorage fls.treeOpen; the hidden `#lbWhere` select still holds the value). The viewer's Open in Grade opens just that
+  photo (a one-photo collection via `/api/library/grade`), not its folder. Cull frames lay out in the grid that shows them
+  largest (`cuLayout`, e.g. 2×2 for four landscape frames). Library search box sits wide above the grid (⌘F); the grid hides
+  file names unless Show file names is ticked (fls.names) and marks are small round icons (✓ ✕ G E). Grade: RGB histogram with
+  clipping warnings at the top of the side panel (`drawHisto`), sliders grouped Light / Colour / Effects / Detail (`SLIDER_GROUPS`).
+  Cull summary lists `cull.second_look` frames. Cull Compare (C / Compare button): two frames of the
   group at 100% from `/api/cull/full`, panned together by a shared centre fraction (`CMP`); P/X/0–5 mark the chosen side.
 - `filmlook/library/` – searchable archive. Database + thumbnails live in
-  `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos — the one exception
-  is `xmp_out.py`: when ⚙ Settings → XMP files is on (Andrew agreed, off by default), `<name>.xmp` beside the
-  original with stars (reject = -1) and the keyword Picked, marked xmp:CreatorTool="Film Look Studio"; only our own
-  files are ever rewritten, other apps' XMP files are skipped; queue `xmp_dirty` (marks.set_mark) flushed by
-  server `_xmp_watch` every 15 s; sidecars.read ignores our own files).
+  `~/Library/Application Support/Film Look Studio/` (internal disk; never write next to photos).
   `db.py` schema (photos ← files, sidecars, embeddings; later features attach to `photos.id`),
   `drives.py` (drives by volume UUID; offline = not mounted), `scan.py` (incremental, stoppable),
   `pairing.py` (RAW + copies + exported JPGs = one photo; a camera JPG from RAW+JPG mode — firmware in

@@ -36,8 +36,6 @@ def _read_on1(path, data):
 
 def _read_xmp(path, data):
     text = data.decode("utf-8", "replace")
-    if 'xmp:CreatorTool="Film Look Studio"' in text:     # our own (xmp_out): your marks already live in the app
-        return {"target": path.stem, "rating": None, "flag": None, "keywords": [], "ours": True}
     m = re.search(r'xmp:Rating\s*=\s*"(-?\d+)"|<xmp:Rating>(-?\d+)<', text)
     subj = re.search(r"<dc:subject>(.*?)</dc:subject>", text, re.S)
     keywords = re.findall(r"<rdf:li[^>]*>([^<]+)</rdf:li>", subj.group(1)) if subj else []

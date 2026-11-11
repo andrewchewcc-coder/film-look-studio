@@ -15,7 +15,7 @@ from .library import LIBRARY_DIR
 
 SETTINGS = LIBRARY_DIR / "settings.json"
 DEFAULTS = {"default_look": "leica-m9", "export_size": "web", "export_quality": 95, "cache_limit_gb": 4,
-            "last_backup": None, "last_backup_path": None, "write_xmp": False}
+            "last_backup": None, "last_backup_path": None}
 BACKUP_FOLDER = "Film Look Studio Backups"
 KEEP_BACKUPS = 10
 
@@ -34,8 +34,6 @@ def save(changes):
             s[k] = str(v)
         elif k == "export_quality":
             s[k] = max(60, min(100, int(v)))
-        elif k == "write_xmp":
-            s[k] = bool(v)
         elif k == "cache_limit_gb":
             s[k] = max(1, min(200, float(v)))
     _write(s)

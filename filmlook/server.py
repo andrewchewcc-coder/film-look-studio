@@ -2006,43 +2006,6 @@ def quit_app(force: bool = False):
     return {"ok": True}
 
 
-def _xmp_watch():
-    """Keep XMP files next to your photos up to date while ⚙ Settings → XMP files is on (every 15 s;
-    offline drives catch up when they're back)."""
-    import time as _t
-    from .library import service, xmp_out
-    while True:
-        _t.sleep(15)
-        try:
-            if appsettings.load().get("write_xmp"):
-                xmp_out.flush(service.con())
-        except Exception as e:                    # never let a bad file stop the app
-            print("XMP files:", e)
-
-
-@app.get("/api/xmp")
-def xmp_status():
-    from .library import xmp_out
-    return {"on": bool(appsettings.load().get("write_xmp")), "pending": xmp_out.pending(_lib().con())}
-
-
-class XmpIn(BaseModel):
-    on: bool
-
-
-@app.post("/api/xmp")
-def xmp_switch(body: XmpIn):
-    """Switch XMP files on (queues every photo you've marked, writes those on connected drives now) or off."""
-    from .library import xmp_out
-    appsettings.save({"write_xmp": body.on})
-    c = _lib().con()
-    counts = {}
-    if body.on:
-        xmp_out.queue_all(c)
-        counts = xmp_out.flush(c, limit=100000)
-    return {"on": body.on, "counts": counts, "pending": xmp_out.pending(c)}
-
-
 def _auto_stop_watch():
     import time as _t
     while True:
@@ -2059,7 +2022,6 @@ def run(folder=None, port=8765, open_browser=True, auto_stop=False):
     _last_seen[0] = _t.time()
     if auto_stop:
         threading.Thread(target=_auto_stop_watch, daemon=True).start()
-    threading.Thread(target=_xmp_watch, daemon=True).start()
     _lib().warm_model()
     if folder:
         set_folder(FolderIn(folder=folder))

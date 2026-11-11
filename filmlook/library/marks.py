@@ -32,6 +32,5 @@ def set_mark(con, photo_id, flag=..., rating=..., session_id=None, group_idx=Non
         con.execute("UPDATE marks SET rating=?, updated_at=datetime('now') WHERE photo_id=?", (value, photo_id))
         con.execute("""INSERT INTO cull_log (session_id, group_idx, photo_id, action, value, suggested)
                        VALUES (?,?,?,'rate',?,?)""", (session_id, group_idx, photo_id, value, suggested))
-    con.execute("INSERT OR IGNORE INTO xmp_dirty (photo_id) VALUES (?)", (photo_id,))   # XMP file to update
     con.commit()
     return get(con, photo_id)
