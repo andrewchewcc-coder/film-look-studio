@@ -447,6 +447,9 @@
   #esWork { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   #esTop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
   #esTop button { padding: 5px 9px; font-size: 13px; }
+  #esMore { position: relative; margin-left: auto; }
+  #esMoreMenu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px; box-shadow: 0 4px 14px #0003; white-space: nowrap; }
+  #esMoreMenu button { color: #c0392b; border-color: transparent; background: none; }
   #esTitle { width: 200px; font-weight: 600; background: transparent; border: 1px solid transparent; color: var(--text); padding: 5px 6px; border-radius: 5px; font: inherit; }
   #esTitle:hover, #esTitle:focus { border-color: var(--line); }
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
@@ -763,7 +766,7 @@
         <select id="esVersions" title="Saved versions"></select>
         <button id="esSaveV">Save version</button>
         <button id="esExport" class="primary" title="Export photos, book PDF, contact sheet or publish to your website">Output…</button>
-        <button id="esDelete" title="Delete this essay (your photos are not touched)">Delete</button>
+        <span id="esMore"><button id="esMoreBtn" title="More">⋯</button><div id="esMoreMenu" hidden><button id="esDelete" title="Delete this essay (your photos are not touched)">Delete this essay…</button></div></span>
       </div>
       <div id="esNote" class="small"></div>
       <div id="esBoard"></div>
@@ -3495,8 +3498,11 @@ $("esVersions").onchange = async () => {
   esPushUndo();
   await api(`/api/essays/${ES.id}/versions/${v}/restore`, { method: "POST" }); esLoad(ES.id, true);
 };
+$("esMoreBtn").onclick = (e) => { e.stopPropagation(); $("esMoreMenu").hidden = !$("esMoreMenu").hidden; };
+document.addEventListener("click", () => { $("esMoreMenu").hidden = true; });
 $("esDelete").onclick = async () => {
-  if (!confirm(`Delete the essay “${ES.name}”? Your photos are not touched.`)) return;
+  $("esMoreMenu").hidden = true;
+  if (!confirm(`Delete the essay “${ES.name}”, with its saved versions? This can’t be undone. Your photos are not touched.`)) return;
   await api("/api/essays/" + ES.id, { method: "DELETE" });
   ES.id = null; $("esWork").hidden = true; $("esEmpty").hidden = false; esList();
 };
