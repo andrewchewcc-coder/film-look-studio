@@ -157,3 +157,5 @@ FLS_E2E=1 .venv/bin/python -m pytest tests/test_e2e.py -q   # before every uploa
 Playwright's headless Chromium (`.playwright-browsers/`, not in git; `PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers
 .venv/bin/python -m playwright install --only-shell chromium` to reinstall) and fails on any /api/ 404 / 5xx or page
 error. Extend it when adding a tab, panel or button that calls the server.
+
+- Cull Compare: Shift-click two frames (`CU.chosen`) then Compare; ‹ › on each side (`cmpStep`); photos are scaled by `cmpScale` so small previews can always be panned; `cuBW` button / B key toggles black & white. Cards no longer show PICK/REJECT tags (the Pick/✕ buttons show state); `cuFit` sizes columns to `max-content` once all photos are measured, and `cuLayout` uses the median aspect.
