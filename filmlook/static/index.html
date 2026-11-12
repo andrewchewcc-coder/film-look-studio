@@ -316,6 +316,7 @@
   .cuCol .dates { display: flex; gap: 6px; }
   .cuSess { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 6px 0; display: flex; align-items: center; gap: 10px; color: var(--text); }
   .cuSess div { flex: 1; }
+  .cuOlder { margin: -2px 0 8px 12px; color: var(--muted); } .cuOlder summary { cursor: pointer; font-size: 12px; }
   .cuSess .rm { padding: 4px 8px; color: var(--muted); }
   .cuSess small { color: var(--muted); display: block; }
   #cuRun { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -478,10 +479,10 @@
   .esGap.sel button { background: var(--accent); color: var(--accent-ink); }
   .esContact { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
   .esSpreads { display: flex; flex-direction: column; gap: 18px; align-items: center; }
-  .esSpread { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; background: var(--stage); padding: 10px; border-radius: 4px; width: min(900px, 100%); }
-  .esPage { aspect-ratio: 3 / 2.1; background: #f1efe9; display: flex; align-items: center; justify-content: center; position: relative; }
+  .esSpread { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 3px; background: var(--stage); padding: 10px; border-radius: 4px; width: min(900px, 100%); }
+  .esPage { min-width: 0; overflow: hidden; aspect-ratio: 3 / 2.1; background: #f1efe9; display: flex; align-items: center; justify-content: center; position: relative; }
   .esPage.blank { background: #2a2826; }
-  .esPage img { max-width: 86%; max-height: 82%; object-fit: contain; box-shadow: 0 1px 4px #0005; }
+  .esPage img { max-width: none; max-height: none; object-fit: contain; flex: none; box-shadow: 0 1px 4px #0005; }
   .esPage .pn { position: absolute; bottom: 5px; font-size: 10px; color: var(--faint); }
   .esPage.left .pn { left: 8px; } .esPage.right .pn { right: 8px; }
   .esSpreadWhy { grid-column: 1 / -1; text-align: center; font-size: 11px; color: var(--muted); padding-top: 4px; }
@@ -2681,18 +2682,36 @@ async function cuOpenStart() {
       : "Nothing learned yet — after you finish a cull, the suggestions adapt to the frames you picked.") +
       (hist ? `<br>How often the suggested pick matched yours, cull by cull: ${hist}` : "");
     $("cuRecent").innerHTML = st.sessions.length ? "" : "None yet.";
+    // one entry per shoot: the unfinished cull if there is one, else the newest; the rest go under "earlier culls"
+    const byLabel = new Map();
     for (const s of st.sessions) {
+      const g = byLabel.get(s.label) || []; g.push(s); byLabel.set(s.label, g);
+    }
+    const shown = [...byLabel.values()].map(g => {
+      const main = g.find(x => !x.finished) || g[0];
+      return { main, older: g.filter(x => x !== main) };
+    }).sort((x, y) => (x.main.finished - y.main.finished) || (y.main.created > x.main.created ? 1 : -1));
+    const row = (s, container, big) => {
       const d = document.createElement("div"); d.className = "cuSess";
       const pct = s.groups ? Math.round(100 * s.done / s.groups) : 0;
       const agree = s.agreement == null ? "" : ` · agreed with you on ${Math.round(100 * s.agreement)}% of ${s.agreement_groups} groups`;
       d.innerHTML = `<div>${esc(s.label)}<small>${esc(s.created.slice(0, 16))} · ${s.done}/${s.groups} groups (${pct}%)${s.finished ? " · finished" : ""}${agree}</small></div>
-        <button class="go">${s.finished ? "Review" : "Resume"}</button><button class="rm" title="Remove this cull from the list">✕</button>`;
+        <button class="go${!s.finished && big ? " primary" : ""}">${s.finished ? "Review" : "Continue"}</button><button class="rm" title="Remove this cull from the list">✕</button>`;
       d.querySelector(".go").onclick = () => cuLoad(s.id);
       d.querySelector(".rm").onclick = async () => {
         if (!confirm(`Remove “${s.label}” (${s.created.slice(0, 16)}) from your culls?\n\nYour picks, rejects and stars are kept — only this cull's list entry goes.`)) return;
         try { await api("/api/cull/session/" + s.id, { method: "DELETE" }); cuOpenStart(); } catch (e) { alert(e.message); }
       };
-      $("cuRecent").appendChild(d);
+      container.appendChild(d);
+    };
+    for (const { main, older } of shown) {
+      row(main, $("cuRecent"), true);
+      if (older.length) {
+        const det = document.createElement("details"); det.className = "cuOlder";
+        det.innerHTML = `<summary>${older.length} earlier cull${older.length > 1 ? "s" : ""} of this shoot</summary>`;
+        older.forEach(o => row(o, det, false));
+        $("cuRecent").appendChild(det);
+      }
     }
   } catch (e) { $("cuStartMsg").textContent = e.message; }
 }
@@ -2700,7 +2719,7 @@ $("cuStartBtn").onclick = async () => {
   const mode = document.querySelector('input[name="cuscope"]:checked').value;
   const scope = { categories: [] };
   let label = "";
-  if (mode === "dates") { scope.date_from = $("cuFrom").value; scope.date_to = $("cuTo").value; label = `${scope.date_from || "…"} to ${scope.date_to || "…"}`; }
+  if (mode === "dates") { scope.date_from = $("cuFrom").value; scope.date_to = $("cuTo").value; label = !scope.date_from && !scope.date_to ? "All photos" : `${scope.date_from || "…"} to ${scope.date_to || "…"}`; }
   if (mode === "new") { scope.new = true; label = "New since last cull"; }
   $("cuStartMsg").textContent = "Grouping frames and ranking each group…";
   try {
@@ -3441,6 +3460,7 @@ function esRender() {
         page.className = "esPage " + (side ? "right" : "left") + (pg ? "" : " blank");
         if (pg) {
           page.innerHTML = `<img src="/api/essays/thumb/${pg.p.id}" alt="" draggable="false"><span class="pn">${pg.i + 1}</span>`;
+          page.querySelector("img").addEventListener("load", () => esFitPage(page));
           page.draggable = !pg.p.locked; page.dataset.i = pg.i;
           page.addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", String(pg.i)));
           page.addEventListener("dragover", (e) => e.preventDefault());
@@ -3454,7 +3474,17 @@ function esRender() {
       wrap.appendChild(sp);
     }
     B.appendChild(wrap);
+    wrap.querySelectorAll(".esPage").forEach(esFitPage);
+    new ResizeObserver(() => wrap.querySelectorAll(".esPage").forEach(esFitPage)).observe(wrap);
   }
+}
+// Each photo sits whole inside its page with a margin, sized in pixels from its real shape (no cropping,
+// and the same in every browser engine).
+function esFitPage(page) {
+  const im = page.querySelector("img"); if (!im || !im.naturalWidth) return;
+  const pw = page.clientWidth, ph = page.clientHeight; if (!pw || !ph) return;
+  const k = Math.min(0.86 * pw / im.naturalWidth, 0.82 * ph / im.naturalHeight);
+  im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px";
 }
 document.querySelectorAll("#esTop .seg button").forEach(b => b.onclick = () => { ES.view = b.dataset.view; esRender(); });
 try { const v = localStorage.getItem("fls.esStyle"); if (v && [...$("esStyle").options].some(o => o.value === v)) $("esStyle").value = v; } catch (e) {}
