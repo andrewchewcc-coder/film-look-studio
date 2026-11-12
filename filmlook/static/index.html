@@ -336,6 +336,13 @@
   .cuCard .tags .x { background: #7a2a22; color: #fff; } .cuCard .tags .o { color: #e3a36f; }
   .cuCard .meta { padding: 6px 10px 8px; font-size: 12px; color: var(--muted); display: flex; gap: 8px; }
   .cuCard .meta .stars { color: var(--accent); margin-left: auto; letter-spacing: 1px; }
+  .cuCard .meta .mk { display: flex; gap: 4px; }
+  .cuCard .meta .mk button { padding: 1px 8px; font-size: 12px; }
+  .cuCard .meta .mk button[data-m=pick].on { background: #1f6b35; border-color: #1f6b35; color: #fff; }
+  .cuCard .meta .mk button[data-m=reject].on { background: #7a2a22; border-color: #7a2a22; color: #fff; }
+  #cuPages { display: inline-flex; align-items: center; gap: 6px; margin-left: 12px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  #cuPages[hidden] { display: none; }
+  #cuPages button { padding: 1px 9px; }
   .cuCard .meta .on1 { color: #6d6a65; }
   #cuFoot { display: flex; gap: 16px; align-items: baseline; padding: 6px 16px 12px; }
   #cuWhy { flex: 1; }
@@ -689,7 +696,7 @@
       <button id="cuBack" title="Back to the cull list (progress is saved)">Back</button>
     </div>
     <div id="cuFrames"></div>
-    <div id="cuFoot"><button id="cuPrev" title="Previous group (↑ or Shift+Enter)">◀ Previous</button><button id="cuCmpBtn" title="Compare two frames of this group at 100%, zoomed together (C)">Compare</button><span id="cuWhy"></span>
+    <div id="cuFoot"><button id="cuPrev" title="Previous group (↑ or Shift+Enter)">◀ Previous</button><button id="cuCmpBtn" title="Compare two frames of this group at 100%, zoomed together (C)">Compare</button><span id="cuWhy"></span><span id="cuPages" hidden></span>
       <span class="small" id="cuKeys">P pick · X reject · U unmark · 1–5 stars · ← → frame · ↑ ↓ group · Z zoom where you point</span>
       <button id="cuNextBtn" title="Next group (↓ or Enter)">Next ▶</button></div>
     <div id="cuStrip"></div>
@@ -2747,7 +2754,7 @@ function cuShow() {
   if (!g) { $("cuWhy").textContent = $("cuUnsure").checked ? "No unsure groups — untick the box to see them all." : ""; return; }
   CU.cur = CU.list[CU.gi];
   if (CU.fi < 0 || CU.fi >= g.ids.length) CU.fi = Math.max(0, g.ids.indexOf(g.suggested));
-  const start = Math.max(0, Math.min(CU.fi - 1, g.ids.length - 4)), shown = g.ids.slice(start, start + 4);
+  const start = Math.floor(CU.fi / CU_PAGE) * CU_PAGE, shown = g.ids.slice(start, start + CU_PAGE);   // page by page
   shown.forEach((id, k) => {
     const f = CU.frames[id], i = start + k;
     const d = document.createElement("div");
@@ -2759,8 +2766,13 @@ function cuShow() {
     if (!f.online) tags.push(`<span class="o">Drive offline</span>`);
     d.innerHTML = `<div class="tags">${tags.join("")}</div><div class="ph"><img src="/api/cull/view/${id}" alt=""></div>
       <div class="meta"><span>${esc(f.name)}</span><span>${f.time ? esc(f.time.slice(11, 19)) : ""}</span>
-      ${f.on1 ? `<span class="on1" title="ON1 rating">ON1 ${"★".repeat(f.on1)}</span>` : ""}<span class="stars">${f.rating ? "★".repeat(f.rating) : ""}</span></div>`;
-    d.onclick = () => { if (CU.fi !== i) { CU.fi = i; cuShow(); } };
+      ${f.on1 ? `<span class="on1" title="ON1 rating">ON1 ${"★".repeat(f.on1)}</span>` : ""}<span class="stars">${f.rating ? "★".repeat(f.rating) : ""}</span>
+      <span class="mk"><button data-m="pick" class="${f.flag === "pick" ? "on" : ""}" title="Pick (P)">✓ Pick</button><button data-m="reject" class="${f.flag === "reject" ? "on" : ""}" title="Reject (X)">✕</button></span></div>`;
+    d.onclick = (e) => {
+      const b = e.target.closest("button[data-m]");
+      if (b) { e.stopPropagation(); CU.fi = i; return b.dataset.m === "pick" ? cuPick(false) : cuReject(); }
+      if (CU.fi !== i) { CU.fi = i; cuShow(); }
+    };
     const img = d.querySelector(".ph img");
     const at = (e) => {                     // pointer position as a fraction of the photo
       const r = img.getBoundingClientRect(), na = (img.naturalWidth || 3) / (img.naturalHeight || 2);
@@ -2777,9 +2789,19 @@ function cuShow() {
   requestAnimationFrame(() => cuLayout(shown.length));
   const first = $("cuFrames").querySelector(".ph img");
   if (first) first.addEventListener("load", () => cuLayout(shown.length, first.naturalWidth / first.naturalHeight), { once: true });
-  const more = g.ids.length > 4 ? ` · frames ${start + 1}–${start + shown.length} of ${g.ids.length}` : "";
+  const pages = Math.ceil(g.ids.length / CU_PAGE), page = Math.floor(start / CU_PAGE);
   const why = g.ids.length > 1 ? `Suggested: ${g.reasons.join(" · ")}` : g.reasons.join(" · ");
-  $("cuWhy").innerHTML = (g.unsure ? `<span class="u">UNSURE</span>` : "") + esc(why) + more;
+  $("cuWhy").innerHTML = (g.unsure ? `<span class="u">UNSURE</span>` : "") + esc(why);
+  $("cuPages").hidden = pages < 2;
+  if (pages > 1) {
+    $("cuPages").innerHTML = `<button data-p="-1" ${page ? "" : "disabled"} title="Previous page (←)">‹</button>
+      <span>Page ${page + 1} of ${pages} · frames ${start + 1}–${start + shown.length} of ${g.ids.length}</span>
+      <button data-p="1" ${page < pages - 1 ? "" : "disabled"} title="Next page (→)">›</button>`;
+    $("cuPages").querySelectorAll("button").forEach(b => b.onclick = () => {
+      CU.fi = Math.min(g.ids.length - 1, Math.max(0, (page + +b.dataset.p) * CU_PAGE)); cuShow(); });
+  }
+  $("cuKeys").textContent = (g.ids.length > CU_PAGE ? "P pick (stays: pick several) · Enter next group"
+    : "P pick → next group · Shift+P pick, stay") + " · X reject · ← → frame · Z zoom · C compare";
   // prefetch the next group's views
   const nx = CU.groups[CU.list[CU.gi + 1]];
   if (nx) nx.ids.slice(0, 4).forEach(id => { const im = new Image(); im.src = "/api/cull/view/" + id; });
@@ -2802,6 +2824,20 @@ new ResizeObserver(() => {                  // window resized, or the Cull scree
   const F = $("cuFrames"), im = F.querySelector(".ph img");
   if (F.children.length) cuLayout(F.children.length, im && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 1.5);
 }).observe($("cuFrames"));
+const CU_PAGE = 4;                           // frames on screen at once; bigger groups go page by page
+// Pick: in a group of up to 4 frames, on to the next group (Shift+P stays). In a bigger group, stay so
+// several can be picked: move to the next frame (Enter / Next ▶ when you're done with the group).
+function cuPick(stay) {
+  const g = cuGroup(); if (!g) return;
+  cuMark("pick");
+  if (g.ids.length > CU_PAGE) { if (CU.fi < g.ids.length - 1) { CU.fi++; cuShow(); } }
+  else if (!stay) setTimeout(() => cuNext(1), 280);
+}
+function cuReject() {
+  const g = cuGroup(); if (!g) return;
+  cuMark("reject");
+  if (CU.fi < g.ids.length - 1) { CU.fi++; cuShow(); }
+}
 async function cuMark(action, value) {
   const g = cuGroup(); if (!g) return;
   const id = g.ids[CU.fi], f = CU.frames[id], before = { flag: f.flag, rating: f.rating };
@@ -3057,13 +3093,8 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault(); return;
   }
   if (!g) return;
-  if (k === "p" || k === "P") {
-    e.preventDefault(); cuMark("pick");
-    if (!e.shiftKey) setTimeout(() => cuNext(1), 280);         // auto-advance
-  } else if (k === "x" || k === "X") {
-    e.preventDefault(); cuMark("reject");
-    if (CU.fi < g.ids.length - 1) { CU.fi++; cuShow(); }
-  } else if (k === "u" || k === "U") { e.preventDefault(); cuMark("unmark"); }
+  if (k === "p" || k === "P") { e.preventDefault(); cuPick(e.shiftKey); }
+  else if (k === "x" || k === "X") { e.preventDefault(); cuReject(); } else if (k === "u" || k === "U") { e.preventDefault(); cuMark("unmark"); }
   else if (/^[0-5]$/.test(k)) { e.preventDefault(); cuMark("rate", +k); }
   else if (k === "ArrowRight") { e.preventDefault(); if (CU.fi < g.ids.length - 1) { CU.fi++; cuShow(); } }
   else if (k === "ArrowLeft") { e.preventDefault(); if (CU.fi > 0) { CU.fi--; cuShow(); } }
