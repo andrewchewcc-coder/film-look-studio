@@ -51,7 +51,9 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   photo (a one-photo collection via `/api/library/grade`), not its folder. Cull frames lay out in the grid that shows them
   largest (`cuLayout`, e.g. 2×2 for four landscape frames). Groups of more than 4 frames go page by page (`CU_PAGE`, ‹ › in the footer), and
   there P picks and stays (moves to the next frame) so several can be picked; small groups still move on (`cuPick`). Each card
-  has ✓ Pick / ✕ buttons. Library search box sits wide above the grid (⌘F); the grid hides
+  has ✓ Pick / ✕ buttons; cards are as wide as their photo (`cuFit`) and rejects are only lightly faded. Review picks
+  (Cull top bar and the Cull finished page, `cuPicksMode`) shows all the cull's picks as one virtual group (`CU.picks`, returned by
+  `cuGroup`) in the same cards, 4–12 per page (`cuPage`); X rejects, Esc goes back. B toggles a black-and-white preview in Cull. Library search box sits wide above the grid (⌘F); the grid hides
   file names unless Show file names is ticked (fls.names) and marks are small round icons (✓ ✕ G E). Grade: RGB histogram with
   clipping warnings at the top of the side panel (`drawHisto`), sliders grouped Light / Colour / Effects / Detail (`SLIDER_GROUPS`).
   Cull summary lists `cull.second_look` frames. Cull Compare (C / Compare button): two frames of the

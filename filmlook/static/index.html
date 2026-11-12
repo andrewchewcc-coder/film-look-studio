@@ -282,17 +282,17 @@
   .cell:hover .acts { display: flex; }
   .cell .steer { position: absolute; left: 0; right: 0; bottom: 0; display: none; gap: 3px; padding: 5px; justify-content: center; }
   .cell:hover .steer { display: flex; }
-  .cell .steer button { padding: 1px 7px; font-size: 12px; background: #000c; border-color: var(--hoverline); }
+  .cell .steer button { padding: 1px 7px; font-size: 12px; background: #000c; border-color: #fff5; color: #fff; }
   .cell .steer button.on { background: var(--accent); color: #000; border-color: var(--accent); }
   .cell.liked { outline: 2px solid var(--accent); outline-offset: -2px; }
   .cell.unliked img { opacity: 0.35; }
   #lbSteer { font-size: 12px; color: var(--muted); margin: -4px 0 8px; line-height: 1.5; }
   #lbSteer button { padding: 0 6px; font-size: 11px; margin-left: 4px; }
-  .cell .acts button { padding: 1px 7px; font-size: 12px; background: #000a; border-color: var(--hoverline); }
+  .cell .acts button { padding: 1px 7px; font-size: 12px; background: #000a; border-color: #fff5; color: #fff; }
   .cell .acts button.on[data-f="pick"] { background: #1f6b35; border-color: #2e9c4f; }
   .cell .acts button.on[data-f="reject"] { background: #7a2a22; border-color: #a33b30; }
   .cell .acts .st { margin-left: auto; font-size: 14px; letter-spacing: 1px; }
-  .cell .acts .st b { color: var(--faint); cursor: pointer; font-weight: normal; }
+  .cell .acts .st b { color: #fff9; cursor: pointer; font-weight: normal; }
   .cell .acts .st b.on { color: var(--accent); }
   .cell .tags .o { color: #e3a36f; }
   #more { display: block; margin: 16px auto; }
@@ -345,6 +345,8 @@
   .cuCard .meta .mk button[data-m=reject].on { background: #7a2a22; border-color: #7a2a22; color: #fff; }
   #cuPages { display: inline-flex; align-items: center; gap: 6px; margin-left: 12px; font-size: 12px; color: var(--muted); white-space: nowrap; }
   #cuPages[hidden] { display: none; }
+  #cuFrames.bw .ph img { filter: grayscale(1); }
+  #cuRun.picks #cuStrip, #cuRun.picks #cuPrev, #cuRun.picks #cuNextBtn, #cuRun.picks .cuToggle, #cuRun.picks #cuBarWrap { display: none; }
   #cuPages button { padding: 1px 9px; }
   .cuCard .meta .on1 { color: #6d6a65; }
   #cuFoot { display: flex; gap: 16px; align-items: baseline; padding: 6px 16px 12px; }
@@ -694,6 +696,7 @@
       <div class="bar" id="cuBarWrap"><div id="cuBar"></div></div>
       <span id="cuCount" class="small"></span>
       <label class="small cuToggle"><input type="checkbox" id="cuUnsure"> Only unsure groups</label>
+      <button id="cuPicksBtn" hidden title="See all your picks from this cull together and cut them down">Review picks</button>
       <button id="cuSendTop" title="Open this cull's picks in Grade">Grade picks</button>
       <button id="cuFinish" class="primary">Finish</button>
       <button id="cuBack" title="Back to the cull list (progress is saved)">Back</button>
@@ -707,7 +710,7 @@
   <div id="cuDone" hidden>
     <h2>Cull finished</h2>
     <div id="cuSummary"></div>
-    <div class="row" style="max-width:420px"><button id="cuSend" class="primary">Grade picks</button><button id="cuAgain">Back to culls</button></div>
+    <div class="row" style="max-width:420px"><button id="cuSend" class="primary">Grade picks</button><button id="cuPicksDone" title="See all your picks from this cull together and cut them down">Review picks</button><button id="cuAgain">Back to culls</button></div>
     <div id="cuSecond"></div>
   </div>
   <div id="cuZoom" hidden>
@@ -2713,6 +2716,7 @@ async function cuLoad(sid) {
 }
 function cuFilter(jumpToFirstOpen) {
   // CU.list holds positions in CU.groups (a group's idx can skip numbers if photos left the library)
+  CU.picks = null; $("cuRun").classList.remove("picks");
   CU.list = CU.groups.map((g, k) => k).filter(k => !$("cuUnsure").checked || CU.groups[k].unsure);
   cuBuildStrip();
   let pos = jumpToFirstOpen ? CU.list.findIndex(i => !CU.groups[i].done) : Math.max(0, CU.list.indexOf(CU.cur));
@@ -2720,7 +2724,26 @@ function cuFilter(jumpToFirstOpen) {
   cuShow();
 }
 $("cuUnsure").onchange = () => cuFilter(true);
-function cuGroup() { return CU.groups[CU.list[CU.gi]]; }
+function cuGroup() { return CU.picks || CU.groups[CU.list[CU.gi]]; }
+// Review picks: all of this cull's picks as one big "group" in the same screen, so the same cards, keys,
+// zoom and compare work. Reject (X) the weaker ones; they stay on screen, faded, until you go back.
+function cuPicksMode(on) {
+  if (on) {
+    const ids = Object.keys(CU.frames).map(Number).filter(id => CU.frames[id].flag === "pick")
+      .sort((a, b) => (CU.frames[a].time || "").localeCompare(CU.frames[b].time || ""));
+    if (ids.length < 2) return;
+    CU.picks = { ids, reasons: [], unsure: false, done: true }; CU.fiBack = CU.fi;
+    $("cuStart").hidden = true; $("cuDone").hidden = true; $("cuRun").hidden = false;
+    CU.fi = 0;
+  } else { CU.picks = null; CU.fi = CU.fiBack ?? -1; }
+  $("cuRun").classList.toggle("picks", !!CU.picks);
+  cuShow();
+}
+function cuPage() {                          // picks review: as many as fit at a readable size (4 to 12)
+  if (!CU.picks) return CU_PAGE;
+  const F = $("cuFrames");
+  return Math.max(4, Math.min(12, Math.floor(F.clientWidth / 280) * Math.floor(F.clientHeight / 220)));
+}
 function cuBuildStrip() {
   $("cuStrip").innerHTML = "";
   CU.list.forEach((gidx, pos) => {
@@ -2751,13 +2774,16 @@ function cuShow() {
   $("cuBar").style.width = (CU.list.length ? 100 * done / CU.list.length : 0) + "%";
   const all = Object.values(CU.frames), picks = all.filter(f => f.flag === "pick").length, rej = all.filter(f => f.flag === "reject").length;
   $("cuCount").textContent = CU.list.length ? `Group ${CU.gi + 1} of ${CU.list.length} · ${done} done · ${picks} picked · ${rej} rejected` : "No groups";
+  $("cuPicksBtn").hidden = !CU.picks && picks < 2;
+  $("cuPicksBtn").textContent = CU.picks ? "◀ Back to groups" : `Review picks (${picks})`;
+  if (CU.picks) $("cuCount").textContent = `Your picks · keeping ${CU.picks.ids.filter(id => CU.frames[id].flag === "pick").length} of ${CU.picks.ids.length}`;
   $("cuFrames").innerHTML = "";
   cuUpdateStrip();
   $("cuPrev").disabled = CU.gi <= 0;
   if (!g) { $("cuWhy").textContent = $("cuUnsure").checked ? "No unsure groups — untick the box to see them all." : ""; return; }
   CU.cur = CU.list[CU.gi];
   if (CU.fi < 0 || CU.fi >= g.ids.length) CU.fi = Math.max(0, g.ids.indexOf(g.suggested));
-  const start = Math.floor(CU.fi / CU_PAGE) * CU_PAGE, shown = g.ids.slice(start, start + CU_PAGE);   // page by page
+  const PG = cuPage(), start = Math.floor(CU.fi / PG) * PG, shown = g.ids.slice(start, start + PG);   // page by page
   shown.forEach((id, k) => {
     const f = CU.frames[id], i = start + k;
     const d = document.createElement("div");
@@ -2793,7 +2819,7 @@ function cuShow() {
   const first = $("cuFrames").querySelector(".ph img");
   if (first) first.addEventListener("load", () => cuLayout(shown.length, first.naturalWidth / first.naturalHeight), { once: true });
   $("cuFrames").querySelectorAll(".ph img").forEach(im => im.addEventListener("load", () => cuFit(getComputedStyle($("cuFrames")).gridTemplateColumns.split(" ").length), { once: true }));
-  const pages = Math.ceil(g.ids.length / CU_PAGE), page = Math.floor(start / CU_PAGE);
+  const pages = Math.ceil(g.ids.length / PG), page = Math.floor(start / PG);
   const why = g.ids.length > 1 ? `Suggested: ${g.reasons.join(" · ")}` : g.reasons.join(" · ");
   $("cuWhy").innerHTML = (g.unsure ? `<span class="u">UNSURE</span>` : "") + esc(why);
   $("cuPages").hidden = pages < 2;
@@ -2802,10 +2828,12 @@ function cuShow() {
       <span>Page ${page + 1} of ${pages} · frames ${start + 1}–${start + shown.length} of ${g.ids.length}</span>
       <button data-p="1" ${page < pages - 1 ? "" : "disabled"} title="Next page (→)">›</button>`;
     $("cuPages").querySelectorAll("button").forEach(b => b.onclick = () => {
-      CU.fi = Math.min(g.ids.length - 1, Math.max(0, (page + +b.dataset.p) * CU_PAGE)); cuShow(); });
+      CU.fi = Math.min(g.ids.length - 1, Math.max(0, (page + +b.dataset.p) * PG)); cuShow(); });
   }
-  $("cuKeys").textContent = (g.ids.length > CU_PAGE ? "P pick (stays: pick several) · Enter next group"
-    : "P pick → next group · Shift+P pick, stay") + " · X reject · ← → frame · Z zoom · C compare";
+  if (CU.picks) $("cuWhy").textContent = "";
+  $("cuKeys").textContent = CU.picks ? "X reject · P pick again · 1–5 stars · B black & white · ← → frame · Z zoom · C compare · Esc back"
+    : (g.ids.length > CU_PAGE ? "P pick (stays: pick several) · Enter next group"
+    : "P pick → next group · Shift+P pick, stay") + " · X reject · ← → frame · B black & white · Z zoom · C compare";
   // prefetch the next group's views
   const nx = CU.groups[CU.list[CU.gi + 1]];
   if (nx) nx.ids.slice(0, 4).forEach(id => { const im = new Image(); im.src = "/api/cull/view/" + id; });
@@ -2846,6 +2874,7 @@ const CU_PAGE = 4;                           // frames on screen at once; bigger
 function cuPick(stay) {
   const g = cuGroup(); if (!g) return;
   cuMark("pick");
+  if (CU.picks) return;                       // reviewing picks: stay on the frame
   if (g.ids.length > CU_PAGE) { if (CU.fi < g.ids.length - 1) { CU.fi++; cuShow(); } }
   else if (!stay) setTimeout(() => cuNext(1), 280);
 }
@@ -2864,6 +2893,7 @@ async function cuMark(action, value) {
   catch (e) { Object.assign(f, before); cuShow(); alert("Couldn't save: " + e.message); }
 }
 async function cuNext(step = 1) {
+  if (CU.picks) return;                       // reviewing picks: there is no next group
   const g = cuGroup();
   if (g && step > 0 && !g.done) {
     g.done = true;
@@ -2938,6 +2968,8 @@ async function cuSend() {
 }
 $("cuSend").onclick = cuSend;
 $("cuSendTop").onclick = cuSend;
+$("cuPicksBtn").onclick = () => cuPicksMode(!CU.picks);
+$("cuPicksDone").onclick = () => cuPicksMode(true);
 function cuLeave() {                         // back where the cull was opened from
   cuZoomClose();
   if (CU.from && CU.from.tab === "lib") {
@@ -3109,6 +3141,10 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault(); return;
   }
   if (!g) return;
+  if (k === "b" || k === "B") { e.preventDefault(); return $("cuFrames").classList.toggle("bw"); }
+  if (CU.picks && k === "Escape") { e.preventDefault(); return cuPicksMode(false); }
+  if (CU.picks && (k === "Enter" || k === "ArrowUp" || k === "ArrowDown")) { e.preventDefault(); const st = (k === "ArrowUp" ? -1 : 1) * (k === "Enter" ? 1 : $("cuFrames").style.gridTemplateColumns.split("minmax").length - 1 || 1);
+    CU.fi = Math.min(g.ids.length - 1, Math.max(0, CU.fi + st)); return cuShow(); }
   if (k === "p" || k === "P") { e.preventDefault(); cuPick(e.shiftKey); }
   else if (k === "x" || k === "X") { e.preventDefault(); cuReject(); } else if (k === "u" || k === "U") { e.preventDefault(); cuMark("unmark"); }
   else if (/^[0-5]$/.test(k)) { e.preventDefault(); cuMark("rate", +k); }
