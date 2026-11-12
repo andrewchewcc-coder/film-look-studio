@@ -329,7 +329,9 @@
   .cuCard.sugg { box-shadow: 0 0 0 2px var(--accent) inset; }
   .cuCard .ph { flex: 1; min-height: 0; position: relative; }
   .cuCard .ph img { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); object-fit: contain; }
-  .cuCard.reject .ph img { opacity: .35; }
+  .cuCard.reject .ph img { opacity: .8; filter: grayscale(.6); }   /* still judgeable; the REJECT tag says what it is */
+  .cuCard.reject { border-color: #7a2a2266; }
+  .cuCard { justify-self: center; width: 100%; }
   .cuCard .tags { position: absolute; left: 10px; top: 10px; display: flex; gap: 5px; flex-wrap: wrap; z-index: 1; }
   .cuCard .tags span { background: #000c; font-size: 11px; padding: 2px 7px; border-radius: 3px; }
   .cuCard .tags .s { color: var(--accent); } .cuCard .tags .p { background: #1f6b35; color: #fff; }
@@ -337,7 +339,8 @@
   .cuCard .meta { padding: 6px 10px 8px; font-size: 12px; color: var(--muted); display: flex; gap: 8px; }
   .cuCard .meta .stars { color: var(--accent); margin-left: auto; letter-spacing: 1px; }
   .cuCard .meta .mk { display: flex; gap: 4px; }
-  .cuCard .meta .mk button { padding: 1px 8px; font-size: 12px; }
+  .cuCard .meta .mk button { padding: 1px 8px; font-size: 12px; white-space: nowrap; }
+  .cuCard .meta > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .cuCard .meta .mk button[data-m=pick].on { background: #1f6b35; border-color: #1f6b35; color: #fff; }
   .cuCard .meta .mk button[data-m=reject].on { background: #7a2a22; border-color: #7a2a22; color: #fff; }
   #cuPages { display: inline-flex; align-items: center; gap: 6px; margin-left: 12px; font-size: 12px; color: var(--muted); white-space: nowrap; }
@@ -2789,6 +2792,7 @@ function cuShow() {
   requestAnimationFrame(() => cuLayout(shown.length));
   const first = $("cuFrames").querySelector(".ph img");
   if (first) first.addEventListener("load", () => cuLayout(shown.length, first.naturalWidth / first.naturalHeight), { once: true });
+  $("cuFrames").querySelectorAll(".ph img").forEach(im => im.addEventListener("load", () => cuFit(getComputedStyle($("cuFrames")).gridTemplateColumns.split(" ").length), { once: true }));
   const pages = Math.ceil(g.ids.length / CU_PAGE), page = Math.floor(start / CU_PAGE);
   const why = g.ids.length > 1 ? `Suggested: ${g.reasons.join(" · ")}` : g.reasons.join(" · ");
   $("cuWhy").innerHTML = (g.unsure ? `<span class="u">UNSURE</span>` : "") + esc(why);
@@ -2819,6 +2823,18 @@ function cuLayout(n, aspect = 1.5) {
     if (w > size * 1.03) { size = w; best = cols; }
   }
   F.style.gridTemplateColumns = `repeat(${best}, minmax(0, 1fr))`;
+  cuFit(best);
+}
+// Each card is only as wide as its photo (no grey beside it), centred in its cell.
+function cuFit(cols) {
+  const F = $("cuFrames"), n = F.children.length; if (!n) return;
+  const W = F.clientWidth - 32, H = F.clientHeight - 28, rows = Math.ceil(n / cols);
+  const cw = (W - 12 * (cols - 1)) / cols, ch = (H - 12 * (rows - 1)) / rows;
+  for (const card of F.children) {
+    const im = card.querySelector(".ph img");
+    const a = im && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 0;
+    card.style.width = a && cw > 0 && ch > 60 ? Math.round(Math.min(cw, Math.max(340, (ch - 46) * a + 16))) + "px" : "100%";
+  }
 }
 new ResizeObserver(() => {                  // window resized, or the Cull screen just appeared
   const F = $("cuFrames"), im = F.querySelector(".ph img");
