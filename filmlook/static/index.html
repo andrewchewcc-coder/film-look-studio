@@ -8,7 +8,7 @@
   :root {
     color-scheme: dark;
     --bg: #141414; --panel: #1d1d1d; --line: #2c2c2c; --text: #e8e6e3; --muted: #9a9792;
-    --accent: #e0b34a; --accent-ink: #1a1408; --danger: #e06a5a;
+    --accent: #e0b34a; --focus: #ffe14a; --accent-ink: #1a1408; --danger: #e06a5a;
     --field: #0f0f0f; --raised: #2a2a2a; --btnline: #383838; --hoverline: #555; --linesoft: #222; --hover: #262626;
     --card: #181818; --stage: #0b0b0b; --faint: #666; --curvegrid: #262626; --curvediag: #444;
   }
@@ -18,7 +18,7 @@
     :root {
       color-scheme: light;
       --bg: #f3f2ef; --panel: #ffffff; --line: #d8d5cf; --text: #1d1c1a; --muted: #66625b;
-      --accent: #c8962c; --accent-ink: #1a1408; --danger: #c4473a;
+      --accent: #c8962c; --focus: #e08a00; --accent-ink: #1a1408; --danger: #c4473a;
       --field: #ffffff; --raised: #e7e5e1; --btnline: #cdc9c2; --hoverline: #9f9a91; --linesoft: #e4e1dc; --hover: #ebe9e5;
       --card: #e9e7e3; --stage: #d9d7d3; --faint: #a39f97; --curvegrid: #e2dfda; --curvediag: #bdb8af;
     }
@@ -326,7 +326,8 @@
   .cuToggle input { accent-color: var(--accent); }
   #cuFrames { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, 1fr); gap: 12px; padding: 14px 16px; }
   .cuCard { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 2px solid transparent; border-radius: 6px; background: var(--card); position: relative; }
-  .cuCard.focus { border-color: #8a8a8a; }
+  .cuCard.focus { border-color: var(--focus); box-shadow: 0 0 0 2px var(--focus), 0 0 14px var(--focus); }   /* the frame your keys act on: bright, so it's obvious in the dark */
+  .cuCard.focus.sugg { box-shadow: 0 0 0 2px var(--focus), 0 0 14px var(--focus), 0 0 0 4px #0000, inset 0 0 0 2px var(--accent); }
   .cuCard.sugg { box-shadow: 0 0 0 2px var(--accent) inset; }
   .cuCard .ph { flex: 1; min-height: 0; position: relative; }
   .cuCard .ph img { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); object-fit: contain; }
