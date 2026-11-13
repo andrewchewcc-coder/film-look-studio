@@ -10,10 +10,9 @@ let appURL = URL(string: "http://127.0.0.1:8765/")!
 
 // The page's web view, remembering the last mouse-down so a drag that starts in the page (a photo dragged out
 // to the Desktop, a folder, a mail) can be handed to macOS as a real file drag.
-final class DragWebView: WKWebView {
-    var lastDown: NSEvent?
-    override func mouseDown(with event: NSEvent) { lastDown = event; super.mouseDown(with: event) }
-}
+// (WKWebView hands mouse events to an inner view, so overriding mouseDown here never fired: the app watches
+// its own mouse events instead, see lastMouse.)
+final class DragWebView: WKWebView {}
 
 // Drags files that don't exist yet: the app's server makes each JPG copy when the drop happens (a RAW can
 // take ~15 s the first time), and Finder shows progress. Always copies, never the originals.
@@ -49,10 +48,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     var window: NSWindow!
     var web: DragWebView!
     let dragSource = FileDragSource()
+    var lastMouse: NSEvent?                                             // newest left-button press / drag in our windows
     var note: NSTextField!
 
     func applicationDidFinishLaunching(_ n: Notification) {
         buildMenu()
+        NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseDragged]) { [weak self] e in
+            self?.lastMouse = e; return e
+        }
         let cfg = WKWebViewConfiguration()
         cfg.userContentController.add(self, name: "fls")              // the page's Quit button tells us to close
         cfg.preferences.isElementFullscreenEnabled = true
@@ -155,7 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage) {
         if (m.body as? String) == "quit" { NSApp.terminate(nil); return }
         if let d = m.body as? [String: Any], let files = d["drag"] as? [[String: String]], !files.isEmpty,
-           let ev = web.lastDown {                                        // the page says: a photo is being dragged out
+           let ev = lastMouse, ev.window === window {                                        // the page says: a photo is being dragged out
             let at = web.convert(ev.locationInWindow, from: nil)
             let icon = NSWorkspace.shared.icon(forFileType: "jpg"); icon.size = NSSize(width: 56, height: 56)
             var items: [NSDraggingItem] = []
