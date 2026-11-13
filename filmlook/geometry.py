@@ -147,3 +147,68 @@ def key(g):
     import hashlib
     import json
     return hashlib.sha1(json.dumps(normalise(g), sort_keys=True).encode()).hexdigest()[:8]
+
+
+# --- mapping points (for drawn masks that must follow a later change of crop / straighten) ----------
+# Continuous pixel coordinates in the oriented source (W x H) <-> fractions of an edit's final frame.
+
+def _turn_dims(W, H, g):
+    return (H, W) if g["rot90"] in (90, 270) else (W, H)
+
+
+def _src_to_turned(x, y, W, H, g):
+    if g["flip_h"]:
+        x = W - x
+    if g["flip_v"]:
+        y = H - y
+    w, h = W, H
+    for _ in range(g["rot90"] // 90):            # each clockwise quarter turn: (x, y) -> (h - y, x)
+        x, y, w, h = h - y, x, h, w
+    return x, y
+
+
+def _turned_to_src(x, y, W, H, g):
+    sizes = [(W, H)]
+    for _ in range(g["rot90"] // 90):
+        w, h = sizes[-1]
+        sizes.append((h, w))
+    for k in range(g["rot90"] // 90, 0, -1):     # undo the turns, last first: (x', y') -> (y', h - x')
+        w, h = sizes[k - 1]
+        x, y = y, h - x
+    if g["flip_v"]:
+        y = H - y
+    if g["flip_h"]:
+        x = W - x
+    return x, y
+
+
+def frame_to_source(fx, fy, W, H, g):
+    """Fractions of the final frame (arrays) -> source pixel coordinates."""
+    g = normalise(g)
+    cw, ch = _turn_dims(W, H, g)
+    cx, cy, cwf, chf = g["crop"] or (0.0, 0.0, 1.0, 1.0)
+    X = cx * cw + np.asarray(fx, np.float64) * cwf * cw - cw / 2
+    Y = cy * ch + np.asarray(fy, np.float64) * chf * ch - ch / 2
+    t = math.radians(g["angle"])
+    tx = cw / 2 + X * math.cos(t) + Y * math.sin(t)
+    ty = ch / 2 - X * math.sin(t) + Y * math.cos(t)
+    return _turned_to_src(tx, ty, W, H, g)
+
+
+def source_to_frame(sx, sy, W, H, g):
+    """Source pixel coordinates (arrays) -> fractions of the final frame."""
+    g = normalise(g)
+    cw, ch = _turn_dims(W, H, g)
+    tx, ty = _src_to_turned(np.asarray(sx, np.float64), np.asarray(sy, np.float64), W, H, g)
+    a, b = tx - cw / 2, ty - ch / 2
+    t = math.radians(g["angle"])
+    X = math.cos(t) * a - math.sin(t) * b + cw / 2
+    Y = math.sin(t) * a + math.cos(t) * b + ch / 2
+    cx, cy, cwf, chf = g["crop"] or (0.0, 0.0, 1.0, 1.0)
+    return (X - cx * cw) / (cwf * cw), (Y - cy * ch) / (chf * ch)
+
+
+def same(g1, g2):
+    """Do two edits frame the photo identically?"""
+    a, b = normalise(g1), normalise(g2)
+    return all(a[k] == b[k] for k in ("rot90", "flip_h", "flip_v", "angle", "crop"))

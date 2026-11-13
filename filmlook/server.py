@@ -194,12 +194,44 @@ async def brush_save(request: Request):
 
 
 @app.get("/api/brush/{bid}.png")
-def brush_get(bid: str):
+def brush_get(bid: str, name: str = "", g: str = ""):
+    """The painted mask. With name + g (the crop it was painted under), as it lies on that photo's current crop."""
     from . import masks
     f = masks.brush_file(bid)
     if f is None:
         raise HTTPException(404, "no such brush mask")
+    try:
+        mg = json.loads(g) if g else None
+    except ValueError:
+        mg = None
+    if name and isinstance(mg, dict):
+        p = _photo(name)
+        cur = edits.get(p)
+        if not geometry.same(mg, cur):
+            im = masks.brush_view(bid, mg, cur, raw.full_size(p))
+            return Response(_png(im), media_type="image/png", headers={"Cache-Control": "no-store"})
     return FileResponse(f, media_type="image/png", headers={"Cache-Control": "max-age=31536000"})
+
+
+def _png(im):
+    import io
+    b = io.BytesIO()
+    im.save(b, "PNG")
+    return b.getvalue()
+
+
+class RefitIn(BaseModel):
+    name: str
+    masks: list
+    old: dict | None = None
+
+
+@app.post("/api/masks/refit")
+def masks_refit(body: RefitIn):
+    """After a crop / straighten change: gradients moved to stay on the same part of the photo."""
+    from . import masks
+    p = _photo(body.name)
+    return {"masks": masks.refit(body.masks, body.old or {}, edits.get(p), raw.full_size(p))}
 
 
 class GradeAiIn(BaseModel):
@@ -643,6 +675,21 @@ def library_mark(photo_id: int, body: LibMarkIn):
         return marks.set_mark(_lib().con(), photo_id, **kw)
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+class FileMarkIn(LibMarkIn):
+    name: str
+
+
+@app.post("/api/mark_file")
+def mark_file(body: FileMarkIn):
+    """The same marks from Grade, for a photo of the open folder (by file name)."""
+    p = _photo(body.name)
+    con, drive_id, rel = edits._where(p)
+    row = con.execute("SELECT photo_id FROM files WHERE drive_id=? AND rel_path=?", (drive_id, rel)).fetchone() if drive_id else None
+    if not row or not row[0]:
+        raise HTTPException(409, "This photo isn't in the Library yet, so it can't be marked. Scan its folder first.")
+    return library_mark(row[0], LibMarkIn(flag=body.flag, rating=body.rating))
 
 
 @app.get("/api/library/folders")
@@ -1160,10 +1207,14 @@ def cull_state():
     c = _lib().con()
     cull = _cull()
     sessions = []
-    for r in c.execute("SELECT id, label, created_at, finished_at FROM cull_sessions ORDER BY id DESC LIMIT 12"):
+    # newest activity first (a cull you resumed and finished today comes first, however old it is)
+    for r in c.execute("""SELECT s.id, s.label, s.created_at, s.finished_at,
+                                 MAX(COALESCE((SELECT MAX(at) FROM cull_log l WHERE l.session_id = s.id), ''),
+                                     COALESCE(s.finished_at, ''), s.created_at) AS last
+                          FROM cull_sessions s ORDER BY last DESC, s.id DESC LIMIT 12"""):
         g = c.execute("SELECT COUNT(*), COALESCE(SUM(done), 0) FROM cull_groups WHERE session_id=?", (r["id"],)).fetchone()
         rate, n = cull.session_agreement(c, r["id"])
-        sessions.append({"id": r["id"], "label": r["label"], "created": r["created_at"], "finished": r["finished_at"],
+        sessions.append({"id": r["id"], "label": r["label"], "created": r["created_at"], "finished": r["finished_at"], "last": r["last"],
                          "groups": g[0], "done": g[1], "agreement": rate, "agreement_groups": n})
     shoots = [{"id": r[0], "name": PurePath(r[1]).name, "photos": r[2]} for r in c.execute(
         """SELECT fo.id, fo.rel_path, COUNT(p.id) FROM folders fo JOIN photos p ON p.folder_id = fo.id
@@ -1205,11 +1256,21 @@ class CullStartIn(BaseModel):
 
 @app.post("/api/cull/start")
 def cull_start(body: CullStartIn):
-    try:
-        sid = _cull().start_session(_lib().con(), body.scope, body.label or "Cull")
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+    c, cull = _lib().con(), _cull()
+    sc = body.scope or {}
+    with _cull_start_lock:                 # two quick clicks used to make two copies of the same cull
+        if sc.get("folder_id") and not sc.get("date_from") and not sc.get("date_to") and not sc.get("new"):
+            sid = cull.shoot_session(c, sc["folder_id"])
+            if sid and c.execute("SELECT finished_at FROM cull_sessions WHERE id=?", (sid,)).fetchone()[0] is None:
+                return {"session": sid}    # this shoot's unfinished cull: carry on with it
+        try:
+            sid = cull.start_session(c, body.scope, body.label or "Cull")
+        except ValueError as e:
+            raise HTTPException(400, str(e))
     return {"session": sid}
+
+
+_cull_start_lock = threading.Lock()
 
 
 @app.get("/api/cull/session/{sid}")

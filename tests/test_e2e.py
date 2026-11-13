@@ -126,6 +126,11 @@ def test_click_through_every_tab(app):
             const blob = await new Promise(r => c.toBlob(r, "image/png"));
             const id = (await (await api("/api/brush", { method: "POST", headers: { "Content-Type": "image/png" }, body: blob })).json()).id;
             await api("/api/brush/" + id + ".png");
+            await api("/api/brush/" + id + ".png?" + q({ name: S.photos[0], g: JSON.stringify({ crop: [0, 0, 0.5, 1] }) }));   // through another crop
+            await api("/api/masks/refit", esJSON({ name: S.photos[0], old: { crop: [0.1, 0.1, 0.8, 0.8] },
+              masks: [{ kind: "radial", cx: 0.5, cy: 0.5, rx: 0.2, ry: 0.2 }, { kind: "linear" }, { kind: "brush", id }] }));
+            await api("/api/mark_file", esJSON({ name: S.photos[0], flag: "pick", rating: 3 }));   // marking from Grade
+            gradeStep(1); gradeBW(); gradeBW();
             await api("/api/dragfile?" + q({ name: S.photos[0] }));                   // the JPG copy used to drag a photo out
             await api("/api/library/dragfile/" + (await (await api("/api/library/search?cats=&limit=1")).json()).results[0].id);
             await api("/api/render?" + q({ name: S.photos[0], look: S.look, edge: 400, adjust: JSON.stringify({ masks: [
@@ -137,6 +142,9 @@ def test_click_through_every_tab(app):
         page.evaluate(f"""async () => {{ await esLoad({app['essay']}); await new Promise(r => setTimeout(r, 2500));
             for (const p of ["check", "ai", "pairs", "bench", "fill", "export", "book", "contact", "publish", "brief"]) {{
                 await esPanel(p); await new Promise(r => setTimeout(r, 1500)); }} }}""")
+
+        # ⌘K: go anywhere lists tabs, shoots, essays and culls
+        page.evaluate("async () => { await goOpen(); $('goQ').value = 'e2e'; goDraw(); goClose(); }")
 
         # Settings: every section renders
         page.evaluate("async () => { await openSettings(); await new Promise(r => setTimeout(r, 2500)); $('setClose').click(); }")

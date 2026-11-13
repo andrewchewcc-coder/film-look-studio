@@ -50,7 +50,7 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   localStorage fls.treeOpen; the hidden `#lbWhere` select still holds the value). The viewer's Open in Grade opens just that
   photo (a one-photo collection via `/api/library/grade`), not its folder. Cull frames lay out in the grid that shows them
   largest (`cuLayout`, e.g. 2×2 for four landscape frames). Groups of more than 4 frames go page by page (`CU_PAGE`, ‹ › in the footer), and
-  there P picks and stays (moves to the next frame) so several can be picked; small groups still move on (`cuPick`). Each card
+  P picks and stays in every group (moves to the next frame) so several can be picked; Shift+P (or Shift-click ✓ Pick) picks and goes to the next group (`cuPick(next)`). Each card
   has ✓ Pick / ✕ buttons; cards are as wide as their photo (`cuFit`) and rejects are only lightly faded. Review picks
   (Cull top bar and the Cull finished page, `cuPicksMode`) shows all the cull's picks as one virtual group (`CU.picks`, returned by
   `cuGroup`) in the same cards, 4–12 per page (`cuPage`); X rejects, Esc goes back. B toggles a black-and-white preview in Cull. Library search box sits wide above the grid (⌘F); the grid hides
@@ -177,3 +177,11 @@ error. Extend it when adding a tab, panel or button that calls the server.
   Grade's photo list (`.thumb`) and Cull's strip (`.cuTile`) share one look: 2 px border, green pick / red reject (`/api/state` `marks` ← `edits.marked_names`), accent outline for the current photo, small dark corner chips.
 - Drag out (Mac app only, `DRAG` in the page + `DragWebView` / `FileDragSource` in `FilmLookStudio.swift`): the page posts `{drag: [{url, name}]}` once a press on a Library cell / Grade thumb moves 10 px; the app starts a file-promise
   drag and downloads each JPG from `/api/library/dragfile/{id}` or `/api/dragfile?name=` when dropped. `library/dragout.py` makes a COPY (exported JPG, else the graded photo, 4000 px, cached a day in LIBRARY_DIR/drag): never offer an original, Finder moves on same-disk drops.
+- Keys are the same across tabs: P / X / U / 1–5 mark in Library, Cull and Grade (Grade: `gradeMark` → `POST /api/mark_file`; 0 stays Fit there), ← → previous / next (Grade: `gradeStep`, follows the strip filter),
+  V = black & white preview (Cull `cuBW`, Grade `gradeBW`), Z zoom, ? shortcuts. ⌘K = go anywhere (`goOpen`: tabs, commands, Library views, shoots from `#lbWhere`, essays, culls).
+- Essays: right-hand panel `#esInsp` (title, count, look `#esInLook` → PATCH look, versions, arrange style, brief via `esBriefPanel` in `#esInBrief`); the bottom panel keeps Arrange + Output only.
+- Drawn masks follow crop changes: brush masks carry `geom` (the crop they were painted under; `recipes._mask_entry` keeps it) and `masks._brush_remapped` traces each pixel
+  through `geometry.frame_to_source` / `source_to_frame`; `/api/brush/{id}.png?name=&g=` shows it on the current crop. Gradients are moved on crop save (`refitMasks` → `/api/masks/refit` → `masks.refit`).
+- Cull frames per page (`cuPage` / `cuSlots`, never more than two rows: `CU_ROWS`, Review picks too): a group that fits at a readable size (long side ≥ 360 px,
+  short ≥ 230) shows whole; bigger ones page with at least 4 a page, the most frames that still fill the screen within 10% of the best (full 4 × 2 / 5 × 2 grids).
+  Every page full but the last, which keeps the full pages' grid (`CU.slots`, fixed column / row tracks in `cuFit`) so frames keep their size and place. Never a scrolling row.

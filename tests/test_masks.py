@@ -68,3 +68,31 @@ def test_drawn_masks_brush_and_gradients(tmp_path, monkeypatch):
     assert a[3][50, 100] > 0.99 and a[3][5, 5] < 0.01                 # radial: the middle only
     strip = masks.alphas(p, r, None, (200, 100), (0, 60, 200, 70))[0]
     assert strip.shape == (10, 200) and strip[:, 20].min() > 0.99
+
+
+def test_drawn_masks_follow_a_new_crop(tmp_path, monkeypatch):
+    """Paint / place under one crop, change the crop: the mask stays on the same part of the photo."""
+    import io
+    from PIL import Image
+    from filmlook import geometry, raw
+    monkeypatch.setattr("filmlook.library.LIBRARY_DIR", tmp_path)
+    monkeypatch.setattr(raw, "full_size", lambda path: (400, 200))
+    p = tmp_path / "x.dng"
+    p.write_bytes(b"x")
+    old = geometry.normalise({"crop": [0.5, 0.0, 0.5, 1.0]})          # painted on the right half of the photo
+    pic = np.zeros((100, 100), np.uint8)
+    pic[:, :50] = 255                                                  # ... its left half = photo x 200..300
+    buf = io.BytesIO()
+    Image.fromarray(pic).save(buf, "PNG")
+    bid = masks.save_brush(buf.getvalue())
+    r = recipes.apply_adjust(recipes.load_look("neutral"), {"masks": [{"kind": "brush", "id": bid, "geom": old, "exposure": 1}]})
+    assert r["masks"][0]["geom"]["crop"] == old["crop"]
+    a = masks.alphas(p, r, None, (400, 200), (0, 0, 400, 200))[0]      # now uncropped
+    assert a[100, 250] > 0.99 and a[100, 150] < 0.01 and a[100, 350] < 0.01
+    v = masks.brush_view(bid, old, geometry.normalise(None), (400, 200), edge=400)
+    assert v.size == (400, 200) and np.asarray(v)[100, 250] > 250 and np.asarray(v)[100, 50] == 0
+    # gradients: numbers moved from the old frame to the new one
+    lin, rad = masks.refit([{"kind": "linear", "x0": 0.0, "y0": 0.5, "x1": 1.0, "y1": 0.5},
+                            {"kind": "radial", "cx": 0.5, "cy": 0.5, "rx": 0.2, "ry": 0.4}], old, geometry.normalise(None), (400, 200))
+    assert abs(lin["x0"] - 0.5) < 1e-6 and abs(lin["x1"] - 1.0) < 1e-6
+    assert abs(rad["cx"] - 0.75) < 1e-6 and abs(rad["rx"] - 0.1) < 1e-6 and abs(rad["ry"] - 0.4) < 1e-6

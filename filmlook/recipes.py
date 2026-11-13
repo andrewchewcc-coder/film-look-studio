@@ -145,6 +145,9 @@ def _mask_entry(m):
     if m["kind"] == "brush":
         bid = str(m.get("id") or "")
         out["id"] = bid if re.fullmatch(r"[0-9a-f]{16}", bid) else ""
+        if isinstance(m.get("geom"), dict):        # the crop / straighten it was painted under
+            from . import geometry
+            out["geom"] = geometry.normalise(m["geom"])
     elif m["kind"] == "linear":
         out.update(x0=num("x0", 0.5, -1, 2), y0=num("y0", 0.3, -1, 2), x1=num("x1", 0.5, -1, 2), y1=num("y1", 0.7, -1, 2))
     elif m["kind"] == "radial":

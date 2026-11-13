@@ -119,11 +119,13 @@ def edited_names(paths):
 
 
 def marked_names(paths):
-    """{file name: "pick" | "reject"} for these photo files (your marks from Cull / the Library)."""
+    """{file name: [flag ("pick" / "reject" / None), stars (0-5)]} for these photo files that have a mark
+    (your marks from Cull / the Library / Grade)."""
     keys, con, out = _file_keys(paths), _con(), {}
     for d in {k[0] for k in keys}:
-        flagged = {r[0]: r[1] for r in con.execute("""SELECT f.rel_path, m.flag FROM files f JOIN marks m ON m.photo_id = f.photo_id
-                                                       WHERE f.drive_id=? AND m.flag IN ('pick', 'reject')""", (d,))}
+        flagged = {r[0]: [r[1] if r[1] in ("pick", "reject") else None, r[2] or 0] for r in con.execute(
+            """SELECT f.rel_path, m.flag, m.rating FROM files f JOIN marks m ON m.photo_id = f.photo_id
+               WHERE f.drive_id=? AND (m.flag IN ('pick', 'reject') OR m.rating > 0)""", (d,))}
         out.update({n: flagged[rel] for dd, rel, n in keys if dd == d and rel in flagged})
     return out
 

@@ -261,7 +261,24 @@ def _smooth(t):
     return t * t * (3 - 2 * t)
 
 
-def _shape_alpha(m, frame_size, box):
+def _brush_remapped(img, m, frame_size, box, geom, src_size):
+    """A painting made under another crop / straighten (its m['geom']), read through the photo's current one:
+    each pixel of the current frame is traced back to the photo and on to where it was in the painted frame."""
+    from .dng import _bilinear
+    fw, fh = frame_size
+    x0, y0, x1, y1 = box
+    X = ((x0 + 0.5 + np.arange(max(1, x1 - x0))) / fw)[None, :]
+    Y = ((y0 + 0.5 + np.arange(max(1, y1 - y0))) / fh)[:, None]
+    X, Y = np.broadcast_arrays(X, Y)
+    sx, sy = geometry.frame_to_source(X, Y, *src_size, geom)
+    u, v = geometry.source_to_frame(sx, sy, *src_size, m["geom"])
+    a = np.asarray(img, np.float32)
+    out = _bilinear(a, (u * img.width - 0.5).astype(np.float32), (v * img.height - 0.5).astype(np.float32))
+    out[(u < 0) | (u > 1) | (v < 0) | (v > 1)] = 0          # outside what was painted
+    return out.astype(np.float32)
+
+
+def _shape_alpha(m, frame_size, box, geom=None, src_size=None):
     fw, fh = frame_size
     x0, y0, x1, y1 = box
     w, h = max(1, x1 - x0), max(1, y1 - y0)
@@ -269,6 +286,8 @@ def _shape_alpha(m, frame_size, box):
         img = _brush_img(m.get("id"))
         if img is None:
             return np.zeros((h, w), np.float32)
+        if m.get("geom") and src_size and not geometry.same(m["geom"], geom):
+            return _brush_remapped(img, m, frame_size, box, geom, src_size)
         sx, sy = img.width / fw, img.height / fh
         return np.asarray(img.resize((w, h), Image.BILINEAR, box=(x0 * sx, y0 * sy, x1 * sx, y1 * sy)), np.float32)
     X = ((x0 + 0.5 + np.arange(w, dtype=np.float32)) / fw)[None, :]
@@ -290,9 +309,13 @@ def alphas(path, recipe, geom, frame_size, box):
     out = []
     fw, fh = frame_size
     x0, y0, x1, y1 = box
+    src = None
     for m in recipe.get("masks") or []:
         if m["kind"] in SHAPES:
-            a = _shape_alpha(m, frame_size, box)
+            if m.get("geom") and src is None:
+                from . import raw
+                src = raw.full_size(path)
+            a = _shape_alpha(m, frame_size, box, geom, src)
         else:
             img = _edited(path, m["kind"], geom)
             sx, sy = img.width / fw, img.height / fh
@@ -315,3 +338,46 @@ def overlay(path, kind, geom, width, invert=False):
     rgba[..., 2] = 40
     rgba[..., 3] = (a * 150).astype(np.uint8)
     return Image.fromarray(rgba, "RGBA")
+
+
+def brush_view(bid, m_geom, geom, src_size, edge=1024):
+    """The painting as it lies on the photo's current frame (for the page to show and keep painting on)."""
+    img = _brush_img(bid)
+    if img is None:
+        return None
+    fw, fh = geometry.output_size(*src_size, geom)
+    k = edge / max(fw, fh)
+    w, h = max(1, round(fw * k)), max(1, round(fh * k))
+    a = _shape_alpha({"kind": "brush", "id": bid, "geom": m_geom}, (w, h), (0, 0, w, h), geom, src_size)
+    return Image.fromarray((np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8), "L")
+
+
+def refit(masks_in, old_geom, new_geom, src_size):
+    """Move gradients (numbers in fractions of the frame) from one crop / straighten to another, so they stay
+    on the same part of the photo. Paintings keep their own geom and are traced at render time."""
+    W, H = src_size
+    ofw, ofh = geometry.output_size(W, H, old_geom)
+    nfw, nfh = geometry.output_size(W, H, new_geom)
+
+    def move(x, y):
+        sx, sy = geometry.frame_to_source(np.array([x]), np.array([y]), W, H, old_geom)
+        u, v = geometry.source_to_frame(sx, sy, W, H, new_geom)
+        return float(u[0]), float(v[0])
+    out = []
+    for m in masks_in:
+        m = dict(m)
+        if m.get("kind") == "linear":
+            m["x0"], m["y0"] = move(m.get("x0", 0.5), m.get("y0", 0.3))
+            m["x1"], m["y1"] = move(m.get("x1", 0.5), m.get("y1", 0.7))
+        elif m.get("kind") == "radial":
+            cx, cy, rx, ry = m.get("cx", 0.5), m.get("cy", 0.5), m.get("rx", 0.35), m.get("ry", 0.35)
+            ncx, ncy = move(cx, cy)
+            px, py = move(cx + rx, cy)                 # radii: lengths in pixels, back to fractions of the new frame
+            qx, qy = move(cx, cy + ry)
+            m["cx"], m["cy"] = ncx, ncy
+            m["rx"] = float(np.hypot((px - ncx) * nfw, (py - ncy) * nfh) / nfw)
+            m["ry"] = float(np.hypot((qx - ncx) * nfw, (qy - ncy) * nfh) / nfh)
+        elif m.get("kind") == "brush" and not m.get("geom"):
+            m["geom"] = geometry.normalise(old_geom)  # painted before paintings remembered their crop
+        out.append(m)
+    return out
