@@ -28,6 +28,25 @@
   header { display: flex; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
   #hdrRight { margin-left: auto; display: flex; gap: 6px; align-items: center; flex: 0 0 auto; }
   #hdrRight button { padding: 5px 10px; font-size: 13px; }
+  #notice { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 60; max-width: min(680px, 92vw); display: flex; align-items: flex-start; gap: 10px;
+            background: var(--panel); color: var(--text); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; padding: 8px 8px 8px 12px;
+            box-shadow: 0 8px 24px #0006; font-size: 13px; line-height: 1.45; }
+  #notice[hidden] { display: none; }
+  #notice.error { border-left-color: var(--danger); }
+  #notice .nt { flex: 1; min-width: 0; word-break: break-word; }
+  #notice .nt button { margin-left: 8px; padding: 2px 9px; font-size: 12px; }
+  #notice .nx { flex: none; padding: 0 7px; font-size: 13px; background: none; border: 0; color: var(--muted); }
+  #notice .nx:hover { color: var(--text); }
+  #noteBtn { position: relative; padding: 5px 9px; }
+  #noteBtn i { position: absolute; top: 3px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  #noteBtn i[hidden] { display: none; }
+  #noteHist { position: fixed; right: 16px; top: 52px; width: 400px; max-height: 60vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; z-index: 30; box-shadow: 0 8px 24px #0006; font-size: 13px; }
+  #noteHist[hidden] { display: none; }
+  #noteHist .it { display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--linesoft); }
+  #noteHist .it:last-child { border-bottom: 0; }
+  #noteHist time { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+  #noteHist .it.error span { color: var(--danger); }
+  #status { display: none !important; }
   #actBtn { background: #1e1a10; border-color: #5a4a1e; color: var(--accent); }
   #actPop { position: fixed; right: 16px; top: 52px; width: 360px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; z-index: 30; box-shadow: 0 8px 24px #0008; font-size: 13px; }
   #actPop .it { margin: 6px 0 10px; } #actPop progress { width: 100%; } #actPop .sub { color: var(--muted); font-size: 12px; }
@@ -168,6 +187,20 @@
   .maskCard .mh button { font-size: 11px; padding: 2px 6px; }
   .maskCard .mh button.on { border-color: var(--accent); background: var(--raised); }
   .maskCard .slider label span:first-child { color: var(--muted); }
+  #maskBox .addLabel { font-size: 11px; color: var(--muted); margin: 8px 0 2px; }
+  #maskBox .addRow button.auto { }
+  #stage #paintCv { position: absolute; z-index: 3; pointer-events: none; opacity: .6; }
+  #stage #paintCv.paint { pointer-events: auto; cursor: none; touch-action: none; }
+  #stage #shapeSvg { position: absolute; z-index: 4; pointer-events: none; overflow: visible; }
+  #shapeSvg .h { pointer-events: auto; cursor: grab; fill: #fff; stroke: #000; stroke-width: 1.5; }
+  #shapeSvg .ln { stroke: #fff; stroke-width: 1.5; fill: none; filter: drop-shadow(0 0 1px #000); pointer-events: none; }
+  #shapeSvg .grab { stroke: transparent; stroke-width: 16; fill: none; pointer-events: stroke; cursor: move; }
+  #stage #paintRing { position: absolute; z-index: 5; pointer-events: none; border: 1.5px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #000a, inset 0 0 0 1px #000a; transform: translate(-50%, -50%); }
+  #paintRing i { position: absolute; border-radius: 50%; border: 1px dashed #fffb; inset: 0; }
+  .maskCard .tool { margin: 6px 0 2px; padding-top: 6px; border-top: 1px dashed var(--line); }
+  .maskCard .tool .row { gap: 4px; margin-top: 4px; }
+  .maskCard .tool .row button { flex: 1; font-size: 12px; padding: 3px 0; }
+  .maskCard .tool .row button.on { border-color: var(--accent); background: var(--raised); }
   #stage #maskOverlay { position: absolute; pointer-events: none; user-select: none; z-index: 2; }
   #mixBox .seg { display: flex; gap: 4px; margin-bottom: 6px; }
   #mixBox .seg button { flex: 1; padding: 3px 0; font-size: 12px; }
@@ -583,9 +616,11 @@
   <h1>Film Look Studio</h1>
   <div class="tabs"><button id="tabLib">Library</button><button id="tabCull">Cull</button><button id="tabGrade">Grade</button><button id="tabEssay">Essays</button></div>
   <div id="folderBar"><button id="backLib" hidden title="Back to the Library, where these photos came from">← Library</button><span id="folderName" title="">No folder open</span><button id="open" class="linkish" title="Open a folder that isn't in the Library">Open a folder…</button></div>
-  <div id="hdrRight"><button id="actBtn" hidden title="What's running in the background"></button><button id="keysBtn" title="Keyboard shortcuts (?)">?</button><button id="setBtn" title="Settings">⚙ Settings</button><button id="quitBtn" title="Stop Film Look Studio (closing the browser also stops it after 10 minutes)">Quit</button></div>
+  <div id="hdrRight"><button id="noteBtn" title="Recent messages">🔔<i hidden></i></button><button id="actBtn" hidden title="What's running in the background"></button><button id="keysBtn" title="Keyboard shortcuts (?)">?</button><button id="setBtn" title="Settings">⚙ Settings</button><button id="quitBtn" title="Stop Film Look Studio (closing the browser also stops it after 10 minutes)">Quit</button></div>
 </header>
 <div id="actPop" hidden></div>
+<div id="noteHist" hidden></div>
+<div id="notice" hidden role="status" aria-live="polite"></div>
 <div id="setBox" hidden><div class="box">
   <div class="setHead"><h3>Settings</h3><button id="setClose">Close</button></div>
   <h4 id="setFolders">Library folders</h4>
@@ -825,6 +860,9 @@
       <img id="bigTile" alt="" hidden draggable="false">
       <img id="bigSplit" alt="" hidden draggable="false">
       <img id="maskOverlay" alt="" hidden draggable="false">
+      <canvas id="paintCv" hidden></canvas>
+      <svg id="shapeSvg" hidden></svg>
+      <div id="paintRing" hidden><i></i></div>
       <div id="splitLine" hidden><span class="l">Before</span><span class="r">After</span></div>
       <div id="zoomBar" hidden>
         <button id="zFit" title="Fit the whole photo (0)">Fit</button>
@@ -928,9 +966,14 @@
   <div class="gpane" data-t="masks" hidden>
     <div id="maskBox">
       <div class="curveHead"><span>Masks</span></div>
-      <div class="addRow"><button data-k="subject" title="What stands out: people, a cyclist, a cat…">+ Subject</button><button data-k="people">+ People</button><button data-k="sky">+ Sky</button></div>
+      <div class="addLabel">Paint on the photo</div>
+      <div class="addRow"><button data-new="dodge" title="Lighten where you paint (dodge)">+ Dodge</button><button data-new="burn" title="Darken where you paint (burn)">+ Burn</button><button data-new="brush" title="Paint any area, then choose what changes there">+ Brush</button></div>
+      <div class="addLabel">Gradient</div>
+      <div class="addRow"><button data-new="linear" title="A fade across the photo, e.g. darken a bright sky">+ Linear</button><button data-new="radial" title="An oval, e.g. lift a face or darken the edges">+ Radial</button></div>
+      <div class="addLabel">Found automatically</div>
+      <div class="addRow"><button class="auto" data-k="subject" title="What stands out: people, a cyclist, a cat…">+ Subject</button><button class="auto" data-k="people">+ People</button><button class="auto" data-k="sky">+ Sky</button></div>
       <div id="maskCards"></div>
-      <div class="small">Adjust just part of the photo, e.g. lift a face in shade, calm a bright sky. Found by your Mac (nothing leaves it). People may miss some faces in a dense crowd.</div>
+      <div class="small">Adjust just part of the photo. Dodge and Burn paint with the brush: <b>[</b> <b>]</b> change its size, <b>X</b> erases, <b>Esc</b> finishes. Subject, People and Sky are found by your Mac (nothing leaves it). If you change the crop after painting, check the painted area.</div>
     </div>
   </div>
   <div class="gpane" data-t="crop" hidden>
@@ -982,7 +1025,49 @@ const SLIDERS = [
 const DETAIL_KEYS = ["noise", "color_noise", "sharpen"];
 const SLIDER_GROUPS = { exposure: "Light", warmth: "Colour", tone: "Effects",
                         noise: "Detail <span>· zoom to 100% to judge (night shots: try Noise 0.4, Colour noise 0.5)</span>" };
-const $ = (id) => document.getElementById(id);
+// One notice area: every message in the app (what used to appear in the Library note, the Essays note,
+// Grade's status line, dialogs' small lines and pop-up alerts) is shown in #notice at the top; the 🔔 keeps
+// the recent ones. The old message elements are "sinks": writing their textContent / innerHTML notifies.
+const NOTE = { hist: [], cur: null, timer: null, unread: 0 };
+const NOTE_SINKS = new Set(["status", "lbNote", "esNote", "cuStartMsg", "brMsg", "aeMsg", "setBackupMsg", "esPdfMsg", "aiGradeNote", "pbSaved"]);
+const noteEsc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function noteAlert(m) { notifyFrom("alert", String(m), false, true); }
+function notify(text, o = {}) { notifyFrom(o.source || "app", text, !!o.html, o.kind === "error"); }
+function noteHide(source) {
+  if (source && NOTE.cur && NOTE.cur.source !== source) return;
+  clearTimeout(NOTE.timer); NOTE.cur = null; const n = document.getElementById("notice"); if (n) n.hidden = true;
+}
+function notifyFrom(source, text, html = false, err = false) {
+  const n = document.getElementById("notice"); if (!n) return;
+  const plain = html ? String(text ?? "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim() : String(text ?? "").trim();
+  if (!plain) return noteHide(source);
+  const isErr = err || (/couldn.?t|can.?t |cannot|failed|error|not found|unknown|offline|no .{0,30} found|too (few|many)/i.test(plain) && !/^(saved|done|copied|gave|pasted)/i.test(plain));
+  const progress = /(…|\.\.\.)\s*$/.test(plain), action = html && /<button/i.test(String(text));
+  n.className = isErr ? "error" : "";
+  n.innerHTML = `<div class="nt">${html ? text : noteEsc(plain)}</div><button class="nx" title="Dismiss">✕</button>`;
+  n.querySelector(".nx").onclick = () => noteHide();
+  n.hidden = false; NOTE.cur = { source, plain };
+  clearTimeout(NOTE.timer);
+  if (!progress && !action) NOTE.timer = setTimeout(() => noteHide(), Math.min(30000, (isErr ? 12000 : 5000) + 45 * plain.length));
+  if (!progress) {
+    const last = NOTE.hist[0];
+    if (!last || last.plain !== plain) { NOTE.hist.unshift({ t: new Date(), plain, err: isErr }); if (NOTE.hist.length > 30) NOTE.hist.pop(); if (!noteHistOpen()) { NOTE.unread++; noteBell(); } }
+  }
+}
+function noteSink(el, id) {
+  el._sink = true; el.style.display = "none";
+  let last = "";
+  Object.defineProperty(el, "textContent", { configurable: true, get: () => last, set: (v) => { last = String(v ?? ""); notifyFrom(id, last, false, false); } });
+  Object.defineProperty(el, "innerHTML", { configurable: true, get: () => last, set: (v) => { last = String(v ?? ""); notifyFrom(id, last, true, false); } });
+}
+function noteHistOpen() { const h = document.getElementById("noteHist"); return h && !h.hidden; }
+function noteBell() { const i = document.querySelector("#noteBtn i"); if (i) i.hidden = !NOTE.unread; }
+function noteHistRender() {
+  const h = document.getElementById("noteHist");
+  h.innerHTML = NOTE.hist.length ? NOTE.hist.map(m => `<div class="it ${m.err ? "error" : ""}"><time>${m.t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time><span>${noteEsc(m.plain)}</span></div>`).join("")
+    : `<div class="small">No messages yet. Things the app tells you (saved, couldn't open, finished…) are kept here for a while.</div>`;
+}
+const $ = (id) => { const e = document.getElementById(id); if (e && NOTE_SINKS.has(id) && !e._sink) noteSink(e, id); return e; };
 let S = { photos: [], looks: [], current: null, look: "neutral", adjust: {}, ticked: new Set() };
 let renderTimer = null, renderSeq = 0;
 
@@ -999,7 +1084,7 @@ async function api(path, opts = {}) {
   if (!r.ok) { let m = r.statusText; try { m = (await r.json()).detail || m; } catch {} throw new Error(m); }
   return r;
 }
-function status(msg, err = false) { $("status").textContent = msg; $("status").className = err ? "err" : ""; }
+function status(msg, err = false) { notifyFrom("status", msg, false, err); }
 function q(o) { return new URLSearchParams(o).toString(); }
 
 function buildSliders() {
@@ -1027,37 +1112,72 @@ function showVal(key) {
 }
 function syncSliders() { for (const [key] of SLIDERS) { $("s_" + key).value = S.adjust[key]; showVal(key); } drawCurve(); buildMixer(); buildMasks(); }
 
-// --- Masks: local adjustments in the subject / people / sky (found by Apple Vision on the server) ---
-const MASK_NAMES = { subject: "Subject", people: "People", sky: "Sky" };
+// --- Masks: local adjustments. Found automatically (subject / people / sky, by Apple Vision on the server) or
+// drawn by you: Dodge / Burn / Brush (painted on the photo) and Linear / Radial gradients (a few handles). ---
+const MASK_NAMES = { subject: "Subject", people: "People", sky: "Sky", brush: "Brush", linear: "Linear gradient", radial: "Radial gradient" };
 const MASK_SLIDERS = [["exposure", "Exposure (EV)", -2, 2, 0.05], ["contrast", "Contrast", -0.5, 0.5, 0.02],
                       ["warmth", "Warmth", -50, 50, 1], ["saturation", "Saturation", -1, 1, 0.02]];
-let maskShown = -1;
+let maskShown = -1;                          // an automatic mask shown in red
+let maskEdit = -1, maskEditName = null;      // the drawn mask being edited on the photo
 function curveChanged() { const c = S.adjust.curve || []; return c.length !== 2 || c[0][0] !== 0 || c[0][1] !== 0 || c[1][0] !== 1 || c[1][1] !== 1; }
 function maskLabel(k, v) { return k === "saturation" ? (v > 0 ? "+" : "") + Math.round(v * 100) + "%" : (v > 0 ? "+" : "") + (Number.isInteger(v) ? v : v.toFixed(2)); }
+function maskTitle(m) {
+  if (m.kind === "brush" && !m.contrast && !m.warmth && !m.saturation && m.exposure) return m.exposure > 0 ? "Dodge (lighten)" : "Burn (darken)";
+  return MASK_NAMES[m.kind] || m.kind;
+}
+function setMask(i, patch) { S.adjust.masks = S.adjust.masks.map((x, j) => j === i ? { ...x, ...patch } : x); }
+const PB = Object.assign({ size: 6, feather: 60, flow: 50, erase: false }, (() => { try { return JSON.parse(localStorage.getItem("fls.brush") || "{}"); } catch (e) { return {}; } })());
+function pbSave() { try { localStorage.setItem("fls.brush", JSON.stringify(PB)); } catch (e) {} }
 function buildMasks() {
   const list = S.adjust.masks || [];
   tabBadge("masks", list.length ? String(list.length) : "");
   if (maskShown >= list.length) maskShown = -1;
+  if (maskEdit >= list.length || maskEditName !== S.current) maskEdit = -1;
   $("maskCards").innerHTML = "";
   list.forEach((m, i) => {
+    const drawn = ["brush", "linear", "radial"].includes(m.kind), editing = maskEdit === i;
     const c = document.createElement("div"); c.className = "maskCard";
-    c.innerHTML = `<div class="mh"><b>${MASK_NAMES[m.kind]}</b><label class="small"><input type="checkbox" class="inv" ${m.invert ? "checked" : ""}> Invert</label>
-      <button class="show ${maskShown === i ? "on" : ""}" title="Show where this mask applies (in red)">Show</button><button class="del" title="Remove this mask">✕</button></div>`;
+    c.innerHTML = `<div class="mh"><b>${maskTitle(m)}</b><label class="small"><input type="checkbox" class="inv" ${m.invert ? "checked" : ""}> Invert</label>
+      ${drawn ? `<button class="edit ${editing ? "on" : ""}" title="${m.kind === "brush" ? "Paint on the photo" : "Move the handles on the photo"}">${editing ? "Done" : m.kind === "brush" ? "Paint" : "Edit"}</button>`
+              : `<button class="show ${maskShown === i ? "on" : ""}" title="Show where this mask applies (in red)">Show</button>`}<button class="del" title="Remove this mask">✕</button></div>`;
+    if (m.kind === "brush" && editing) {
+      const t = document.createElement("div"); t.className = "tool";
+      t.innerHTML = [["size", "Brush size", 1, 40, 1, "%"], ["feather", "Feather (soft edge)", 0, 100, 1, "%"], ["flow", "Flow (strength per stroke)", 5, 100, 1, "%"]].map(([k, l, lo, hi, st, u]) =>
+        `<div class="slider"><label><span>${l}</span><span class="pv" data-k="${k}">${PB[k]}${u}</span></label><input type="range" data-k="${k}" min="${lo}" max="${hi}" step="${st}" value="${PB[k]}"></div>`).join("") +
+        `<div class="row"><button class="erase ${PB.erase ? "on" : ""}" title="Erase what you painted (X)">Erase</button><button class="clr" title="Remove all the painting from this mask">Clear</button></div>`;
+      t.querySelectorAll("input").forEach(inp => inp.oninput = () => { PB[inp.dataset.k] = +inp.value; t.querySelector(`.pv[data-k=${inp.dataset.k}]`).textContent = inp.value + "%"; pbSave(); });
+      t.querySelector(".erase").onclick = (e) => { PB.erase = !PB.erase; pbSave(); e.target.classList.toggle("on", PB.erase); };
+      t.querySelector(".clr").onclick = () => paintClear();
+      c.appendChild(t);
+    }
+    if (m.kind === "radial") {
+      const d = document.createElement("div"); d.className = "slider";
+      d.innerHTML = `<label><span>Feather (soft edge)</span><span class="mv">${Math.round((m.feather ?? 0.5) * 100)}%</span></label><input type="range" min="0" max="100" step="1" value="${Math.round((m.feather ?? 0.5) * 100)}">`;
+      d.querySelector("input").oninput = (e) => { setMask(i, { feather: +e.target.value / 100 }); d.querySelector(".mv").textContent = e.target.value + "%"; shapeRedraw(); scheduleRender(); };
+      c.appendChild(d);
+    }
     for (const [k, label, min, max, step] of MASK_SLIDERS) {
       const d = document.createElement("div"); d.className = "slider";
       d.innerHTML = `<label><span>${label}</span><span class="mv">${maskLabel(k, m[k] || 0)}</span></label><input type="range" min="${min}" max="${max}" step="${step}" value="${m[k] || 0}">`;
       const inp = d.querySelector("input"), mv = d.querySelector(".mv");
-      const set = (v) => { S.adjust.masks = S.adjust.masks.map((x, j) => j === i ? { ...x, [k]: v } : x); mv.textContent = maskLabel(k, v); scheduleRender(); };
+      const set = (v) => { setMask(i, { [k]: v }); mv.textContent = maskLabel(k, v); c.querySelector(".mh b").textContent = maskTitle(S.adjust.masks[i]); scheduleRender(); };
       inp.addEventListener("input", () => set(parseFloat(inp.value)));
       const reset = () => { inp.value = 0; set(0); };
       inp.addEventListener("dblclick", reset); d.querySelector("label").addEventListener("dblclick", reset);
       c.appendChild(d);
     }
-    c.querySelector(".inv").onchange = (e) => { S.adjust.masks = S.adjust.masks.map((x, j) => j === i ? { ...x, invert: e.target.checked } : x); if (maskShown === i) maskOverlayLoad(); scheduleRender(); };
-    c.querySelector(".show").onclick = () => { maskShown = maskShown === i ? -1 : i; buildMasks(); maskOverlayLoad(); };
-    c.querySelector(".del").onclick = () => { S.adjust.masks = S.adjust.masks.filter((_, j) => j !== i); if (maskShown === i) maskShown = -1; buildMasks(); maskOverlayLoad(); scheduleRender(); };
+    c.querySelector(".inv").onchange = (e) => { setMask(i, { invert: e.target.checked }); if (maskShown === i) maskOverlayLoad(); shapeRedraw(); scheduleRender(); };
+    const sh = c.querySelector(".show"); if (sh) sh.onclick = () => { maskShown = maskShown === i ? -1 : i; maskEdit = -1; buildMasks(); maskOverlayLoad(); };
+    const ed = c.querySelector(".edit"); if (ed) ed.onclick = () => { maskEdit = maskEdit === i ? -1 : i; maskEditName = S.current; maskShown = -1; buildMasks(); maskOverlayLoad(); };
+    c.querySelector(".del").onclick = () => {
+      S.adjust.masks = S.adjust.masks.filter((_, j) => j !== i);
+      if (maskShown === i) maskShown = -1;
+      if (maskEdit === i) maskEdit = -1; else if (maskEdit > i) maskEdit--;
+      buildMasks(); maskOverlayLoad(); scheduleRender();
+    };
     $("maskCards").appendChild(c);
   });
+  paintSync();
 }
 function maskOverlayLoad() {
   const m = (S.adjust.masks || [])[maskShown];
@@ -1072,8 +1192,9 @@ function maskPlace() {
   const on = maskShown >= 0 && !$("big").hidden && !(typeof CR !== "undefined" && CR.on) && !!$("maskOverlay").getAttribute("src");
   $("maskOverlay").hidden = !on;
   if (on) { const b = $("big").style; Object.assign($("maskOverlay").style, { left: b.left, top: b.top, width: b.width, height: b.height }); }
+  paintPlace();
 }
-document.querySelectorAll("#maskBox .addRow button").forEach(b => b.onclick = async () => {
+document.querySelectorAll("#maskBox .addRow button.auto").forEach(b => b.onclick = async () => {
   if (!S.current) return;
   const kind = b.dataset.k, name = S.current, label = b.textContent;
   b.disabled = true; b.textContent = "Finding…";
@@ -1082,11 +1203,195 @@ document.querySelectorAll("#maskBox .addRow button").forEach(b => b.onclick = as
     if (S.current !== name) return;
     if (!r.found) { status(`No ${MASK_NAMES[kind].toLowerCase()} found in this photo.`); return; }
     S.adjust.masks = [...(S.adjust.masks || []), { kind, invert: false, exposure: 0, contrast: 0, warmth: 0, saturation: 0 }];
-    maskShown = S.adjust.masks.length - 1; buildMasks(); maskOverlayLoad();
+    maskShown = S.adjust.masks.length - 1; maskEdit = -1; buildMasks(); maskOverlayLoad();
     status(`${MASK_NAMES[kind]} found (${Math.max(1, Math.round(r.coverage * 100))}% of the photo, shown in red). Move its sliders; click Show to hide the red.`);
   } catch (e) { status(e.message, true); }
   finally { b.disabled = false; b.textContent = label; }
 });
+// Drawn masks: the buttons add one and open it on the photo.
+const NEW_MASKS = {
+  dodge: { kind: "brush", exposure: 0.5 }, burn: { kind: "brush", exposure: -0.5 }, brush: { kind: "brush" },
+  linear: { kind: "linear", x0: 0.5, y0: 0.15, x1: 0.5, y1: 0.55, exposure: -0.5 },
+  radial: { kind: "radial", cx: 0.5, cy: 0.5, rx: 0.3, ry: 0.3, feather: 0.6, exposure: 0.5 },
+};
+const NEW_HINTS = {
+  dodge: "Paint where you want it lighter. [ ] change the brush size, X erases, Esc finishes.",
+  burn: "Paint where you want it darker. [ ] change the brush size, X erases, Esc finishes.",
+  brush: "Paint the area, then use the sliders to choose what changes there. [ ] size, X erase, Esc finishes.",
+  linear: "Drag the two white dots: full effect at the first, fading to none at the second.",
+  radial: "Drag the centre to move, the side dots to resize. Full effect inside, fading outside.",
+};
+document.querySelectorAll("#maskBox .addRow button[data-new]").forEach(b => b.onclick = () => {
+  if (!S.current) return;
+  const key = b.dataset.new;
+  S.adjust.masks = [...(S.adjust.masks || []), { invert: false, exposure: 0, contrast: 0, warmth: 0, saturation: 0, ...NEW_MASKS[key] }];
+  maskShown = -1; maskEdit = S.adjust.masks.length - 1; maskEditName = S.current;
+  if (typeof GZ !== "undefined" && !GZ.fit && S.current) { /* painting works at any zoom */ }
+  buildMasks(); maskOverlayLoad(); scheduleRender(); status(NEW_HINTS[key]);
+});
+
+// --- Painting and handles on the photo ---
+// The painted mask is a grey picture of the whole (cropped) frame, about 1024 px on its long side. It lives
+// in a canvas while you paint; after each stroke it is sent to the server (stored in the library folder, never
+// next to your photo) and the grade just remembers its short id, so Undo / Redo step stroke by stroke.
+const PT = { m: null, id: null, idx: -1, name: null, w: 0, h: 0, timer: null, last: null, ring: null, loadSeq: 0 };
+function paintHide() { $("paintCv").hidden = true; $("shapeSvg").setAttribute("hidden", ""); $("paintRing").hidden = true; $("paintCv").classList.remove("paint"); }
+function paintSync() {
+  const m = (S.adjust.masks || [])[maskEdit];
+  if (!m || maskEditName !== S.current) { paintHide(); return; }
+  if (m.kind === "brush") {
+    if (PT.m && PT.id === (m.id || "") && PT.idx === maskEdit && PT.name === S.current) return paintPlace();
+    paintOpenBrush(maskEdit);
+  } else { PT.m = null; shapeRedraw(); }
+  paintPlace();
+}
+function paintPlace() {
+  const m = (S.adjust.masks || [])[maskEdit];
+  const on = !!m && maskEditName === S.current && !$("big").hidden && !(typeof CR !== "undefined" && CR.on) && !bDown;
+  const cv = $("paintCv"), svg = $("shapeSvg");
+  if (!on) { paintHide(); return; }
+  const b = $("big").style;
+  for (const el of [cv, svg]) Object.assign(el.style, { left: b.left, top: b.top, width: b.width, height: b.height });
+  const brush = m.kind === "brush";
+  cv.hidden = brush ? !PT.m : false; cv.classList.toggle("paint", brush);
+  svg.toggleAttribute("hidden", brush);                  // (an SVG has no .hidden property)
+  if (!brush) shapeDraw();
+}
+async function paintOpenBrush(i) {
+  const m = S.adjust.masks[i], cv = $("paintCv"), seq = ++PT.loadSeq;
+  const nw = $("big").naturalWidth || 1600, nh = $("big").naturalHeight || 1067, k = 1024 / Math.max(nw, nh);
+  const w = Math.round(nw * k), h = Math.round(nh * k), off = document.createElement("canvas");
+  off.width = w; off.height = h;
+  const mc = off.getContext("2d"); mc.fillStyle = "#000"; mc.fillRect(0, 0, w, h);
+  cv.width = w; cv.height = h; cv.getContext("2d").clearRect(0, 0, w, h);
+  const name = S.current;
+  if (m.id) {
+    try {
+      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `/api/brush/${m.id}.png`; });
+      if (seq !== PT.loadSeq) return;
+      mc.drawImage(img, 0, 0, w, h);
+      const g = mc.getImageData(0, 0, w, h), o = cv.getContext("2d").createImageData(w, h);
+      for (let p = 0; p < g.data.length; p += 4) { o.data[p] = 255; o.data[p + 1] = 40; o.data[p + 2] = 40; o.data[p + 3] = g.data[p]; }
+      cv.getContext("2d").putImageData(o, 0, 0);
+    } catch (e) { status("Couldn't load the painted area; it starts blank.", true); }
+  }
+  if (seq !== PT.loadSeq) return;
+  Object.assign(PT, { m: off, w, h, id: m.id || "", idx: i, name });
+  paintPlace();
+}
+function paintStamp(x, y) {
+  const r = Math.max(2, PB.size / 100 * PT.w / 2), core = Math.min(0.98, Math.max(0, 1 - PB.feather / 100));
+  const a = 1 - Math.pow(1 - PB.flow / 100, 1 / 8);              // flow: about 8 stamps overlap at the brush centre
+  const draw = (ctx, rgb, op) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(core, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.globalCompositeOperation = op; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); ctx.globalCompositeOperation = "source-over";
+  };
+  draw(PT.m.getContext("2d"), PB.erase ? "0,0,0" : "255,255,255", "source-over");
+  draw($("paintCv").getContext("2d"), PB.erase ? "255,255,255" : "255,40,40", PB.erase ? "destination-out" : "source-over");
+}
+function paintXY(e) { const r = $("paintCv").getBoundingClientRect(); return [(e.clientX - r.left) * PT.w / r.width, (e.clientY - r.top) * PT.h / r.height]; }
+function paintLine(p0, p1) {
+  const r = Math.max(2, PB.size / 100 * PT.w / 2), step = Math.max(1, r * 0.25), d = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), n = Math.max(1, Math.ceil(d / step));
+  for (let k = 1; k <= n; k++) paintStamp(p0[0] + (p1[0] - p0[0]) * k / n, p0[1] + (p1[1] - p0[1]) * k / n);
+}
+function paintRing(e) {
+  const ring = $("paintRing"), st = $("stage").getBoundingClientRect(), cv = $("paintCv").getBoundingClientRect();
+  const dia = PB.size / 100 * cv.width;
+  Object.assign(ring.style, { left: e.clientX - st.left + "px", top: e.clientY - st.top + "px", width: dia + "px", height: dia + "px" });
+  ring.querySelector("i").style.inset = (dia / 2) * (1 - Math.min(0.98, Math.max(0, 1 - PB.feather / 100))) + "px";
+  ring.hidden = false;
+}
+$("paintCv").addEventListener("pointerdown", (e) => {
+  if (!PT.m || e.button) return;
+  e.preventDefault(); e.stopPropagation(); $("paintCv").setPointerCapture(e.pointerId);
+  PT.last = paintXY(e); paintStamp(PT.last[0], PT.last[1]); paintRing(e);
+});
+$("paintCv").addEventListener("pointermove", (e) => {
+  paintRing(e);
+  if (!PT.last || !PT.m) return;
+  const p = paintXY(e); paintLine(PT.last, p); PT.last = p;
+});
+$("paintCv").addEventListener("pointerup", (e) => { if (PT.last) { PT.last = null; paintCommitSoon(); } });
+$("paintCv").addEventListener("pointercancel", () => { if (PT.last) { PT.last = null; paintCommitSoon(); } });
+$("paintCv").addEventListener("pointerleave", () => { $("paintRing").hidden = true; });
+function paintCommitSoon() { clearTimeout(PT.timer); PT.timer = setTimeout(paintCommit, 250); }
+function paintCommit() {
+  const i = PT.idx, name = PT.name, m = PT.m; if (!m || S.current !== name) return;
+  m.toBlob(async (blob) => {
+    try {
+      const r = await (await api("/api/brush", { method: "POST", headers: { "Content-Type": "image/png" }, body: blob })).json();
+      if (S.current !== name || !(S.adjust.masks || [])[i] || S.adjust.masks[i].kind !== "brush") return;
+      PT.id = r.id; setMask(i, { id: r.id }); scheduleRender();
+    } catch (e) { status("Couldn't keep the painting: " + e.message, true); }
+  }, "image/png");
+}
+function paintClear() {
+  if (!PT.m) return;
+  const mc = PT.m.getContext("2d"); mc.fillStyle = "#000"; mc.fillRect(0, 0, PT.w, PT.h);
+  $("paintCv").getContext("2d").clearRect(0, 0, PT.w, PT.h); paintCommitSoon();
+}
+// Gradients: handles on the photo and the red preview (same formulas as masks.py).
+function shapeAlpha(m, X, Y) {
+  const sm = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
+  if (m.kind === "linear") {
+    const dx = m.x1 - m.x0, dy = m.y1 - m.y0;
+    return 1 - sm(((X - m.x0) * dx + (Y - m.y0) * dy) / Math.max(dx * dx + dy * dy, 1e-6));
+  }
+  const inner = 1 - Math.min(1, Math.max(0, m.feather ?? 0.5)), r = Math.hypot((X - m.cx) / Math.max(m.rx, 0.01), (Y - m.cy) / Math.max(m.ry, 0.01));
+  return 1 - sm((r - inner) / Math.max(1 - inner, 1e-3));
+}
+function shapeRedraw() {
+  const m = (S.adjust.masks || [])[maskEdit]; if (!m || m.kind === "brush") return;
+  const cv = $("paintCv"), nw = $("big").naturalWidth || 1600, nh = $("big").naturalHeight || 1067, w = 320, h = Math.max(1, Math.round(w * nh / nw));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const ctx = cv.getContext("2d"), o = ctx.createImageData(w, h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let a = shapeAlpha(m, (x + 0.5) / w, (y + 0.5) / h); if (m.invert) a = 1 - a;
+    const p = (y * w + x) * 4; o.data[p] = 255; o.data[p + 1] = 40; o.data[p + 2] = 40; o.data[p + 3] = a * 255;
+  }
+  ctx.putImageData(o, 0, 0); shapeDraw();
+}
+function shapeDraw() {
+  const m = (S.adjust.masks || [])[maskEdit], svg = $("shapeSvg"); if (!m || m.kind === "brush") return;
+  const W = parseFloat(svg.style.width) || 1, H = parseFloat(svg.style.height) || 1;
+  svg.setAttribute("width", W); svg.setAttribute("height", H);
+  const dot = (id, x, y) => `<circle class="h" data-h="${id}" cx="${x * W}" cy="${y * H}" r="7"/>`;
+  if (m.kind === "linear") {
+    const ax = m.x0 * W, ay = m.y0 * H, bx = m.x1 * W, by = m.y1 * H, dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1, nx = -dy / L * W, ny = dx / L * W;
+    const bar = (x, y) => `<line class="ln" x1="${x - nx}" y1="${y - ny}" x2="${x + nx}" y2="${y + ny}"/>`;
+    svg.innerHTML = `${bar(ax, ay)}${bar(bx, by)}<line class="ln" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/><line class="grab" data-h="mid" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/>${dot("a", m.x0, m.y0)}${dot("b", m.x1, m.y1)}`;
+  } else {
+    const cx = m.cx * W, cy = m.cy * H, rx = m.rx * W, ry = m.ry * H, inner = 1 - (m.feather ?? 0.5);
+    svg.innerHTML = `<ellipse class="ln" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/><ellipse class="ln" style="stroke-dasharray:4 4;opacity:.7" cx="${cx}" cy="${cy}" rx="${rx * inner}" ry="${ry * inner}"/>` +
+      `${dot("c", m.cx, m.cy)}${dot("rx", m.cx + m.rx, m.cy)}${dot("ry", m.cx, m.cy + m.ry)}`;
+  }
+}
+let shapeDrag = null;
+$("shapeSvg").addEventListener("pointerdown", (e) => {
+  const h = e.target.dataset && e.target.dataset.h; if (!h) return;
+  e.preventDefault(); e.stopPropagation(); $("shapeSvg").setPointerCapture(e.pointerId);
+  const r = $("shapeSvg").getBoundingClientRect(), m = S.adjust.masks[maskEdit];
+  shapeDrag = { h, m0: { ...m }, p0: [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height] };
+});
+$("shapeSvg").addEventListener("pointermove", (e) => {
+  if (!shapeDrag) return;
+  const r = $("shapeSvg").getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height, d = shapeDrag, m0 = d.m0, c = (v) => Math.min(1.5, Math.max(-0.5, v));
+  const dx = x - d.p0[0], dy = y - d.p0[1];
+  let patch;
+  if (m0.kind === "linear") patch = d.h === "a" ? { x0: c(x), y0: c(y) } : d.h === "b" ? { x1: c(x), y1: c(y) } : { x0: c(m0.x0 + dx), y0: c(m0.y0 + dy), x1: c(m0.x1 + dx), y1: c(m0.y1 + dy) };
+  else patch = d.h === "c" ? { cx: c(m0.cx + dx), cy: c(m0.cy + dy) } : d.h === "rx" ? { rx: Math.max(0.03, Math.abs(x - m0.cx)) } : { ry: Math.max(0.03, Math.abs(y - m0.cy)) };
+  setMask(maskEdit, patch); shapeRedraw(); scheduleRender();
+});
+["pointerup", "pointercancel"].forEach(ev => $("shapeSvg").addEventListener(ev, () => { shapeDrag = null; }));
+document.addEventListener("keydown", (e) => {
+  if (maskEdit < 0 || $("gradeView").hidden || (typeof CR !== "undefined" && CR.on) || typing(e) || e.metaKey || e.ctrlKey) return;
+  const m = (S.adjust.masks || [])[maskEdit];
+  if (e.key === "Escape") { maskEdit = -1; buildMasks(); e.preventDefault(); }
+  else if (m && m.kind === "brush" && (e.key === "[" || e.key === "]")) {
+    PB.size = Math.min(40, Math.max(1, PB.size + (e.key === "]" ? 1 : -1) * (e.shiftKey ? 5 : 1))); pbSave(); buildMasks(); e.preventDefault();
+  } else if (m && m.kind === "brush" && (e.key === "x" || e.key === "X")) { PB.erase = !PB.erase; pbSave(); buildMasks(); e.preventDefault(); }
+}, true);
 function mixGet(band) { return ((S.adjust.hsl || {})[band] || {})[mixMode] || 0; }
 function mixSet(band, v) {
   const hsl = S.adjust.hsl = { ...(S.adjust.hsl || {}) }, b = { ...(hsl[band] || {}) };
@@ -1379,7 +1684,8 @@ function grCopy() {
 function grPaste() {
   const c = grClip(); if (!c || !S.current) return;
   saveGradeNow(); const h = grHist(); h.undo.push(S.lastSaved); h.redo = [];
-  grSet({ look: S.looks.some(l => l.id === c.look) || c.look === "neutral" ? c.look : "neutral", adjust: c.adjust });
+  const adj = JSON.parse(JSON.stringify(c.adjust)); adj.masks = (adj.masks || []).filter(m => m.kind !== "brush");   // painting only fits its own photo
+  grSet({ look: S.looks.some(l => l.id === c.look) || c.look === "neutral" ? c.look : "neutral", adjust: adj });
   status(`Pasted the grade from ${c.from || "the copied photo"}. Its crop stays its own.`);
 }
 function saveGradeSoon() {
@@ -1489,7 +1795,7 @@ $("open").onclick = () => { S.fromLib = false; openPicker("grade"); };
 $("backLib").onclick = () => { saveGradeNow(); setTab("lib"); };
 async function openGradeFolder(folder) {
   try { loadState(await (await api("/api/folder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folder }) })).json()); }
-  catch (e) { alert(e.message); }
+  catch (e) { noteAlert(e.message); }
 };
 
 $("reset").onclick = () => { S.adjust = defaults(); syncSliders(); renderBig(); };
@@ -1499,7 +1805,7 @@ $("copyGrade").onclick = async () => {
   const names = [...S.ticked].filter(n => n !== S.current);
   if (!names.length) return status("Tick other photos first.");
   try {
-    const r = await (await api("/api/grade/copy", esJSON({ names, look: S.look, adjust: S.adjust }))).json();
+    const r = await (await api("/api/grade/copy", esJSON({ names, look: S.look, adjust: { ...S.adjust, masks: (S.adjust.masks || []).filter(m => m.kind !== "brush") } }))).json();   // painting only fits its own photo
     S.edited = new Set(r.edited); document.querySelectorAll(".thumb").forEach(thumbStatus);
     status(`Gave ${r.copied} photo(s) this grade. Each keeps its own crop.`);
   } catch (e) { status(e.message, true); }
@@ -1507,7 +1813,7 @@ $("copyGrade").onclick = async () => {
 $("lut").onclick = () => { location.href = "/api/lut?" + q({ look: S.look, adjust: JSON.stringify(S.adjust), name: S.current || "" }); };
 $("save").onclick = async () => {
   const name = $("savename").value.trim();
-  if (!name) return alert("Give your look a name first.");
+  if (!name) return noteAlert("Give your look a name first.");
   try {
     const r = await (await api("/api/looks", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, look: S.look, adjust: S.adjust }) })).json();
@@ -1517,7 +1823,7 @@ $("save").onclick = async () => {
 };
 $("refgo").onclick = async () => {
   const f = $("reffile").files[0];
-  if (!f) return alert("Choose a reference image first.");
+  if (!f) return noteAlert("Choose a reference image first.");
   const fd = new FormData();
   fd.append("image", f); fd.append("name", $("refname").value.trim() || f.name.replace(/\.[^.]+$/, "") + " match"); fd.append("base", S.look);
   status("Analysing reference…");
@@ -1594,7 +1900,7 @@ async function loadLib() {
   $("roots").querySelectorAll("button").forEach(b => b.onclick = async () => {
     if (!confirm(`Remove “${b.dataset.name}” from the library?\n\nYour photos are not touched — only the library's index and thumbnails for this folder are cleared.`)) return;
     try { await api("/api/library/roots/" + b.dataset.id, { method: "DELETE" }); await loadLib(); runSearch(); }
-    catch (e) { alert(e.message); }
+    catch (e) { noteAlert(e.message); }
   });
   $("roots").insertAdjacentHTML("beforeend", `<div class="small">${st.summary.photos.toLocaleString()} photos · ${st.summary.graded.toLocaleString()} graded</div>`);
   const drv = {}; st.roots.forEach(r => { drv[r.drive] = drv[r.drive] || r.online; });
@@ -2156,7 +2462,7 @@ async function lbNoteDeleted() {
     try { gone = (await (await api("/api/browse/deleted_count")).json()).count; } catch (e) { return; }
     if (lbFolder() !== folder) return;
   }
-  if (!gone) { if ($("lbNote").querySelector("#lbForget")) $("lbNote").textContent = ""; return; }
+  if (!gone) { if (document.getElementById("lbForget")) $("lbNote").textContent = ""; return; }
   const where = folder ? "" : " (across all shoots)";
   $("lbNote").innerHTML = `${gone} photo${gone === 1 ? " was" : "s were"} deleted from the drive${where}.<button id="lbForget">Remove ${gone === 1 ? "it" : "them"} from the library</button>`;
   $("lbForget").onclick = async () => {
@@ -2746,7 +3052,7 @@ async function cuOpenStart() {
       d.querySelector(".go").onclick = () => cuLoad(s.id);
       d.querySelector(".rm").onclick = async () => {
         if (!confirm(`Remove “${s.label}” (${s.created.slice(0, 16)}) from your culls?\n\nYour picks, rejects and stars are kept — only this cull's list entry goes.`)) return;
-        try { await api("/api/cull/session/" + s.id, { method: "DELETE" }); cuOpenStart(); } catch (e) { alert(e.message); }
+        try { await api("/api/cull/session/" + s.id, { method: "DELETE" }); cuOpenStart(); } catch (e) { noteAlert(e.message); }
       };
       container.appendChild(d);
     };
@@ -2986,7 +3292,7 @@ async function cuMark(action, value) {
   cuShow();
   try { await api("/api/cull/mark", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ session: CU.sid, photo_id: id, action, value }) }); }
-  catch (e) { Object.assign(f, before); cuShow(); alert("Couldn't save: " + e.message); }
+  catch (e) { Object.assign(f, before); cuShow(); noteAlert("Couldn't save: " + e.message); }
 }
 async function cuNext(step = 1) {
   CU.chosen = [];
@@ -3044,7 +3350,7 @@ async function cuSecondLook() {
           d.classList.add("done");
           d.querySelector(".acts").innerHTML = `<span class="small">${a === "pick" ? "✓ Picked" : a === "reject" ? "✕ Rejected" : rejected ? "Stays rejected" : "Won't be suggested again"}</span>`;
           if (a === "pick") $("cuSend").disabled = false;
-        } catch (e) { alert("Couldn't save: " + e.message); }
+        } catch (e) { noteAlert("Couldn't save: " + e.message); }
       });
       grid.appendChild(d);
     }
@@ -3061,7 +3367,7 @@ async function cuSend() {
       body: JSON.stringify({ session: CU.sid }) })).json();
     cuZoomClose(); S.current = null; S.fromLib = !!(CU.from && CU.from.tab === "lib"); setTab("grade"); loadState(st);
     if (st.offline) status(`${st.offline} pick(s) are on a drive that's offline and were left out.`);
-  } catch (e) { alert(e.message); }
+  } catch (e) { noteAlert(e.message); }
 }
 $("cuSend").onclick = cuSend;
 $("cuSendTop").onclick = cuSend;
@@ -4331,7 +4637,7 @@ async function openSettings(anchor) {
   setPubRender(); setClaudeRender(); setStorage(st); setDrives(st);
   if (anchor && $(anchor)) $(anchor).scrollIntoView({ block: "start" });
 }
-async function saveSetting(changes) { try { await api("/api/settings", esJSON({ changes })); } catch (e) { alert(e.message); } }
+async function saveSetting(changes) { try { await api("/api/settings", esJSON({ changes })); } catch (e) { noteAlert(e.message); } }
 $("setLook").onchange = () => saveSetting({ default_look: $("setLook").value });
 $("setSize").onchange = () => saveSetting({ export_size: $("setSize").value });
 $("setQuality").onchange = () => saveSetting({ export_quality: +$("setQuality").value });
@@ -4389,7 +4695,7 @@ async function setStorage(st) {
     if (b.dataset.c === "old_backups" && !confirm("Remove the old safety copies of the library database? (Your current library is not affected.)")) return;
     b.disabled = true; b.textContent = "Working…";
     try { const r = await (await api("/api/settings/clean", esJSON({ what: b.dataset.c }))).json(); setStorage(); status(`Freed ${fmtBytes(r.freed)}.`); }
-    catch (e) { alert(e.message); }
+    catch (e) { noteAlert(e.message); }
   });
 }
 async function setDrives(st) {
@@ -4426,6 +4732,8 @@ function actRender(items) {
   $("actPop").querySelectorAll("button[data-id]").forEach(b => b.onclick = () =>
     api(b.dataset.id === "scan" ? "/api/library/pause" : `/api/jobs/${b.dataset.id}/cancel`, { method: "POST" }).then(actPoll));
 }
+$("noteBtn").onclick = (e) => { e.stopPropagation(); const h = $("noteHist"); h.hidden = !h.hidden; if (!h.hidden) { noteHistRender(); NOTE.unread = 0; noteBell(); $("actPop").hidden = true; } };
+document.addEventListener("click", (e) => { if (!$("noteHist").hidden && !e.target.closest("#noteHist") && !e.target.closest("#noteBtn")) $("noteHist").hidden = true; });
 $("actBtn").onclick = async () => { $("actPop").hidden = !$("actPop").hidden; actPoll(); };
 document.addEventListener("click", (e) => { if (!$("actPop").hidden && !e.target.closest("#actPop") && e.target.id !== "actBtn") $("actPop").hidden = true; });
 const _apiBase = api;                       // start watching as soon as anything is started
@@ -4437,7 +4745,7 @@ $("keysClose").onclick = () => { $("keysBox").hidden = true; };
 $("keysBox").onclick = (e) => { if (e.target.id === "keysBox") $("keysBox").hidden = true; };
 document.addEventListener("keydown", (e) => {
   if (e.key === "?" && !typing(e)) { e.preventDefault(); $("keysBox").hidden = !$("keysBox").hidden; }
-  else if (e.key === "Escape") { $("keysBox").hidden = true; $("setBox").hidden = true; $("actPop").hidden = true; }
+  else if (e.key === "Escape") { $("keysBox").hidden = true; $("setBox").hidden = true; $("actPop").hidden = true; $("noteHist").hidden = true; }
 });
 
 buildSliders();

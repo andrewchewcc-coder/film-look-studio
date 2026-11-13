@@ -130,6 +130,29 @@ ADJUST_KEYS = ("strength", "exposure", "warmth", "tint", "contrast", "highlights
                "saturation", "grain", "vignette", "tone", "curve", "hsl", "noise", "color_noise", "sharpen", "masks")
 
 
+def _mask_entry(m):
+    """One local-adjustment mask, cleaned: its four sliders plus whatever its kind needs (a painted
+    mask's id, a gradient's points)."""
+    import re
+
+    def num(k, d, lo, hi):
+        try:
+            return min(hi, max(lo, float(m.get(k, d))))
+        except (TypeError, ValueError):
+            return d
+    out = {"kind": m["kind"], "invert": bool(m.get("invert")),
+           **{k: float(m.get(k) or 0.0) for k in ("exposure", "contrast", "warmth", "saturation")}}
+    if m["kind"] == "brush":
+        bid = str(m.get("id") or "")
+        out["id"] = bid if re.fullmatch(r"[0-9a-f]{16}", bid) else ""
+    elif m["kind"] == "linear":
+        out.update(x0=num("x0", 0.5, -1, 2), y0=num("y0", 0.3, -1, 2), x1=num("x1", 0.5, -1, 2), y1=num("y1", 0.7, -1, 2))
+    elif m["kind"] == "radial":
+        out.update(cx=num("cx", 0.5, -1, 2), cy=num("cy", 0.5, -1, 2), rx=num("rx", 0.35, 0.01, 3),
+                   ry=num("ry", 0.35, 0.01, 3), feather=num("feather", 0.5, 0, 1))
+    return out
+
+
 def apply_adjust(recipe, adj):
     """Apply relative slider adjustments (all 0 = unchanged) on top of a resolved recipe.
 
@@ -151,10 +174,8 @@ def apply_adjust(recipe, adj):
         r["tone"]["user_curve"] = [[float(x), float(y)] for x, y in curve]
     ms = (adj or {}).get("masks")
     if isinstance(ms, list):
-        from .masks import KINDS
-        r["masks"] = [{"kind": m["kind"], "invert": bool(m.get("invert")),
-                       **{k: float(m.get(k) or 0.0) for k in ("exposure", "contrast", "warmth", "saturation")}}
-                      for m in ms[:6] if isinstance(m, dict) and m.get("kind") in KINDS]
+        from .masks import KINDS, SHAPES
+        r["masks"] = [_mask_entry(m) for m in ms[:12] if isinstance(m, dict) and m.get("kind") in KINDS + SHAPES]
     hsl = (adj or {}).get("hsl")
     if isinstance(hsl, dict) and hsl:
         bands = dict(r["color"].get("user_hsl") or {})

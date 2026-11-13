@@ -22,8 +22,10 @@ from scipy import ndimage
 
 from . import geometry
 
-KINDS = ("subject", "people", "sky")
-NAMES = {"subject": "Subject", "people": "People", "sky": "Sky"}
+KINDS = ("subject", "people", "sky")                     # found by Apple Vision / the sky finder
+SHAPES = ("brush", "linear", "radial")                   # drawn by you (dodge / burn / brush, gradients)
+NAMES = {"subject": "Subject", "people": "People", "sky": "Sky", "brush": "Brush", "linear": "Linear gradient",
+         "radial": "Radial gradient"}
 EDGE = 1536
 VERSION = 1
 _lock = threading.Lock()
@@ -207,6 +209,81 @@ def _edited(path, kind, geom):
     return _mem[key]
 
 
+# --- masks you draw ----------------------------------------------------------------------------------
+# Brush: a small grey picture the page paints (the whole final, cropped frame, any size up to 2048 px);
+# it is stored by content (a short id), so every stroke is a new id and Undo just goes back to the old one.
+# Linear / radial gradients are a few numbers (fractions of the final frame). They live in the library
+# folder or the grade itself, never next to your photos.
+_brush_mem = {}
+
+
+def _brush_dir():
+    d = _dir() / "brush"
+    d.mkdir(exist_ok=True)
+    return d
+
+
+def save_brush(data):
+    """Keep a painted mask (PNG bytes from the page); returns its id."""
+    import io
+    im = Image.open(io.BytesIO(data)).convert("L")
+    if max(im.size) > 2048:
+        k = 2048 / max(im.size)
+        im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.BILINEAR)
+    bid = hashlib.sha1(im.tobytes() + str(im.size).encode()).hexdigest()[:16]
+    f = _brush_dir() / f"{bid}.png"
+    if not f.exists():
+        im.save(f, "PNG", optimize=True)
+    return bid
+
+
+def brush_file(bid):
+    import re
+    if not re.fullmatch(r"[0-9a-f]{16}", str(bid or "")):
+        return None
+    f = _brush_dir() / f"{bid}.png"
+    return f if f.exists() else None
+
+
+def _brush_img(bid):
+    if bid not in _brush_mem:
+        f = brush_file(bid)
+        if f is None:
+            return None
+        if len(_brush_mem) > 24:
+            _brush_mem.pop(next(iter(_brush_mem)))
+        _brush_mem[bid] = Image.fromarray(np.asarray(Image.open(f).convert("L"), np.float32) / 255, "F")
+    return _brush_mem[bid]
+
+
+def _smooth(t):
+    t = np.clip(t, 0, 1)
+    return t * t * (3 - 2 * t)
+
+
+def _shape_alpha(m, frame_size, box):
+    fw, fh = frame_size
+    x0, y0, x1, y1 = box
+    w, h = max(1, x1 - x0), max(1, y1 - y0)
+    if m["kind"] == "brush":
+        img = _brush_img(m.get("id"))
+        if img is None:
+            return np.zeros((h, w), np.float32)
+        sx, sy = img.width / fw, img.height / fh
+        return np.asarray(img.resize((w, h), Image.BILINEAR, box=(x0 * sx, y0 * sy, x1 * sx, y1 * sy)), np.float32)
+    X = ((x0 + 0.5 + np.arange(w, dtype=np.float32)) / fw)[None, :]
+    Y = ((y0 + 0.5 + np.arange(h, dtype=np.float32)) / fh)[:, None]
+    if m["kind"] == "linear":                              # full effect at the first point, none at the second
+        ax, ay, bx, by = m.get("x0", 0.5), m.get("y0", 0.3), m.get("x1", 0.5), m.get("y1", 0.7)
+        dx, dy = bx - ax, by - ay
+        t = ((X - ax) * dx + (Y - ay) * dy) / max(dx * dx + dy * dy, 1e-6)
+        return (1 - _smooth(t)).astype(np.float32)
+    rx, ry = max(m.get("rx", 0.35), 0.01), max(m.get("ry", 0.35), 0.01)      # radial: inside full, fading out
+    r = np.hypot((X - m.get("cx", 0.5)) / rx, (Y - m.get("cy", 0.5)) / ry)
+    inner = 1 - min(max(m.get("feather", 0.5), 0.0), 1.0)
+    return (1 - _smooth((r - inner) / max(1 - inner, 1e-3))).astype(np.float32)
+
+
 def alphas(path, recipe, geom, frame_size, box):
     """Per-pixel strength of each of the recipe's masks for `box` = (x0, y0, x1, y1) in a final frame
     of frame_size = (w, h) pixels: [float32 (y1 - y0, x1 - x0)], in recipe['masks'] order."""
@@ -214,10 +291,13 @@ def alphas(path, recipe, geom, frame_size, box):
     fw, fh = frame_size
     x0, y0, x1, y1 = box
     for m in recipe.get("masks") or []:
-        img = _edited(path, m["kind"], geom)
-        sx, sy = img.width / fw, img.height / fh
-        a = np.asarray(img.resize((max(1, x1 - x0), max(1, y1 - y0)), Image.BILINEAR,
-                                  box=(x0 * sx, y0 * sy, x1 * sx, y1 * sy)), np.float32)
+        if m["kind"] in SHAPES:
+            a = _shape_alpha(m, frame_size, box)
+        else:
+            img = _edited(path, m["kind"], geom)
+            sx, sy = img.width / fw, img.height / fh
+            a = np.asarray(img.resize((max(1, x1 - x0), max(1, y1 - y0)), Image.BILINEAR,
+                                      box=(x0 * sx, y0 * sy, x1 * sx, y1 * sy)), np.float32)
         out.append(1 - a if m.get("invert") else a)
     return out
 

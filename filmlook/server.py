@@ -7,7 +7,7 @@ import uuid
 import webbrowser
 from pathlib import Path, PurePath
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from PIL import Image, ImageOps
 from pydantic import BaseModel
@@ -176,6 +176,29 @@ def mask_overlay(name: str, kind: str, invert: bool = False, width: int = 1600):
     buf = io.BytesIO()
     masks.overlay(p, kind, edits.get(p), max(64, min(width, 2400)), invert).save(buf, "PNG")
     return Response(buf.getvalue(), media_type="image/png")
+
+
+@app.post("/api/brush")
+async def brush_save(request: Request):
+    """Grade → Masks → Brush: keep the painted mask (a PNG the page drew); returns its short id. It lives
+    in the library folder, never next to the photo."""
+    from . import masks
+    data = await request.body()
+    if not data or len(data) > 12_000_000:
+        raise HTTPException(400, "empty or too big")
+    try:
+        return {"id": masks.save_brush(data)}
+    except Exception:
+        raise HTTPException(400, "not a picture")
+
+
+@app.get("/api/brush/{bid}.png")
+def brush_get(bid: str):
+    from . import masks
+    f = masks.brush_file(bid)
+    if f is None:
+        raise HTTPException(404, "no such brush mask")
+    return FileResponse(f, media_type="image/png", headers={"Cache-Control": "max-age=31536000"})
 
 
 class GradeAiIn(BaseModel):

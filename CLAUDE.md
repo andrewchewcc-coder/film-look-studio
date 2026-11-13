@@ -159,3 +159,16 @@ Playwright's headless Chromium (`.playwright-browsers/`, not in git; `PLAYWRIGHT
 error. Extend it when adding a tab, panel or button that calls the server.
 
 - Cull Compare: Shift-click two frames (`CU.chosen`) then Compare; ‹ › on each side (`cmpStep`); photos are scaled by `cmpScale` so small previews can always be panned; `cuBW` button / B key toggles black & white. Cards no longer show PICK/REJECT tags (the Pick/✕ buttons show state); `cuFit` sizes columns to `max-content` once all photos are measured, and `cuLayout` uses the median aspect.
+- Grade side panel = a tool strip (`#gTabs`: Look · Adjust · Tone · Masks · Crop · Export; `gradeTab`, remembered in fls.gradeTab) over panes
+  (`.gpane`), with the histogram pinned on top (`#gHead`) and Undo / Redo / Copy / Paste pinned below (`#gActions`). Badges via `tabBadge`.
+- Drawn masks (Masks tab): Dodge / Burn / Brush (`kind: "brush"`: a painted grey picture of the cropped frame, ~1024 px, uploaded by the page to
+  `POST /api/brush` (`masks.save_brush`, LIBRARY_DIR/masks/brush/<id>.png); the grade only keeps the 16-hex `id`, so every stroke is a new id and
+  Undo steps stroke by stroke), plus Linear and Radial gradients (a few fractions of the final frame; handles in `#shapeSvg`; formulas in
+  `masks._shape_alpha` and the page's `shapeAlpha`, keep them identical). They use the same four sliders as the automatic masks
+  (`recipes._mask_entry` validates; `masks.alphas` renders previews, tiles and export strips). Painting UI: `PT` / `PB`, `paintSync`, `#paintCv`
+  over `#big`; [ ] size, X erase, Esc done. Paste grade / copy to ticked drop brush masks (they only fit their own photo).
+- One notice area: every message goes to `#notice` (top centre; `notifyFrom` / `notify` / `noteAlert`, `status()` is a thin wrapper), kept in the 🔔 history
+  (`NOTE.hist`). The old message elements (`NOTE_SINKS`: lbNote, esNote, cuStartMsg, brMsg, aeMsg, setBackupMsg, esPdfMsg, aiGradeNote, pbSaved, status) are
+  sinks: `$(id)` installs a textContent / innerHTML setter on them that notifies instead, so old code works unchanged (HTML with buttons works too; buttons
+  stay until dismissed). Messages ending in … stay until replaced or cleared (""); others fade after ~5 s + 45 ms per character (errors 12 s). `alert()` is gone:
+  use `noteAlert`. New messages: call `status(text, isError)`; don't add new note elements.

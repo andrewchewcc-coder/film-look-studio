@@ -119,7 +119,14 @@ def test_click_through_every_tab(app):
             for (const k of ["adjust", "tone", "masks", "out", "crop", "look"]) { gradeTab(k); await new Promise(r => setTimeout(r, 400)); }
             await cropEnter(); await new Promise(r => setTimeout(r, 1500));
             $("crAuto").click(); await new Promise(r => setTimeout(r, 2500)); cropExit(false);
-            await (await api("/api/mask_info?" + q({ name: S.photos[0], kind: "sky" }))).json(); }""")
+            await (await api("/api/mask_info?" + q({ name: S.photos[0], kind: "sky" }))).json();
+            const c = document.createElement("canvas"); c.width = c.height = 8;     // a painted mask + both gradients render
+            c.getContext("2d").fillRect(0, 0, 4, 8);
+            const blob = await new Promise(r => c.toBlob(r, "image/png"));
+            const id = (await (await api("/api/brush", { method: "POST", headers: { "Content-Type": "image/png" }, body: blob })).json()).id;
+            await api("/api/brush/" + id + ".png");
+            await api("/api/render?" + q({ name: S.photos[0], look: S.look, edge: 400, adjust: JSON.stringify({ masks: [
+              { kind: "brush", id, exposure: 0.5 }, { kind: "linear", exposure: -0.5 }, { kind: "radial", exposure: 0.5 }] }) })); }""")
 
         # Essays: the test essay and every panel (AI ones only show their buttons; nothing is sent to Claude)
         tab("Essays")

@@ -41,3 +41,30 @@ def test_engine_only_builds_masks_when_they_do_something(tmp_path, monkeypatch):
     assert engine._masks_at(p, idle, None, (300, 200)) is None
     assert edits.is_plain("neutral", {"masks": [{"kind": "sky", "exposure": 0}]})
     assert not edits.is_plain("neutral", {"masks": [{"kind": "sky", "exposure": 0.3}]})
+
+
+def test_drawn_masks_brush_and_gradients(tmp_path, monkeypatch):
+    import io
+    from PIL import Image
+    monkeypatch.setattr("filmlook.library.LIBRARY_DIR", tmp_path)
+    p = tmp_path / "x.dng"
+    p.write_bytes(b"x")
+    pic = np.zeros((50, 100), np.uint8)
+    pic[:, :50] = 255                                                  # painted: the left half
+    buf = io.BytesIO()
+    Image.fromarray(pic).save(buf, "PNG")
+    bid = masks.save_brush(buf.getvalue())
+    assert masks.brush_file(bid) is not None and masks.brush_file("../etc/passwd") is None
+    r = recipes.apply_adjust(recipes.load_look("neutral"), {"masks": [
+        {"kind": "brush", "id": bid, "exposure": 0.5},
+        {"kind": "brush", "id": "nonsense", "exposure": 0.5},
+        {"kind": "linear", "x0": 0.5, "y0": 0.0, "x1": 0.5, "y1": 1.0, "exposure": -1},
+        {"kind": "radial", "cx": 0.5, "cy": 0.5, "rx": 0.2, "ry": 0.2, "feather": 0.3, "exposure": 1}]})
+    assert [m["kind"] for m in r["masks"]] == ["brush", "brush", "linear", "radial"] and r["masks"][1]["id"] == ""
+    a = masks.alphas(p, r, None, (200, 100), (0, 0, 200, 100))
+    assert a[0][50, 20] > 0.99 and a[0][50, 180] < 0.01               # the left half, at any size
+    assert a[1].max() == 0                                            # unknown id: nothing
+    assert a[2][2, 100] > 0.95 and a[2][97, 100] < 0.05               # linear: strong at the top, gone at the bottom
+    assert a[3][50, 100] > 0.99 and a[3][5, 5] < 0.01                 # radial: the middle only
+    strip = masks.alphas(p, r, None, (200, 100), (0, 60, 200, 70))[0]
+    assert strip.shape == (10, 200) and strip[:, 20].min() > 0.99

@@ -85,7 +85,7 @@ def suggest(path, request, look, adjust):
         "sliders": {k: adjust.get(k, 1.0 if k == "strength" else 0.0) for k in SLIDERS},
         "mixer": [{"band": b, **{k: (adjust.get("hsl") or {}).get(b, {}).get(k, 0) for k in MIX}}
                   for b in BANDS if (adjust.get("hsl") or {}).get(b)],
-        "masks": adjust.get("masks") or [],
+        "masks": [m for m in adjust.get("masks") or [] if m.get("kind") in MASK_KINDS],   # the ones Claude may change
     }
     looks_text = "\n".join(f"- {lk['id']}: {lk['name']}" + (f" — {lk['description']}" if lk["description"] else "")
                            for lk in looks)
@@ -109,6 +109,7 @@ def suggest(path, request, look, adjust):
                 new["hsl"][m["band"]] = band
     new["masks"] = [{"kind": m["kind"], "invert": bool(m.get("invert")), **{k: _clamp(m.get(k), r) for k, r in MASK.items()}}
                     for m in (answer.get("masks") or [])[:6] if m.get("kind") in MASK_KINDS]
+    new["masks"] += [m for m in adjust.get("masks") or [] if m.get("kind") in ("brush", "linear", "radial")]   # what you drew stays
     new_look = answer["look"] if answer.get("look") in ids else look
     explanation = (answer.get("explanation") or "").strip() or _summary(look, adjust, new_look, new, looks)
     return {"look": new_look, "adjust": new, "explanation": explanation, "cost": round(cost, 3)}
