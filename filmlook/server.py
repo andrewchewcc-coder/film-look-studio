@@ -1444,9 +1444,11 @@ def _essay_row(eid):
 @app.get("/api/essays")
 def essays_list():
     c = _lib().con()
-    rows = c.execute("""SELECT e.id, e.name, e.target, e.updated_at, COUNT(i.photo_id) AS n FROM essays e
-                        LEFT JOIN essay_items i ON i.essay_id = e.id GROUP BY e.id ORDER BY e.updated_at DESC""")
-    return [{"id": r["id"], "name": r["name"], "target": r["target"], "count": r["n"], "updated": r["updated_at"]} for r in rows]
+    rows = c.execute("""SELECT e.id, e.name, e.target, e.updated_at, COUNT(i.photo_id) AS n,
+                        (SELECT photo_id FROM essay_items WHERE essay_id = e.id ORDER BY pos LIMIT 1) AS cover
+                        FROM essays e LEFT JOIN essay_items i ON i.essay_id = e.id GROUP BY e.id ORDER BY e.updated_at DESC""")
+    return [{"id": r["id"], "name": r["name"], "target": r["target"], "count": r["n"], "updated": r["updated_at"],
+             "cover": r["cover"]} for r in rows]
 
 
 class EssayNewIn(BaseModel):

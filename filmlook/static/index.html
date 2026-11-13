@@ -202,6 +202,12 @@
   #lbTree .n { color: var(--muted); font-size: 11px; margin-left: 6px; font-variant-numeric: tabular-nums; }
   #lbTree .kids .row { padding-left: 18px; }
   #lbTree .n { margin-left: 4px; }
+  .sideHead { display: flex; align-items: center; gap: 6px; margin: 18px 0 2px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .sideHead #fCount { color: var(--accent); text-transform: none; letter-spacing: 0; font-weight: 500; }
+  .sideHead button { margin-left: auto; padding: 1px 8px; font-size: 11px; }
+  #libSide .fon { border-color: var(--accent) !important; }
+  #lbChips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 8px; }
+  #lbChips button { padding: 2px 9px; font-size: 12px; border-radius: 12px; border-color: var(--accent); }
   .dates2 { display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; align-items: center; font-size: 12px; color: var(--muted); }
   #libTools { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
   #libTools button { width: 100%; height: 32px; font-size: 13px; }
@@ -441,9 +447,11 @@
   #esSide select, #esSide input[type=text], #esSide input[type=date], #esSide input[type=number] { width: 100%; background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 6px 8px; border-radius: 6px; font: inherit; }
   #esSide .dates { display: flex; gap: 6px; }
   #esSide label.chk { display: flex; gap: 7px; align-items: center; font-size: 13px; }
-  .esItem { padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; margin: 5px 0; cursor: pointer; color: var(--text); }
+  .esItem { display: flex; gap: 10px; align-items: center; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; margin: 5px 0; cursor: pointer; color: var(--text); }
   .esItem.on { border-color: var(--accent); }
   .esItem small { display: block; color: var(--muted); }
+  .esItem > div { min-width: 0; } .esItem b { font-weight: 600; display: block; }
+  .esCover { width: 52px; height: 52px; flex: none; object-fit: cover; border-radius: 4px; background: var(--field); }
   #esMain { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
   #esEmpty { color: var(--muted); margin: 60px auto; }
   #esWork { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -608,6 +616,7 @@
     <div id="lbTree"></div>
     <label for="lbMode">Show</label>
     <select id="lbMode"><option value="">All photos</option><option value="second">Worth a second look</option><option value="this_day">On this day</option></select>
+    <div class="sideHead">Filter <span id="fCount"></span><button id="fClear" hidden title="Turn all filters off">Clear</button></div>
     <label>Dates</label>
     <div class="dates2"><span>From</span><input type="date" id="fFrom"><span>To</span><input type="date" id="fTo"></div>
     <label for="fFlag">Marks</label>
@@ -616,13 +625,14 @@
     <select id="fGraded"><option value="">Any</option><option value="1">Graded (exported)</option><option value="edited">Edited, not exported yet</option><option value="0">Not graded</option></select>
     <label for="fStars">Stars</label>
     <select id="fStars"><option value="0">Any</option><option value="1">★ 1 or more</option><option value="2">★★ 2 or more</option><option value="3">★★★ 3 or more</option><option value="4">★★★★ 4 or more</option><option value="5">★★★★★ 5</option></select>
+    <label for="fCamera">Camera</label>
+    <select id="fCamera"><option value="">All cameras</option></select>
+    <div class="sideHead">Display</div>
     <label for="lbView">View</label>
     <select id="lbView"><option value="graded">Graded versions</option><option value="original">Originals</option></select>
     <label for="lbSize">Thumbnail size</label>
     <input type="range" id="lbSize" min="120" max="420" step="10" value="180">
     <label class="chk"><input type="checkbox" id="lbNames"> Show file names</label>
-    <label for="fCamera">Camera</label>
-    <select id="fCamera"><option value="">All cameras</option></select>
     <div id="libTools">
       <button id="scanBtn">Scan for new photos</button><button id="pauseBtn" hidden>Pause</button>
       <div class="bar"><div id="scanBar"></div></div>
@@ -646,6 +656,7 @@
       <button id="lbAll">Select all</button>
       <button id="lbFinder" title="Open Finder with the selected photos' files selected (one shoot at a time)">Show in Finder</button>
     </div>
+    <div id="lbChips" hidden></div>
     <div id="lbNew" hidden></div>
     <div id="lbNote" class="small"></div>
     <div id="grid" class="grid"></div>
@@ -2286,7 +2297,29 @@ $("lightbox").onclick = (e) => { if (e.target.id === "lightbox") $("lightbox").h
 let typeTimer = null;
 $("libq").addEventListener("input", () => { clearTimeout(typeTimer); typeTimer = setTimeout(() => { lbSteerClear(); runSearch(); }, 400); });
 $("libq").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(typeTimer); runSearch(); } });
-["lbWhere", "lbMode", "fFrom", "fTo", "fCamera", "fGraded", "fFlag", "fStars"].forEach(id => $(id).addEventListener("change", () => { L.sel.clear(); $("lbNote").textContent = ""; runSearch(); }));
+
+// Which filters are on: the sidebar controls get an accent outline, a count + Clear sit by the Filter heading,
+// and chips above the grid say what is narrowing it (click one to drop just that filter).
+function lbFilterUI() {
+  const sel = (id) => $(id), opt = (id) => { const e = sel(id); return e.options[e.selectedIndex] ? e.options[e.selectedIndex].text : ""; };
+  const on = [];
+  if ($("fFrom").value || $("fTo").value) on.push({ ids: ["fFrom", "fTo"], label: `${$("fFrom").value || "…"} → ${$("fTo").value || "…"}`, off: () => { $("fFrom").value = ""; $("fTo").value = ""; } });
+  if ($("fFlag").value) on.push({ ids: ["fFlag"], label: opt("fFlag"), off: () => { $("fFlag").value = ""; } });
+  if ($("fGraded").value) on.push({ ids: ["fGraded"], label: opt("fGraded"), off: () => { $("fGraded").value = ""; } });
+  if ($("fStars").value && $("fStars").value !== "0") on.push({ ids: ["fStars"], label: opt("fStars"), off: () => { $("fStars").value = "0"; } });
+  if ($("fCamera").value) on.push({ ids: ["fCamera"], label: opt("fCamera"), off: () => { $("fCamera").value = ""; } });
+  ["fFrom", "fTo", "fFlag", "fGraded", "fStars", "fCamera"].forEach(id => $(id).classList.remove("fon"));
+  on.forEach(f => f.ids.forEach(id => $(id).classList.add("fon")));
+  $("fCount").textContent = on.length ? `· ${on.length} on` : "";
+  $("fClear").hidden = !on.length;
+  const chips = $("lbChips"); chips.innerHTML = ""; chips.hidden = !on.length || !!$("lbMode").value;
+  on.forEach(f => { const b = document.createElement("button"); b.textContent = `${f.label} ✕`; b.title = "Remove this filter";
+    b.onclick = () => { f.off(); lbFilterUI(); L.sel.clear(); runSearch(); }; chips.appendChild(b); });
+  return on;
+}
+$("fClear").onclick = () => { ["fFrom", "fTo"].forEach(id => { $(id).value = ""; }); $("fFlag").value = ""; $("fGraded").value = ""; $("fStars").value = "0"; $("fCamera").value = "";
+  lbFilterUI(); L.sel.clear(); runSearch(); };
+["lbWhere", "lbMode", "fFrom", "fTo", "fCamera", "fGraded", "fFlag", "fStars"].forEach(id => $(id).addEventListener("change", () => { lbFilterUI(); L.sel.clear(); $("lbNote").textContent = ""; runSearch(); }));
 $("lbView").onchange = () => { document.querySelectorAll("#grid .cell").forEach(c => { const r = L.photos[+c.dataset.i]; if (r) c.querySelector("img").src = lbThumb(r); }); };
 $("lbSize").oninput = () => $("grid").style.setProperty("--cs", $("lbSize").value + "px");
 try { $("lbNames").checked = localStorage.getItem("fls.names") === "1"; } catch (e) {}
@@ -3340,12 +3373,19 @@ document.addEventListener("keydown", (e) => {
 const ES = { id: null, photos: [], trans: [], view: "strip", undo: [], panel: "check", gap: null, setup: false };
 const esJSON = (body) => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 async function esOpen() { esList(); }
+function esWhen(ts) {                       // "Today", "Yesterday", "3 days ago", "12 Nov", "12 Nov 2025"
+  const d = new Date((ts || "").replace(" ", "T") + "Z"); if (isNaN(d)) return "";
+  const t = new Date(), day = (x) => Math.floor(new Date(x.getFullYear(), x.getMonth(), x.getDate()) / 864e5), n = day(t) - day(d);
+  if (n <= 0) return "Today"; if (n === 1) return "Yesterday"; if (n < 7) return `${n} days ago`;
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(d.getFullYear() !== t.getFullYear() ? { year: "numeric" } : {}) });
+}
 async function esList() {
   const rows = await (await api("/api/essays")).json();
   $("esList").innerHTML = rows.length ? "" : "None yet.";
   for (const r of rows) {
     const d = document.createElement("div"); d.className = "esItem" + (r.id === ES.id ? " on" : "");
-    d.innerHTML = `${esc(r.name)}<small>${r.count} photos · target ${r.target || "–"} · ${esc((r.updated || "").slice(0, 16))}</small>`;
+    d.innerHTML = `${r.cover ? `<img class="esCover" src="/api/essays/thumb/${r.cover}" alt="" loading="lazy">` : `<span class="esCover"></span>`}
+      <div><b>${esc(r.name)}</b><small>${r.count} photo${r.count === 1 ? "" : "s"}${r.target && r.target !== r.count ? ` of ${r.target}` : ""} · ${esWhen(r.updated)}</small></div>`;
     d.onclick = () => esLoad(r.id);
     $("esList").appendChild(d);
   }
