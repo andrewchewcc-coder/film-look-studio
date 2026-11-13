@@ -111,12 +111,12 @@ def test_click_through_every_tab(app):
             await cuLoad(r.session); await new Promise(r => setTimeout(r, 2000));
             cuCompare(); await new Promise(r => setTimeout(r, 2500)); cuCompareClose(); }}""")
 
-        # Grade: open a photo, fold a section, crop screen + auto-straighten, camera-JPG check, masks list
+        # Grade: open a photo, click every tool tab, crop screen + auto-straighten, camera-JPG check, masks list
         tab("Grade")
         page.wait_for_timeout(2500)
         page.evaluate("""async () => { if (!S.photos.length) return;
             await select(S.photos[0]); await new Promise(r => setTimeout(r, 2500));
-            document.querySelector("#gradePanel > h2").click(); document.querySelector("#gradePanel > h2").click();
+            for (const k of ["adjust", "tone", "masks", "out", "crop", "look"]) { gradeTab(k); await new Promise(r => setTimeout(r, 400)); }
             await cropEnter(); await new Promise(r => setTimeout(r, 1500));
             $("crAuto").click(); await new Promise(r => setTimeout(r, 2500)); cropExit(false);
             await (await api("/api/mask_info?" + q({ name: S.photos[0], kind: "sky" }))).json(); }""")

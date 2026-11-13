@@ -132,6 +132,20 @@
   aside { border-left: 1px solid var(--line); overflow-y: auto; padding: 14px; }
   aside h2 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
   aside h2:first-child { margin-top: 0; }
+  #gHead { position: sticky; top: -14px; z-index: 5; background: var(--bg); margin: -14px -14px 10px; padding: 14px 14px 8px; border-bottom: 1px solid var(--line); }
+  #gTabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; margin-top: 8px; }
+  #gTabs button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 0 4px; font-size: 10.5px; background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 4px 4px 0 0; color: var(--muted); }
+  #gTabs button b { font-size: 16px; font-weight: 400; line-height: 1; }
+  #gTabs button:hover { background: var(--hover); color: var(--text); }
+  #gTabs button.on { color: var(--text); border-bottom-color: var(--accent); background: var(--raised); }
+  #gTabs button i { position: absolute; top: 1px; right: 4px; font-style: normal; font-size: 9px; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: 8px; min-width: 14px; line-height: 14px; text-align: center; }
+  #gTabs button i[hidden] { display: none; }
+  .gpane[hidden] { display: none; }
+  .gsub { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 6px; font-weight: 600; }
+  .gpane > .gsub:first-child { margin-top: 2px; }
+  #gActions { position: sticky; bottom: -14px; z-index: 5; background: var(--bg); margin: 14px -14px -14px; padding: 8px 14px 12px; border-top: 1px solid var(--line); }
+  #gActions .row { margin: 4px 0; gap: 4px; }
+  #gActions .row button { padding: 4px 6px; font-size: 12px; white-space: nowrap; }
   #lookname { font-size: 16px; font-weight: 600; }
   #lookdesc { color: var(--muted); font-size: 12px; margin-top: 3px; }
   .slider { margin: 9px 0; }
@@ -169,10 +183,7 @@
   #status { font-size: 12px; color: var(--muted); margin: 0 0 8px; word-break: break-word; }
   #status:empty { display: none; }
   #status:not(:empty) { position: sticky; top: 0; z-index: 2; background: var(--panel, #161616); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; }
-  aside h2.fold { cursor: pointer; user-select: none; display: flex; justify-content: space-between; }
-  aside h2.fold::after { content: "▾"; font-size: 11px; }
-  aside h2.fold.closed::after { content: "▸"; }
-  aside h2.fold .badge, .curveHead .badge { color: var(--accent); text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 6px; }
+  .curveHead .badge { color: var(--accent); text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 6px; }
   .curveHead.fold > span:first-child { cursor: pointer; user-select: none; }
   .curveHead.fold > span:first-child::before { content: "▾ "; }
   .curveHead.fold.closed > span:first-child::before { content: "▸ "; }
@@ -785,7 +796,7 @@
       <div id="esBoard"></div>
       <div id="esPanel"><div id="esGrip" title="Drag to resize · double-click for the standard size"></div>
         <div class="esPanelHead"><div class="seg" id="esPanelGroups"><button data-g="arrange" class="on">Arrange</button><button data-g="brief">Brief</button><button data-g="output">Output</button></div>
-          <div class="seg" id="esPanelTabs"><button data-p="check" title="Photobook guidelines: what works and what to fix">Check</button><button data-p="ai" title="Claude reviews the essay like a photobook editor">AI editor</button><button data-p="pairs" class="on">Pairs</button><button data-p="bench" title="Photos from your selection that weren't chosen">Bench</button><button data-p="fill">Fill the gap</button><button data-p="replace" hidden>Replace</button><button data-p="export" title="The photos in order as 01_title.jpg">Export photos</button><button data-p="book" title="A print-ready book or zine PDF">Book PDF</button><button data-p="contact" title="A PDF contact sheet with numbers and titles">Contact sheet</button><button data-p="publish" title="Publish to your WordPress website">Publish</button><button data-p="brief" hidden>Brief</button></div></div>
+          <div class="seg" id="esPanelTabs"><button data-p="check" title="Photobook guidelines: what works and what to fix">Check</button><button data-p="ai" title="Claude reviews the essay like a photobook editor">AI editor</button><button data-p="pairs" class="on">Pairs</button><button data-p="bench" title="Photos from your selection that weren't chosen">Bench</button><button data-p="fill">Fill the gap</button><button data-p="replace" hidden>Replace</button><button data-p="export" title="The photos in order as 01_title.jpg, in a new folder">JPG folder</button><button data-p="book" title="A print-ready book or zine PDF">Book / zine PDF</button><button data-p="contact" title="A PDF contact sheet with numbers and titles">Contact sheet PDF</button><button data-p="publish" title="Publish to your WordPress website (as a draft)">Website draft</button><button data-p="brief" hidden>Brief</button></div></div>
         <div id="esPanelBody" class="small"></div>
       </div>
     </div>
@@ -867,28 +878,35 @@
     <div class="small">Keys: <b>Enter</b> done · <b>Esc</b> cancel · <b>R</b> reset · <b>X</b> swap · <b>[ ]</b> rotate 0.1° (Shift: 1°). Drag corners or edges to resize, inside to move. <b>Drag just outside a corner</b> (or anywhere outside the frame) to rotate.</div>
   </div>
   <div id="gradePanel">
+  <div id="gHead">
     <canvas id="histo" width="560" height="156" title="Histogram of the photo as graded: dark tones left, bright right"></canvas>
     <div id="histoNote"><span id="histoLo"></span><span id="histoHi"></span></div>
-    <h2>Look</h2>
+    <div id="gTabs"><button data-t="look" title="Look"><b>✦</b><span>Look</span><i></i></button><button data-t="adjust" title="Adjust"><b>☀</b><span>Adjust</span><i></i></button><button data-t="tone" title="Tone"><b>∿</b><span>Tone</span><i></i></button><button data-t="masks" title="Masks"><b>◎</b><span>Masks</span><i></i></button><button data-t="crop" title="Crop"><b>⌗</b><span>Crop</span><i></i></button><button data-t="out" title="Export"><b>⇪</b><span>Export</span><i></i></button></div>
+  </div>
+  <div class="gpane" data-t="look">
     <div id="lookname">Neutral</div>
     <div id="lookdesc"></div>
     <div class="row"><button id="compare" title="Hold to see the original: no look, no crop (or hold B)">Hold: before</button><button id="splitBtn" title="Before and after side by side on the photo: drag the line">Split before / after</button></div>
     <div class="row" id="camRow" hidden><button id="camBtn" title="Hold to see the JPG your camera saved with this RAW: its own colour, with your crop (or hold J)">Hold: camera JPG</button><button id="splitCamBtn" title="The camera's JPG and your grade side by side: drag the line">Split camera JPG / grade</button></div>
 
-    <h2>Crop &amp; straighten</h2>
-    <div class="row"><button id="cropBtn" title="C">Crop &amp; straighten</button><button id="cropResetSaved" title="Back to the full, unrotated photo">Reset</button></div>
-    <div id="cropInfo" class="small"></div>
-    <div class="row"><button id="copyRatio" title="Give the ticked photos this crop's aspect ratio">Copy ratio to ticked</button></div>
-
-    <h2>Describe the grade</h2>
+    <div class="gsub">Describe the grade</div>
     <div id="aiGradeBox">
       <textarea id="aiGradeText" rows="2" placeholder="e.g. warmer, like late-afternoon Saul Leiter · darken the sky a little · calm the blue sign" style="width:100%;background:var(--field);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px 8px;font:inherit;font-size:13px;box-sizing:border-box"></textarea>
       <div class="row"><button id="aiGradeGo" class="primary" title="Claude sets the look, sliders, colour mixer and masks (⌘Enter)">Ask Claude</button></div>
       <div id="aiGradeNote" class="small">Claude looks at this photo (small preview only) and sets the controls; Undo goes back. About 2–4¢ a time.</div>
     </div>
 
-    <h2>Adjust</h2>
+    <div class="gsub">Match a reference photo</div>
+    <div class="small">Any image whose colour or tone you love — your own JPG, a film scan, a photo you saved.</div>
+    <div class="row"><input type="file" id="reffile" accept="image/*,.dng"></div>
+    <div class="row"><input type="text" id="refname" placeholder="Name for the new look"></div>
+    <div class="row"><button id="refgo">Create look (on top of current)</button></div>
+  </div>
+  <div class="gpane" data-t="adjust" hidden>
     <div id="sliders"></div>
+    <div class="small">Double-click a slider to reset just that one.</div>
+  </div>
+  <div class="gpane" data-t="tone" hidden>
     <div id="curveBox">
       <div class="curveHead"><span>Tone curve</span>
         <select id="curvePreset" title="Start from a ready-made curve">
@@ -906,31 +924,39 @@
       <div id="mixSliders"></div>
       <div class="small">Change one colour only: e.g. calm a loud blue sign, deepen a sky, warm skin. Colour looks only (B&amp;W looks ignore it).</div>
     </div>
+  </div>
+  <div class="gpane" data-t="masks" hidden>
     <div id="maskBox">
       <div class="curveHead"><span>Masks</span></div>
       <div class="addRow"><button data-k="subject" title="What stands out: people, a cyclist, a cat…">+ Subject</button><button data-k="people">+ People</button><button data-k="sky">+ Sky</button></div>
       <div id="maskCards"></div>
       <div class="small">Adjust just part of the photo, e.g. lift a face in shade, calm a bright sky. Found by your Mac (nothing leaves it). People may miss some faces in a dense crowd.</div>
     </div>
-    <div class="row"><button id="grUndo" title="Undo (⌘Z)">↶ Undo</button><button id="grRedo" title="Redo (⇧⌘Z)">↷ Redo</button><button id="reset">Reset all</button></div>
-    <div class="row"><button id="grCopy" title="Copy this photo's look, sliders and curve (⌘C)">Copy grade</button><button id="grPaste" title="Give this photo the copied grade (⌘V)" disabled>Paste grade</button></div>
-    <div class="small">Double-click a slider to reset just that one.</div>
-    <div class="row"><button id="copyGrade" title="Give the ticked photos this look, sliders and curve (each keeps its own crop)" disabled>Copy this grade to ticked (0)</button></div>
-    <div class="small">Each photo remembers its own look, sliders and curve.</div>
+  </div>
+  <div class="gpane" data-t="crop" hidden>
+    <div class="gsub">Crop &amp; straighten</div>
+    <div class="row"><button id="cropBtn" title="C">Crop &amp; straighten</button><button id="cropResetSaved" title="Back to the full, unrotated photo">Reset</button></div>
+    <div id="cropInfo" class="small"></div>
+    <div class="row"><button id="copyRatio" title="Give the ticked photos this crop's aspect ratio">Copy ratio to ticked</button></div>
 
-    <h2>Save</h2>
+  </div>
+  <div class="gpane" data-t="out" hidden>
+    <div class="gsub">Save this look</div>
     <div class="row"><input type="text" id="savename" placeholder="Name, e.g. My Chrome"></div>
     <div class="row"><button id="save">Save as my look</button><button id="lut" title="For ON1 Photo RAW → Effects → LUT">Download LUT</button></div>
 
-    <h2>Export full-res JPG</h2>
+    <div class="gsub">Export full-res JPG</div>
     <div class="row"><button id="exportone" class="primary">This photo</button><button id="exportsel">Ticked (0)</button></div>
     <div class="small">Saved to a <b>graded</b> folder next to your photos, with your crop. Originals are never changed.</div>
 
-    <h2>Match a reference photo</h2>
-    <div class="small">Any image whose colour or tone you love — your own JPG, a film scan, a photo you saved.</div>
-    <div class="row"><input type="file" id="reffile" accept="image/*,.dng"></div>
-    <div class="row"><input type="text" id="refname" placeholder="Name for the new look"></div>
-    <div class="row"><button id="refgo">Create look (on top of current)</button></div>
+    <div class="gsub">Other photos</div>
+    <div class="row"><button id="copyGrade" title="Give the ticked photos this look, sliders and curve (each keeps its own crop)" disabled>Copy this grade to ticked (0)</button></div>
+    <div class="small">Each photo remembers its own look, sliders and curve.</div>
+  </div>
+  <div id="gActions">
+    <div class="row"><button id="grUndo" title="Undo (⌘Z)">↶ Undo</button><button id="grRedo" title="Redo (⇧⌘Z)">↷ Redo</button><button id="reset">Reset all</button></div>
+    <div class="row"><button id="grCopy" title="Copy this photo's look, sliders and curve (⌘C)">Copy grade</button><button id="grPaste" title="Give this photo the copied grade (⌘V)" disabled>Paste grade</button></div>
+  </div>
   </div>
   </aside>
 </main>
@@ -1006,10 +1032,11 @@ const MASK_NAMES = { subject: "Subject", people: "People", sky: "Sky" };
 const MASK_SLIDERS = [["exposure", "Exposure (EV)", -2, 2, 0.05], ["contrast", "Contrast", -0.5, 0.5, 0.02],
                       ["warmth", "Warmth", -50, 50, 1], ["saturation", "Saturation", -1, 1, 0.02]];
 let maskShown = -1;
+function curveChanged() { const c = S.adjust.curve || []; return c.length !== 2 || c[0][0] !== 0 || c[0][1] !== 0 || c[1][0] !== 1 || c[1][1] !== 1; }
 function maskLabel(k, v) { return k === "saturation" ? (v > 0 ? "+" : "") + Math.round(v * 100) + "%" : (v > 0 ? "+" : "") + (Number.isInteger(v) ? v : v.toFixed(2)); }
 function buildMasks() {
   const list = S.adjust.masks || [];
-  if ($("maskBox").querySelector(".curveHead.fold")) foldBadge("maskBox", list.length ? `${list.length} in use` : "");
+  tabBadge("masks", list.length ? String(list.length) : "");
   if (maskShown >= list.length) maskShown = -1;
   $("maskCards").innerHTML = "";
   list.forEach((m, i) => {
@@ -1065,12 +1092,12 @@ function mixSet(band, v) {
   const hsl = S.adjust.hsl = { ...(S.adjust.hsl || {}) }, b = { ...(hsl[band] || {}) };
   if (v) b[mixMode] = v; else delete b[mixMode];
   if (Object.keys(b).length) hsl[band] = b; else delete hsl[band];
-  if ($("mixBox").querySelector(".curveHead.fold")) foldBadge("mixBox", Object.keys(hsl).length ? "changed" : "");
+  tabBadge("tone", (Object.keys(hsl).length || curveChanged()) ? "•" : "");
 }
 function mixLabel(v) { return mixMode === "hue" ? (v > 0 ? "+" : "") + v + "°" : (v > 0 ? "+" : "") + Math.round(v * 100) + "%"; }
 function buildMixer() {
   const [min, max, step] = MIX_RANGE[mixMode];
-  if ($("mixBox").querySelector(".curveHead.fold")) foldBadge("mixBox", Object.keys(S.adjust.hsl || {}).length ? "changed" : "");
+  tabBadge("tone", (Object.keys(S.adjust.hsl || {}).length || curveChanged()) ? "•" : "");
   document.querySelectorAll("#mixMode button").forEach(b => b.classList.toggle("on", b.dataset.m === mixMode));
   $("mixSliders").innerHTML = "";
   for (const [band, label, dot] of MIX_BANDS) {
@@ -1328,36 +1355,21 @@ async function aiGrade() {
 }
 $("aiGradeGo").onclick = aiGrade;
 $("aiGradeText").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); aiGrade(); } });
-// Tidy side panel: each section folds open / shut by its heading; the app remembers which you keep open.
-const FOLD_DEFAULT_CLOSED = ["Save", "Match a reference photo", "Colour mixer", "Masks"];
-function foldState() { try { return JSON.parse(localStorage.getItem("fls.gradeFold") || "{}"); } catch (e) { return {}; } }
-function foldSave(name, closed) { const st = foldState(); st[name] = closed; try { localStorage.setItem("fls.gradeFold", JSON.stringify(st)); } catch (e) {} }
-function foldIsClosed(name) { const st = foldState(); return name in st ? st[name] : FOLD_DEFAULT_CLOSED.includes(name); }
-(function foldSetup() {
-  const panel = $("gradePanel");
-  for (const h of [...panel.querySelectorAll(":scope > h2")]) {
-    const name = h.textContent.trim(), body = document.createElement("div");
-    body.className = "foldBody";
-    while (h.nextSibling && !(h.nextSibling.tagName === "H2")) body.appendChild(h.nextSibling);
-    h.after(body); h.classList.add("fold");
-    const set = (closed) => { h.classList.toggle("closed", closed); body.hidden = closed; };
-    set(foldIsClosed(name));
-    h.onclick = () => { const closed = !h.classList.contains("closed"); set(closed); foldSave(name, closed); };
-  }
-  for (const box of ["mixBox", "maskBox", "curveBox"]) {          // the boxes inside Adjust fold the same way
-    const head = $(box).querySelector(".curveHead"), name = head.querySelector("span").textContent.trim();
-    const rest = [...$(box).children].filter(c => c !== head);
-    head.classList.add("fold");
-    const set = (closed) => { head.classList.toggle("closed", closed); rest.forEach(c => c.hidden = closed); };
-    set(foldIsClosed(name));
-    head.querySelector("span").onclick = () => { const closed = !head.classList.contains("closed"); set(closed); foldSave(name, closed); };
-  }
-})();
-function foldBadge(box, text) {                // e.g. "Masks · 2 in use" even when folded shut
-  const span = $(box).querySelector(".curveHead > span");
-  let b = span.querySelector(".badge"); if (!b) { b = document.createElement("span"); b.className = "badge"; span.appendChild(b); }
-  b.textContent = text;
+// Tidy side panel: a tool strip (Look · Adjust · Tone · Masks · Crop · Export) shows one section at a time;
+// the app remembers the last one you used. Badges on a tab say when something in it is switched on.
+function gradeTab(name, remember = true) {
+  if (!document.querySelector(`#gTabs [data-t="${name}"]`)) name = "look";
+  document.querySelectorAll("#gTabs button").forEach(b => b.classList.toggle("on", b.dataset.t === name));
+  document.querySelectorAll("#gradePanel .gpane").forEach(p => { p.hidden = p.dataset.t !== name; });
+  if (remember) try { localStorage.setItem("fls.gradeTab", name); } catch (e) {}
+  if (name === "tone") { try { drawCurve(); } catch (e) {} }          // the curve canvas needs to be on screen to size itself
 }
+function tabBadge(name, text) {
+  const i = document.querySelector(`#gTabs [data-t="${name}"] i`); if (!i) return;
+  i.textContent = text || ""; i.hidden = !text;
+}
+document.querySelectorAll("#gTabs button").forEach(b => b.onclick = () => gradeTab(b.dataset.t));
+try { gradeTab(localStorage.getItem("fls.gradeTab") || "look", false); } catch (e) { gradeTab("look", false); }
 function grClip() { try { return JSON.parse(localStorage.getItem("fls.gradeClip") || "null"); } catch (e) { return null; } }
 function grCopy() {
   if (!S.current) return;
