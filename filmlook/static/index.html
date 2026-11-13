@@ -168,7 +168,6 @@
   #rotBadge { position: absolute; transform: translate(-50%, -50%); background: #000c; color: #fff; font-size: 13px; padding: 4px 9px; border-radius: 4px; pointer-events: none; z-index: 3; }
   #looks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 8px; margin: 10px 0 12px; }
   .look { cursor: pointer; min-width: 0; }
-  #looks.tall { grid-template-columns: 1fr 1fr 1fr; }
   .look img { width: 100%; aspect-ratio: var(--la, 1.5); object-fit: contain; display: block; border-radius: 3px; border: 2px solid transparent; background: var(--raised); box-sizing: border-box; }
   .look.active img { border-color: var(--accent); }
   .look .nm { font-size: 11.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1796,7 +1795,7 @@ function buildLookStrip() {
   const all = [{ id: "neutral", name: "Neutral", description: "No look — the photo as shot" }, ...S.looks];
   $("looks").innerHTML = "";
   const [fw, fh] = typeof frameDims === "function" ? frameDims() : [3, 2], ar = fw / fh || 1.5;   // whole frame, not cropped to 3:2
-  $("looks").style.setProperty("--la", ar); $("looks").classList.toggle("tall", ar < 1);
+  $("looks").style.setProperty("--la", ar); 
   for (const lk of all) {
     const d = document.createElement("div"); d.className = "look" + (lk.id === S.look ? " active" : ""); d.dataset.id = lk.id;
     d.innerHTML = `<img loading="lazy" src="/api/render?${q({ name: S.current, look: lk.id, edge: 400, k: S.editKey || 0 })}"><div class="nm">${lk.name}${lk.user ? " <small>yours</small>" : ""}</div>`;

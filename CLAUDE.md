@@ -159,7 +159,7 @@ Playwright's headless Chromium (`.playwright-browsers/`, not in git; `PLAYWRIGHT
 error. Extend it when adding a tab, panel or button that calls the server.
 
 - Cull Compare: Shift-click two frames (`CU.chosen`) then Compare; ‹ › on each side (`cmpStep`); photos are scaled by `cmpScale` so small previews can always be panned; `cuBW` button / B key toggles black & white. Cards no longer show PICK/REJECT tags (the Pick/✕ buttons show state); `cuFit` sizes columns to `max-content` once all photos are measured, and `cuLayout` uses the median aspect.
-- Grade layout: photo in the centre, photo list as a filmstrip under it (`#film` inside `#center`: filter / Next not graded / Tick all in `.filmHead`; wheel scrolls sideways; `\` or ▾ Photos hides it, fls.filmHide; `thumbInView` keeps the current one centred), looks as a two-column grid in the Look tab (`#looks`).
+- Grade layout: photo in the centre, photo list as a filmstrip under it (`#film` inside `#center`: filter / Next not graded / Tick all in `.filmHead`; wheel scrolls sideways; `\` or ▾ Photos hides it, fls.filmHide; `thumbInView` keeps the current one centred), looks as a two-column grid in the Look tab (`#looks`; previews keep the photo's own shape, portrait too, always two columns).
 - Grade side panel = a tool strip (`#gTabs`: Look · Adjust · Tone · Masks · Crop · Export; `gradeTab`, remembered in fls.gradeTab) over panes
   (`.gpane`), with the histogram pinned on top (`#gHead`) and Undo / Redo / Copy / Paste pinned below (`#gActions`). Badges via `tabBadge`.
 - Drawn masks (Masks tab): Dodge / Burn / Brush (`kind: "brush"`: a painted grey picture of the cropped frame, ~1024 px, uploaded by the page to
