@@ -1,7 +1,7 @@
 {
   "order": 2,
-  "name": "Leica M9",
-  "description": "The CCD look: dense, rich colour, crimson reds, golden yellows, deep blues and greens, slightly warm.",
+  "name": "Kodachrome 64-like",
+  "description": "Dense, warm, rich colour in the manner of Kodachrome: crimson reds, golden yellows, deep blues and greens, a gentle vignette.",
   "tone": {
     "contrast": 1.15,
     "pivot": 0.5,

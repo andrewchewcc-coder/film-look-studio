@@ -67,7 +67,8 @@ def get_state():
     return {"folder": str(state["folder"]) if state["folder"] and not coll else "",
             "collection": coll["label"] if coll else None,
             "photos": [p.name for p in _photos()], "looks": recipes.list_looks(),
-            "edited": edits.edited_names(_photos()), "exported": edits.exported_names(_photos())}
+            "edited": edits.edited_names(_photos()), "exported": edits.exported_names(_photos()),
+            "marks": edits.marked_names(_photos())}
 
 
 class FolderIn(BaseModel):
@@ -561,6 +562,42 @@ def library_thumb(photo_id: int):
     if not p or not p.exists():
         raise HTTPException(404, "no thumbnail yet")
     return FileResponse(p, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+
+
+def _drag_response(src, graded, stem):
+    from .library import dragout
+    try:
+        f = dragout.make(src, graded, stem)
+    except Exception as e:
+        raise HTTPException(500, f"Couldn't make a copy to drag out: {e}")
+    return FileResponse(f, media_type="image/jpeg", filename=f.name, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/library/dragfile/{photo_id}")
+def library_dragfile(photo_id: int):
+    """A JPG copy of this photo to drag out of the app (never the original: see library/dragout.py)."""
+    from .library import dragout
+    try:
+        return _drag_response(*dragout.source(_lib().con(), photo_id))
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ConnectionError as e:
+        raise HTTPException(409, str(e))
+
+
+@app.get("/api/dragfile")
+def dragfile(name: str):
+    """The same, for a photo of the folder open in Grade."""
+    from .library import dragout
+    p = _photo(name)
+    con, drive_id, rel = edits._where(p)
+    row = con.execute("SELECT photo_id FROM files WHERE drive_id=? AND rel_path=?", (drive_id, rel)).fetchone()
+    if row and row[0]:
+        try:
+            return _drag_response(*dragout.source(con, row[0]))
+        except (LookupError, ConnectionError):
+            pass
+    return _drag_response(p, False, p.stem)
 
 
 @app.get("/api/library/photo/{photo_id}")

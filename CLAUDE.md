@@ -172,3 +172,7 @@ error. Extend it when adding a tab, panel or button that calls the server.
   sinks: `$(id)` installs a textContent / innerHTML setter on them that notifies instead, so old code works unchanged (HTML with buttons works too; buttons
   stay until dismissed). Messages ending in … stay until replaced or cleared (""); others fade after ~5 s + 45 ms per character (errors 12 s). `alert()` is gone:
   use `noteAlert`. New messages: call `status(text, isError)`; don't add new note elements.
+- Library shows day headers (`lbDayHead`: "Sun, 1 Nov 2026 · Shoot name") in the plain, unsearched list only. Grade has a B&W preview toggle (W key / `#zBW`, `gradeBW`; CSS filter on the viewer, never saved).
+  Grade's photo list (`.thumb`) and Cull's strip (`.cuTile`) share one look: 2 px border, green pick / red reject (`/api/state` `marks` ← `edits.marked_names`), accent outline for the current photo, small dark corner chips.
+- Drag out (Mac app only, `DRAG` in the page + `DragWebView` / `FileDragSource` in `FilmLookStudio.swift`): the page posts `{drag: [{url, name}]}` once a press on a Library cell / Grade thumb moves 10 px; the app starts a file-promise
+  drag and downloads each JPG from `/api/library/dragfile/{id}` or `/api/dragfile?name=` when dropped. `library/dragout.py` makes a COPY (exported JPG, else the graded photo, 4000 px, cached a day in LIBRARY_DIR/drag): never offer an original, Finder moves on same-disk drops.

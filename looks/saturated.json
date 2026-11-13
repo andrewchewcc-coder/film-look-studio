@@ -1,0 +1,19 @@
+{
+  "name": "Vision3 250D-like",
+  "description": "Warm, soft colour with fuller saturation, like a daylight cine film. Built on the Portra 400-like look.",
+  "match": {
+    "mean": [
+      0.5271490812301636,
+      0.0048860847018659115,
+      0.009301540441811085
+    ],
+    "std": [
+      0.23110195994377136,
+      0.02253393828868866,
+      0.029514087364077568
+    ],
+    "amount": 0.8
+  },
+  "extends": "joel-meyerowitz",
+  "order": 6
+}

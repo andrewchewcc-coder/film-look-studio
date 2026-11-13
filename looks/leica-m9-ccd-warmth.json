@@ -1,7 +1,7 @@
 {
-  "name": "Leica M9 (CCD warmth)",
+  "name": "Gold 200-like",
   "extends": "leica-m9",
-  "description": "Kodak CCD: thick painterly colour with a strong warm-magenta cast, brick reds, blushing skin, gentle highlight roll-off, fine textured shadows.",
+  "description": "Warm-magenta consumer-film colour: brick reds, blushing skin, gentle highlight roll-off, fine textured grain.",
   "tone": {
     "contrast": 1.15,
     "pivot": 0.5,
@@ -48,5 +48,6 @@
   "grain": {
     "amount": 0.12,
     "size": 0.7
-  }
+  },
+  "order": 5
 }

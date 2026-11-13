@@ -125,6 +125,8 @@ def test_click_through_every_tab(app):
             const blob = await new Promise(r => c.toBlob(r, "image/png"));
             const id = (await (await api("/api/brush", { method: "POST", headers: { "Content-Type": "image/png" }, body: blob })).json()).id;
             await api("/api/brush/" + id + ".png");
+            await api("/api/dragfile?" + q({ name: S.photos[0] }));                   // the JPG copy used to drag a photo out
+            await api("/api/library/dragfile/" + (await (await api("/api/library/search?cats=&limit=1")).json()).results[0].id);
             await api("/api/render?" + q({ name: S.photos[0], look: S.look, edge: 400, adjust: JSON.stringify({ masks: [
               { kind: "brush", id, exposure: 0.5 }, { kind: "linear", exposure: -0.5 }, { kind: "radial", exposure: 0.5 }] }) })); }""")
 

@@ -8,10 +8,47 @@ import WebKit
 
 let appURL = URL(string: "http://127.0.0.1:8765/")!
 
+// The page's web view, remembering the last mouse-down so a drag that starts in the page (a photo dragged out
+// to the Desktop, a folder, a mail) can be handed to macOS as a real file drag.
+final class DragWebView: WKWebView {
+    var lastDown: NSEvent?
+    override func mouseDown(with event: NSEvent) { lastDown = event; super.mouseDown(with: event) }
+}
+
+// Drags files that don't exist yet: the app's server makes each JPG copy when the drop happens (a RAW can
+// take ~15 s the first time), and Finder shows progress. Always copies, never the originals.
+final class FileDragSource: NSObject, NSDraggingSource, NSFilePromiseProviderDelegate {
+    let queue: OperationQueue = { let q = OperationQueue(); q.maxConcurrentOperationCount = 2; return q }()
+    func draggingSession(_ s: NSDraggingSession, sourceOperationMaskFor c: NSDraggingContext) -> NSDragOperation { .copy }
+    func filePromiseProvider(_ p: NSFilePromiseProvider, fileNameForType t: String) -> String {
+        ((p.userInfo as? [String: String])?["name"]) ?? "photo.jpg"
+    }
+    func operationQueue(for p: NSFilePromiseProvider) -> OperationQueue { queue }
+    func filePromiseProvider(_ p: NSFilePromiseProvider, writePromiseTo url: URL, completionHandler: @escaping (Error?) -> Void) {
+        guard let str = (p.userInfo as? [String: String])?["url"], let src = URL(string: str, relativeTo: appURL) else {
+            return completionHandler(NSError(domain: "FLS", code: 1))
+        }
+        var req = URLRequest(url: src); req.timeoutInterval = 300
+        let done = DispatchSemaphore(value: 0)
+        var failure: Error?
+        URLSession.shared.downloadTask(with: req) { tmp, resp, err in
+            if let err = err { failure = err }
+            else if let tmp = tmp, (resp as? HTTPURLResponse)?.statusCode == 200 {
+                do { try? FileManager.default.removeItem(at: url); try FileManager.default.moveItem(at: tmp, to: url) }
+                catch { failure = error }
+            } else { failure = NSError(domain: "FLS", code: 2) }
+            done.signal()
+        }.resume()
+        done.wait()
+        completionHandler(failure)
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNavigationDelegate, WKDownloadDelegate,
                          WKScriptMessageHandler {
     var window: NSWindow!
-    var web: WKWebView!
+    var web: DragWebView!
+    let dragSource = FileDragSource()
     var note: NSTextField!
 
     func applicationDidFinishLaunching(_ n: Notification) {
@@ -19,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
         let cfg = WKWebViewConfiguration()
         cfg.userContentController.add(self, name: "fls")              // the page's Quit button tells us to close
         cfg.preferences.isElementFullscreenEnabled = true
-        web = WKWebView(frame: .zero, configuration: cfg)
+        web = DragWebView(frame: .zero, configuration: cfg)
         web.uiDelegate = self
         web.navigationDelegate = self
         web.allowsMagnification = true
@@ -116,7 +153,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     }
 
     func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage) {
-        if (m.body as? String) == "quit" { NSApp.terminate(nil) }
+        if (m.body as? String) == "quit" { NSApp.terminate(nil); return }
+        if let d = m.body as? [String: Any], let files = d["drag"] as? [[String: String]], !files.isEmpty,
+           let ev = web.lastDown {                                        // the page says: a photo is being dragged out
+            let at = web.convert(ev.locationInWindow, from: nil)
+            let icon = NSWorkspace.shared.icon(forFileType: "jpg"); icon.size = NSSize(width: 56, height: 56)
+            var items: [NSDraggingItem] = []
+            for (i, f) in files.prefix(30).enumerated() {
+                let p = NSFilePromiseProvider(fileType: "public.jpeg", delegate: dragSource)
+                p.userInfo = ["name": f["name"] ?? "photo.jpg", "url": f["url"] ?? ""]
+                let it = NSDraggingItem(pasteboardWriter: p)
+                let k = CGFloat(min(i, 4)) * 4
+                it.setDraggingFrame(NSRect(x: at.x - 28 + k, y: at.y - 28 - k, width: 56, height: 56), contents: icon)
+                items.append(it)
+            }
+            web.beginDraggingSession(with: items, event: ev, source: dragSource)
+        }
     }
 
     // MARK: links, new windows, dialogs, file choosers, downloads

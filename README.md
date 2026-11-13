@@ -5,9 +5,10 @@ side, tweak, and export full-resolution JPG copies. Runs entirely on your Mac an
 Plain-English tweaks ("warmer, deeper reds, like Saul Leiter") come from Claude Code,
 using the `grade` skill in this repo.
 
-**Built-in looks:** Classic Chrome · Leica M9 · Tri-X Gold (gritty B&W, golden tint) ·
-Saul Leiter style · Fan Ho style · Alex Webb style · Daido Moriyama style ·
-Martin Parr style · Joel Meyerowitz style. Every look is
+**Built-in looks** (named after the film stock they are closest to; their file ids are `classic-chrome` = Superia 400-like,
+`leica-m9` = Kodachrome 64-like, `joel-meyerowitz` = Portra 400-like, `joe` = Portra 160-like, `leica-m9-ccd-warmth` = Gold 200-like,
+`saturated` = Vision3 250D-like, `martin-parr` = Ektar 100-like, `alex-webb` = Velvia 50-like, `fan-ho` = FP4 Plus-like) · Tri-X Gold (gritty B&W,
+golden tint) · Ektachrome 100-like · Tri-X pushed-like. Every look is
 a small JSON recipe you can tweak and save as your own.
 
 ## Setup (once)
@@ -111,8 +112,8 @@ then just talk:
 
 > Suggest a look for ~/Pictures/walk/L1000123.DNG
 > B, but warmer and with deeper reds. Save it as "Chinatown Chrome".
-> Make a look like Fan Ho and show me it on the three night shots.
-> Use ~/Downloads/ref.jpg as a reference on top of Classic Chrome.
+> Make a dramatic, glowing black & white look and show me it on the three night shots.
+> Use ~/Downloads/ref.jpg as a reference on top of the Superia 400-like look.
 > Export the whole folder with Chinatown Chrome.
 
 ### Command line

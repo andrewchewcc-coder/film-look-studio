@@ -1,7 +1,7 @@
 {
   "order": 1,
-  "name": "Classic Chrome",
-  "description": "Fujifilm-style documentary colour: muted, hard shadows, cyan-leaning skies, olive greens, subdued reds.",
+  "name": "Superia 400-like",
+  "description": "Muted documentary colour, like a consumer 400-speed film: cool, slightly cyan-green shadows, olive foliage, subdued reds, firm contrast.",
   "tone": {
     "contrast": 1.18,
     "pivot": 0.42,

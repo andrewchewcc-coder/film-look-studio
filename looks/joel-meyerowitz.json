@@ -1,6 +1,6 @@
 {
-  "name": "Joel Meyerowitz style",
-  "description": "Soft, luminous colour in warm light: gentle contrast, open shadows, delicate pastels and creamy highlights.",
+  "name": "Portra 400-like",
+  "description": "Soft, luminous colour in warm light, like Portra: gentle contrast, open shadows, creamy highlights, delicate pastels.",
   "exposure": 0.25,
   "tone": {
     "contrast": 0.95,
@@ -60,5 +60,6 @@
   "vignette": {
     "amount": 0.05,
     "midpoint": 0.5
-  }
+  },
+  "order": 3
 }

@@ -1,0 +1,18 @@
+{
+  "name": "Portra 160-like",
+  "description": "Neutral, restrained colour with a natural balance, like a fine-grain portrait film. Matched to a reference image.",
+  "match": {
+    "mean": [
+      0.47029590606689453,
+      0.0007937029586173594,
+      -0.00014585794997401536
+    ],
+    "std": [
+      0.22985625267028809,
+      0.013615435920655727,
+      0.03226833790540695
+    ],
+    "amount": 0.8
+  },
+  "order": 4
+}

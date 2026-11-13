@@ -96,11 +96,14 @@
   #splitLine span { position: absolute; top: 8px; font-size: 11px; background: #000b; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
   #splitLine .l { right: 8px; } #splitLine .r { left: 8px; }
   #splitBtn.on { background: var(--raised); border-color: var(--accent); }
-  .thumb { position: relative; margin-bottom: 10px; cursor: pointer; border: 2px solid transparent; border-radius: 4px; }
-  .thumb.active { border-color: var(--accent); }
-  .thumb img { width: 100%; display: block; border-radius: 2px; }
+  /* one filmstrip look for Grade's list and Cull's strip: same border, same state colours (green pick, red reject, yellow-orange current) */
+  .thumb { position: relative; margin-bottom: 6px; cursor: pointer; border: 2px solid var(--raised); border-radius: 3px; }
+  .thumb.pick { border-color: #2e9c4f; } .thumb.rej { border-color: #a33b30; }
+  .thumb.rej img { opacity: .6; }
+  .thumb.active { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .thumb img { width: 100%; display: block; border-radius: 1px; }
   .thumb input { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; accent-color: var(--accent); }
-  .thumb.edited::after, .thumb.exported::after { position: absolute; right: 6px; top: 6px; font-size: 10px; background: #000c; padding: 1px 5px; border-radius: 3px; }
+  .thumb.edited::after, .thumb.exported::after { position: absolute; right: 2px; bottom: 2px; font-size: 10px; background: #000b; padding: 0 4px; border-radius: 2px; font-weight: 500; }
   .thumb.edited::after { content: "edited"; color: #9ec5ff; }
   .thumb.exported::after { content: "graded"; color: var(--accent); }
   .thumb .nm { font-size: 11px; color: var(--muted); padding: 2px 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -114,6 +117,11 @@
   #zoomBar { position: absolute; right: 14px; bottom: 12px; display: flex; align-items: center; gap: 6px; background: #000c;
     padding: 5px 8px; border-radius: 8px; z-index: 3; }
   #zoomBar button { padding: 3px 9px; font-size: 13px; }
+  #zBW.on { background: var(--accent); color: #000; border-color: var(--accent); }
+  /* once used, the filter stays and only its amount (--bw) changes: removing a filter outright left the photo grey in WebKit */
+  #stage.bwUsed #big { filter: grayscale(var(--bw, 0)) drop-shadow(0 6px 24px #000a); }
+  #stage.bwUsed.zoomed #big { filter: grayscale(var(--bw, 0)); }
+  #stage.bwUsed #bigTile, #stage.bwUsed #bigSplit { filter: grayscale(var(--bw, 0)); }
   #zoomBar input { width: 130px; accent-color: var(--accent); }
   #zLabel { font-size: 12px; min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
   #badge { position: absolute; top: 18px; left: 18px; background: #000b; padding: 3px 9px; border-radius: 4px; font-size: 12px; }
@@ -348,6 +356,9 @@
   #more { display: block; margin: 16px auto; }
   .divider { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin: 14px 0 4px; }
   .divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+  .dayHead { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 8px; margin: 16px 0 2px; padding-bottom: 4px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600; }
+  .dayHead:first-child { margin-top: 2px; }
+  .dayHead span { font-weight: 400; color: var(--muted); font-size: 12px; }
   #libEmpty { color: var(--muted); text-align: center; margin-top: 80px; }
   table.folders { width: 100%; border-collapse: collapse; font-size: 13px; }
   table.folders th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
@@ -442,7 +453,7 @@
   .thumb.edited::after, .thumb.exported::after, #zoomBar, #cuZoomNote, .esCard .num, .cell .tags, .cell .tl, .cell .tr, #badge, #splitLine span, #cropDim, .cuTile b, #brZoomNote, .esCard .tools button { color: #fff; }   /* text on dark strips stays light in light mode */
   #cuCmpNote { position: absolute; left: 50%; transform: translateX(-50%); top: 10px; background: #000c; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 12px; z-index: 2; white-space: nowrap; }
   #cuZoomNote { position: absolute; left: 16px; top: 12px; background: #000c; padding: 4px 9px; border-radius: 4px; font-size: 12px; z-index: 1; }
-  #cuStrip { display: flex; gap: 5px; overflow-x: auto; padding: 4px 16px 10px; flex: 0 0 auto; }
+  #cuStrip { display: flex; gap: 6px; overflow-x: auto; padding: 4px 16px 10px; flex: 0 0 auto; }
   .cuTile { flex: 0 0 auto; position: relative; border: 2px solid var(--raised); border-radius: 3px; cursor: pointer; opacity: .9; }
   .cuTile img { height: 52px; display: block; border-radius: 1px; }
   .cuTile.pick { border-color: #2e9c4f; } .cuTile.rej { border-color: #a33b30; }
@@ -650,7 +661,7 @@
     <div><h4>Library</h4><p><b>Click</b> select · <b>⌘-click</b> add · <b>Shift-click</b> range<br><b>⌘A</b> select all · <b>Esc</b> clear<br><b>Arrows</b> move · <b>Space / Enter</b> view large<br><b>F</b> show in Finder</p></div>
     <div><h4>Big viewer</h4><p><b>← →</b> previous / next<br><b>Click / Z</b> zoom to 100% (drag to move)<br><b>G</b> graded / original · <b>S</b> side by side<br><b>Esc / Space</b> close</p></div>
     <div><h4>Cull</h4><p><b>← →</b> frame · <b>↑ ↓</b> group<br><b>Enter</b> next group · <b>Shift+Enter</b> previous<br><b>Z</b> zoom where you point · <b>C</b> compare two frames at 100% · <b>Shift+P</b> pick and stay</p></div>
-    <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>J</b> (hold) camera JPG · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
+    <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>J</b> (hold) camera JPG · <b>W</b> black &amp; white preview · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
     <div><h4>Essays</h4><p><b>⌘Z</b> undo · drag to reorder<br><b>🔒</b> lock a photo · <b>⇄</b> replace</p></div>
   </div>
   <div class="small">Press <b>?</b> any time to see this.</div>
@@ -871,6 +882,7 @@
         <button id="zIn" title="Zoom in (+)">+</button>
         <button id="z100" title="100% — actual pixels (Z zooms where the pointer is)">100%</button>
         <span id="zLabel">Fit</span>
+        <button id="zBW" title="Preview in black and white (W). Only changes what you see here, not the grade.">B&amp;W</button>
       </div>
       <div id="badge" hidden></div>
       <div id="busy"></div>
@@ -1551,7 +1563,7 @@ $("curve").addEventListener("dblclick", (e) => {
 $("curvePreset").onchange = () => { const v = $("curvePreset").value; if (v) curveSet(CURVE_PRESETS[v].map(p => [...p])); $("curvePreset").value = ""; };
 
 async function loadState(st) {
-  S.photos = st.photos; S.looks = st.looks; S.edited = new Set(st.edited || []); S.exported = new Set(st.exported || []);
+  S.photos = st.photos; S.looks = st.looks; S.edited = new Set(st.edited || []); S.exported = new Set(st.exported || []); S.marks = st.marks || {};
   $("backLib").hidden = !(st.collection && S.fromLib);
   if (st.collection) {
     S.folder = null;
@@ -1712,8 +1724,8 @@ function markEdited(name, on) {
   if ($("filmFilter").value) filmFilter();
 }
 function thumbStatus(t) {                    // same words as the Library: graded (exported) / edited (not yet)
-  const n = t.dataset.name, exp = S.exported && S.exported.has(n);
-  t.className = "thumb" + (exp ? " exported" : S.edited.has(n) ? " edited" : "") + (n === S.current ? " active" : "");
+  const n = t.dataset.name, exp = S.exported && S.exported.has(n), mk = S.marks && S.marks[n];
+  t.className = "thumb" + (exp ? " exported" : S.edited.has(n) ? " edited" : "") + (mk === "pick" ? " pick" : mk === "reject" ? " rej" : "") + (n === S.current ? " active" : "");
   t.title = exp ? "Graded: exported" + (S.edited.has(n) ? " (and its grade is remembered here)" : "") : S.edited.has(n) ? "Edited here, not exported yet" : "";
 }
 function afterFirstRender() {               // the big preview is up: now the extras, without competing with it
@@ -2109,9 +2121,10 @@ async function runSearch(more = false, atLeast = 0) {
     return;
   } finally { clearTimeout(slow); clearTimeout(limit); }
   if (seq !== L.seq) return;
-  if (!more) { L.photos = []; $("grid").innerHTML = ""; L.divided = false; L.grouped = false; }
+  if (!more) { L.photos = []; $("grid").innerHTML = ""; L.divided = false; L.grouped = false; L.day = null; }
   for (const r of res.results) {
     const ranked = p.q || L.like.length;
+    if (!ranked && !L.grouped) lbDayHead(r);
     if (ranked && r.grouped && !L.grouped) {
       L.grouped = L.divided = true;
       const d = document.createElement("div"); d.className = "divider";
@@ -2136,6 +2149,18 @@ async function runSearch(more = false, atLeast = 0) {
   $("libEmpty").hidden = L.total > 0;
   $("libEmpty").textContent = L.total ? "" : "No photos match. Try other words or loosen the filters.";
   lbCount(); lbNoteDeleted(); lbCullButton();
+}
+// Day headers in the plain (unsearched) Library: "Sun 4 May 2025 · Test shoot" above each day's photos.
+function lbDayHead(r) {
+  const day = (r.time || "").slice(0, 10), key = day + "|" + r.folder_id;
+  if (L.day === key) return;
+  L.day = key;
+  const d = day ? new Date(day + "T12:00:00") : null;
+  const when = d && !isNaN(d) ? d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "No date";
+  const shoot = String(r.folder || "").replace(/^[\d\s._-]+/, "").trim() || String(r.folder || "");
+  const h = document.createElement("div"); h.className = "dayHead";
+  h.innerHTML = `${esc(when)}<span>${esc(shoot)}</span>`;
+  $("grid").appendChild(h);
 }
 // Cull straight from the Library: start (or resume / review) this shoot's cull, come back here after.
 async function lbCullButton() {
@@ -2429,6 +2454,40 @@ setInterval(() => { fetch("/api/ping").catch(() => {}); }, 60000);     // keeps 
 // In the Mac app's own window: quit with ⌘Q or the window's close button, like any Mac app.
 const NATIVE = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.fls);
 if (NATIVE) { document.documentElement.classList.add("native"); $("quitBtn").hidden = true; }
+
+// Drag photos out of the app (Mac app only): press on a photo in the Library or Grade list and drag onto the
+// Desktop, a Finder folder, a mail or a chat. You get JPG copies (your exported JPG, else the graded photo,
+// 4000 px) made by the server when you drop; never the original files. Library: all selected photos if the one
+// you grab is selected.
+const DRAG = { from: null, done: false };
+function dragOutItems(el) {
+  const grid = el.closest("#grid .cell");
+  if (grid) {
+    const r = L.photos[+grid.dataset.i]; if (!r || !r.online) return null;
+    const rs = L.sel.has(r.id) ? L.photos.filter(x => L.sel.has(x.id) && x.online) : [r];
+    return rs.map(x => ({ url: "/api/library/dragfile/" + x.id, name: x.name.replace(/\.[^.]+$/, "") + ".jpg" }));
+  }
+  const th = el.closest("#thumbs .thumb");
+  if (th) return [{ url: "/api/dragfile?" + q({ name: th.dataset.name }), name: th.dataset.name.replace(/\.[^.]+$/, "") + ".jpg" }];
+  return null;
+}
+if (NATIVE) {
+  document.addEventListener("pointerdown", (e) => {
+    DRAG.done = false; DRAG.from = null;
+    if (e.button !== 0 || e.target.closest("button, input, select, a, .acts, .steer")) return;
+    if (e.target.closest("#grid .cell, #thumbs .thumb")) DRAG.from = { x: e.clientX, y: e.clientY, el: e.target };
+  }, true);
+  document.addEventListener("pointermove", (e) => {
+    const f = DRAG.from; if (!f || DRAG.done) return;
+    if (!(e.buttons & 1)) { DRAG.from = null; return; }
+    if (Math.hypot(e.clientX - f.x, e.clientY - f.y) < 10) return;
+    DRAG.done = true;
+    const items = dragOutItems(f.el);
+    if (items && items.length) { window.webkit.messageHandlers.fls.postMessage({ drag: items.map(i => ({ url: i.url, name: i.name })) });
+      status(`Dragging ${items.length} photo${items.length === 1 ? "" : "s"} out: a JPG copy is made when you drop it (a RAW can take ~15 s the first time).`); }
+  }, true);
+  document.addEventListener("pointerup", () => { DRAG.from = null; }, true);
+}
 $("quitBtn").onclick = async () => {
   if (!confirm("Quit Film Look Studio?")) return;
   let r = await (await api("/api/quit", { method: "POST" })).json();
@@ -3685,7 +3744,13 @@ document.addEventListener("keydown", (e) => {
   else if (k === "-" || k === "_") { e.preventDefault(); zoomTo(GZ.scale / 1.4, ...p); }
   else if (k === "0") { e.preventDefault(); zoomFit(); }
   else if (k === "z" || k === "Z") { e.preventDefault(); if (GZ.fit) zoomTo(1, ...p); else zoomFit(); }
+  else if (k === "w" || k === "W") { e.preventDefault(); gradeBW(); }
 });
+function gradeBW(on) {                       // a viewing aid only: nothing is saved or exported
+  const st = $("stage"), v = typeof on === "boolean" ? on : st.style.getPropertyValue("--bw") !== "1";
+  st.classList.add("bwUsed"); st.style.setProperty("--bw", v ? "1" : "0"); $("zBW").classList.toggle("on", v);
+}
+$("zBW").onclick = () => gradeBW();
 
 // --- Essays -----------------------------------------------------------------------------------
 const ES = { id: null, photos: [], trans: [], view: "strip", undo: [], panel: "check", gap: null, setup: false };

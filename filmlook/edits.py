@@ -118,6 +118,16 @@ def edited_names(paths):
     return out
 
 
+def marked_names(paths):
+    """{file name: "pick" | "reject"} for these photo files (your marks from Cull / the Library)."""
+    keys, con, out = _file_keys(paths), _con(), {}
+    for d in {k[0] for k in keys}:
+        flagged = {r[0]: r[1] for r in con.execute("""SELECT f.rel_path, m.flag FROM files f JOIN marks m ON m.photo_id = f.photo_id
+                                                       WHERE f.drive_id=? AND m.flag IN ('pick', 'reject')""", (d,))}
+        out.update({n: flagged[rel] for dd, rel, n in keys if dd == d and rel in flagged})
+    return out
+
+
 def exported_names(paths):
     """Names of these photo files whose photo has a graded (exported) JPG, per the library."""
     keys, con, out = _file_keys(paths), _con(), []

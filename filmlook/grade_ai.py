@@ -22,7 +22,7 @@ grade they want in plain words; you set the app's controls to get there, startin
 
 The controls (all relative to the chosen look; 0 = the look as designed):
 - look: one of the photographer's looks (id), or keep the current one. Change it only if the request clearly calls \
-for a different film character (e.g. "make it black and white", "more like Classic Chrome").
+for a different film character (e.g. "make it black and white", "more like the Superia 400-like look").
 - strength 0..1 (how much of the look), exposure in EV, warmth −50..50 (+ = warmer), tint −30..30 (+ = magenta), \
 contrast, highlights/shadows (−1..1, + = brighter), whites, blacks (− = crushed, + = faded/matte), saturation, \
 tone (split-tone strength of the look), grain, vignette (+ = darker corners), noise / color_noise / sharpen 0..1.
