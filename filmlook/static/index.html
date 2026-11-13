@@ -82,14 +82,18 @@
   body { display: flex; flex-direction: column; height: 100vh; }
   header { flex: 0 0 auto; }
   main, #libView, #cullView, #essayView { flex: 1 1 auto; min-height: 0; }
-  main { display: grid; grid-template-columns: 210px 1fr 290px; grid-template-rows: minmax(0, 1fr); }
+  main { display: grid; grid-template-columns: 1fr 290px; grid-template-rows: minmax(0, 1fr); }
   #center { min-height: 0; overflow: hidden; }
-  #film { border-right: 1px solid var(--line); overflow-y: auto; padding: 10px; }
-  #film .hint { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-  .filmHead { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-  .filmHead select { background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 5px; border-radius: 6px; font: inherit; font-size: 12px; }
-  .filmHead button { font-size: 12px; padding: 5px; }
-  .tickRow { display: flex; gap: 5px; } .tickRow button { flex: 1; }
+  /* Grade's photos: a filmstrip under the photo, like Cull's (the looks live in the Look tab) */
+  #film { flex: 0 0 auto; border-top: 1px solid var(--line); padding: 6px 12px 0; min-width: 0; }
+  #film .hint { color: var(--muted); font-size: 11px; margin-left: auto; white-space: nowrap; }
+  .filmHead { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .filmHead select { background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 3px 5px; border-radius: 6px; font: inherit; font-size: 12px; }
+  .filmHead button { font-size: 12px; padding: 3px 8px; }
+  .tickRow { display: flex; gap: 5px; }
+  #thumbs { display: flex; gap: 6px; overflow-x: auto; overflow-y: hidden; padding: 3px 2px 10px; }
+  #film.hide #thumbs, #film.hide .hint, #film.hide .tickRow, #film.hide #nextTodo, #film.hide #filmFilter { display: none; }
+  #film.hide { padding-bottom: 6px; }
   #stage #bigSplit { position: absolute; pointer-events: none; user-select: none; }
   #splitLine { position: absolute; width: 2px; background: #fffc; cursor: ew-resize; z-index: 3; box-shadow: 0 0 0 1px #0006; }
   #splitLine::before { content: ""; position: absolute; left: -14px; right: -14px; top: 0; bottom: 0; }
@@ -97,16 +101,16 @@
   #splitLine .l { right: 8px; } #splitLine .r { left: 8px; }
   #splitBtn.on { background: var(--raised); border-color: var(--accent); }
   /* one filmstrip look for Grade's list and Cull's strip: same border, same state colours (green pick, red reject, yellow-orange current) */
-  .thumb { position: relative; margin-bottom: 6px; cursor: pointer; border: 2px solid var(--raised); border-radius: 3px; }
+  .thumb { position: relative; flex: 0 0 auto; cursor: pointer; border: 2px solid var(--raised); border-radius: 3px; }
   .thumb.pick { border-color: #2e9c4f; } .thumb.rej { border-color: #a33b30; }
   .thumb.rej img { opacity: .6; }
   .thumb.active { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .thumb img { width: 100%; display: block; border-radius: 1px; }
-  .thumb input { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; accent-color: var(--accent); }
+  .thumb img { height: 64px; width: auto; min-width: 42px; display: block; border-radius: 1px; background: var(--raised); }
+  .thumb input { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; margin: 0; accent-color: var(--accent); }
   .thumb.edited::after, .thumb.exported::after { position: absolute; right: 2px; bottom: 2px; font-size: 10px; background: #000b; padding: 0 4px; border-radius: 2px; font-weight: 500; }
   .thumb.edited::after { content: "edited"; color: #9ec5ff; }
   .thumb.exported::after { content: "graded"; color: var(--accent); }
-  .thumb .nm { font-size: 11px; color: var(--muted); padding: 2px 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .thumb .nm { display: none; }
   #center { display: flex; flex-direction: column; min-width: 0; }
   #stage { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 0; padding: 12px; }
   #stage { overflow: hidden; }
@@ -150,11 +154,11 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 7a5 5 0 0 1 9-2' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Cpath d='M13 2v4H9z' fill='%23fff'/%3E%3Cpath d='M13 9a5 5 0 0 1-9 2' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Cpath d='M3 14v-4h4z' fill='%23fff'/%3E%3C/svg%3E"); }
   .rotGrip:hover { border-color: var(--accent); }
   #rotBadge { position: absolute; transform: translate(-50%, -50%); background: #000c; color: #fff; font-size: 13px; padding: 4px 9px; border-radius: 4px; pointer-events: none; z-index: 3; }
-  #looks { display: flex; gap: 10px; overflow-x: auto; padding: 10px 12px 14px; border-top: 1px solid var(--line); }
-  .look { flex: 0 0 168px; cursor: pointer; }
-  .look img { width: 168px; height: 112px; object-fit: cover; display: block; border-radius: 3px; border: 2px solid transparent; background: var(--raised); }
+  #looks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 8px; margin: 10px 0 12px; }
+  .look { cursor: pointer; min-width: 0; }
+  .look img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; display: block; border-radius: 3px; border: 2px solid transparent; background: var(--raised); box-sizing: border-box; }
   .look.active img { border-color: var(--accent); }
-  .look .nm { font-size: 12px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .look .nm { font-size: 11.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .look .nm small { color: var(--accent); }
   aside { border-left: 1px solid var(--line); overflow-y: auto; padding: 14px; }
   aside h2 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
@@ -661,7 +665,7 @@
     <div><h4>Library</h4><p><b>Click</b> select · <b>⌘-click</b> add · <b>Shift-click</b> range<br><b>⌘A</b> select all · <b>Esc</b> clear<br><b>Arrows</b> move · <b>Space / Enter</b> view large<br><b>F</b> show in Finder</p></div>
     <div><h4>Big viewer</h4><p><b>← →</b> previous / next<br><b>Click / Z</b> zoom to 100% (drag to move)<br><b>G</b> graded / original · <b>S</b> side by side<br><b>Esc / Space</b> close</p></div>
     <div><h4>Cull</h4><p><b>← →</b> frame · <b>↑ ↓</b> group<br><b>Enter</b> next group · <b>Shift+Enter</b> previous<br><b>Z</b> zoom where you point · <b>C</b> compare two frames at 100% · <b>Shift+P</b> pick and stay</p></div>
-    <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>J</b> (hold) camera JPG · <b>W</b> black &amp; white preview · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
+    <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>J</b> (hold) camera JPG · <b>W</b> black &amp; white preview · <b>\</b> hide the photo strip · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
     <div><h4>Essays</h4><p><b>⌘Z</b> undo · drag to reorder<br><b>🔒</b> lock a photo · <b>⇄</b> replace</p></div>
   </div>
   <div class="small">Press <b>?</b> any time to see this.</div>
@@ -859,11 +863,6 @@
 </div></div>
 <div id="lightbox" hidden><div class="box"><img id="lbImg" alt=""><div class="msg" id="lbMsg"></div><div class="meta" id="lbMeta"></div><div class="row" style="justify-content:flex-end"><button id="lbClose" style="flex:0">Close</button></div></div></div>
 <main id="gradeView">
-  <section id="film">
-    <div class="filmHead"><select id="filmFilter" title="Show only some photos"><option value="">All photos</option><option value="todo">Not graded yet</option><option value="edited">Edited, not exported</option><option value="graded">Graded (exported)</option></select>
-      <button id="nextTodo" title="Go to the next photo that isn't graded yet">Next not graded ›</button>
-      <div class="tickRow"><button id="tickAll" title="Tick every photo shown (for batch export or copying a grade)">Tick all</button><button id="tickNone">Untick all</button></div></div>
-    <div class="hint">Tick photos to batch-export.</div><div id="thumbs"></div></section>
   <section id="center">
     <div id="stage">
       <div id="empty">Open a folder of photos (RAW or JPG) to start.<br><br>Open a photo from the <b>Library</b> (double-click it, then <b>Open in Grade</b>), or click <b>Open a folder…</b> at the top.</div>
@@ -901,7 +900,12 @@
       <i class="rotGrip" data-c="sw" hidden></i><i class="rotGrip" data-c="se" hidden></i>
       <div id="rotBadge" hidden></div>
     </div>
-    <div id="looks"></div>
+    <section id="film">
+    <div class="filmHead"><button id="filmHide" title="Hide or show the photo strip (\ key)">▾ Photos</button><select id="filmFilter" title="Show only some photos"><option value="">All photos</option><option value="todo">Not graded yet</option><option value="edited">Edited, not exported</option><option value="graded">Graded (exported)</option></select>
+      <button id="nextTodo" title="Go to the next photo that isn't graded yet">Next not graded ›</button>
+      <div class="tickRow"><button id="tickAll" title="Tick every photo shown (for batch export or copying a grade)">Tick all</button><button id="tickNone">Untick all</button></div>
+      <span class="hint">Tick photos to batch-export or copy a grade to them.</span></div>
+    <div id="thumbs"></div></section>
   </section>
   <aside>
   <div id="status"></div>
@@ -936,6 +940,7 @@
   <div class="gpane" data-t="look">
     <div id="lookname">Neutral</div>
     <div id="lookdesc"></div>
+    <div id="looks"></div>
     <div class="row"><button id="compare" title="Hold to see the original: no look, no crop (or hold B)">Hold: before</button><button id="splitBtn" title="Before and after side by side on the photo: drag the line">Split before / after</button></div>
     <div class="row" id="camRow" hidden><button id="camBtn" title="Hold to see the JPG your camera saved with this RAW: its own colour, with your crop (or hold J)">Hold: camera JPG</button><button id="splitCamBtn" title="The camera's JPG and your grade side by side: drag the line">Split camera JPG / grade</button></div>
 
@@ -1609,7 +1614,7 @@ async function select(name) {
   saveGradeNow();                             // the photo we're leaving keeps its grade
   GZ.fit = true; GZ.tile = null; $("bigTile").hidden = true;
   S.current = name; S.editKey = Date.now();
-  document.querySelectorAll(".thumb").forEach(t => t.classList.toggle("active", t.dataset.name === name));
+  document.querySelectorAll(".thumb").forEach(t => t.classList.toggle("active", t.dataset.name === name)); thumbInView(name);
   $("empty").hidden = true; $("big").hidden = false;
   S.beforeSrc = null; S.afterSrc = null; S.stripFor = null; S.camSrc = null; S.camImg = null;
   maskShown = -1; $("maskOverlay").hidden = true; $("maskOverlay").removeAttribute("src");
@@ -1726,7 +1731,7 @@ function markEdited(name, on) {
 function thumbStatus(t) {                    // same words as the Library: graded (exported) / edited (not yet)
   const n = t.dataset.name, exp = S.exported && S.exported.has(n), mk = S.marks && S.marks[n];
   t.className = "thumb" + (exp ? " exported" : S.edited.has(n) ? " edited" : "") + (mk === "pick" ? " pick" : mk === "reject" ? " rej" : "") + (n === S.current ? " active" : "");
-  t.title = exp ? "Graded: exported" + (S.edited.has(n) ? " (and its grade is remembered here)" : "") : S.edited.has(n) ? "Edited here, not exported yet" : "";
+  t.title = n + (exp || S.edited.has(n) ? "\n" : "") + (exp ? "Graded: exported" + (S.edited.has(n) ? " (and its grade is remembered here)" : "") : S.edited.has(n) ? "Edited here, not exported yet" : "");
 }
 function afterFirstRender() {               // the big preview is up: now the extras, without competing with it
   if (S.stripFor === S.current) return;
@@ -3290,6 +3295,29 @@ function cuShow() {
   // prefetch the next group's views
   const nx = CU.groups[CU.list[CU.gi + 1]];
   if (nx) nx.ids.slice(0, 4).forEach(id => { const im = new Image(); im.src = "/api/cull/view/" + id; });
+  cuFullAhead(g.ids[CU.fi]);
+}
+// The selected frame's full-size picture is fetched ahead (after a short pause on it), so Z / double-click
+// zoom shows it at once instead of waiting about a second. Kept as files only (a few MB each), last 3.
+const ZFULL = new Map();
+let zfTimer = null;
+function cuFullFetch(id) {
+  if (!ZFULL.has(id)) {
+    const p = api(`/api/cull/full/${id}?raw_decode=0`).then(async r => ({ url: URL.createObjectURL(await r.blob()),
+      zoom: r.headers.get("X-Zoom"), canFull: r.headers.get("X-Can-Full") === "1" }));
+    p.catch(() => ZFULL.delete(id));
+    ZFULL.set(id, p);
+    while (ZFULL.size > 3) {
+      const [k, old] = ZFULL.entries().next().value; ZFULL.delete(k);
+      old.then(o => { if ($("cuZoomImg").src !== o.url) URL.revokeObjectURL(o.url); }).catch(() => {});
+    }
+  }
+  return ZFULL.get(id);
+}
+function cuFullAhead(id) {
+  clearTimeout(zfTimer);
+  if (!id || !CU.frames[id] || !CU.frames[id].online || ZFULL.has(id)) return;
+  zfTimer = setTimeout(() => { if (!ZM.id) cuFullFetch(id); }, 600);
 }
 // Frames as large as the window allows: side by side, or two rows when that shows them bigger
 // (e.g. four landscape frames in a tall window).
@@ -3459,16 +3487,19 @@ async function cuZoom(id, fx, fy, raw = false) {
   $("cuZoom").hidden = false; $("cuNavImg").src = "/api/cull/view/" + id;
   $("cuZoomNote").textContent = raw ? "Decoding the RAW for a true 100%…" : "Loading 100%…";
   try {
-    const r = await api(`/api/cull/full/${id}?` + q({ raw_decode: raw ? 1 : 0 }));
-    const url = URL.createObjectURL(await r.blob()), img = $("cuZoomImg");
+    let url, zoom, canFull;
+    if (raw) { const r = await api(`/api/cull/full/${id}?` + q({ raw_decode: 1 }));
+      url = URL.createObjectURL(await r.blob()); zoom = r.headers.get("X-Zoom"); canFull = false; }
+    else ({ url, zoom, canFull } = await cuFullFetch(id));
+    const img = $("cuZoomImg");
     await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
     if (ZM.id !== id) return;
     ZM.w = img.naturalWidth; ZM.h = img.naturalHeight;
     img.style.width = ZM.w + "px"; img.style.height = ZM.h + "px";
     const p = $("cuPane"); ZM.x = p.clientWidth / 2 - fx * ZM.w; ZM.y = p.clientHeight / 2 - fy * ZM.h;
     zmPlace();
-    ZM.canFull = r.headers.get("X-Can-Full") === "1";
-    $("cuZoomNote").textContent = `${r.headers.get("X-Zoom")} · ${CU.frames[id].name} · drag or scroll to look around` +
+    ZM.canFull = canFull;
+    $("cuZoomNote").textContent = `${zoom} · ${CU.frames[id].name} · drag or scroll to look around` +
       (ZM.canFull ? " · Z again for a true 100% from the RAW" : "") + " · Esc to close";
   } catch (e) { $("cuZoomNote").textContent = e.message || "Couldn't load the full-size photo."; }
 }
@@ -3692,14 +3723,21 @@ function requestTile() {
   const seq = ++GZ.tileSeq, box = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
   const big = GZ.scale * (window.devicePixelRatio || 1) > 0.42;
   $("busy").textContent = big ? "rendering full detail…" : "sharpening…";
-  const img = new Image();
-  img.onload = () => {
-    if (seq !== GZ.tileSeq) return;
-    $("bigTile").src = img.src; GZ.tile = box; $("busy").textContent = ""; layoutBig(false);
+  // On a Retina screen the sharp tile has 4× the pixels: show a quick one at normal density first
+  // (about a quarter of the time), then the sharp one replaces it.
+  const dpr = window.devicePixelRatio || 1, draftW = Math.round(outW / dpr);
+  const fetchTile = (ow, last) => {
+    const img = new Image();
+    img.onload = () => {
+      if (seq !== GZ.tileSeq) return;
+      $("bigTile").src = img.src; GZ.tile = box; layoutBig(false);
+      if (last) $("busy").textContent = ""; else fetchTile(outW, true);
+    };
+    img.onerror = () => { if (seq === GZ.tileSeq) $("busy").textContent = "couldn't render detail"; };
+    img.src = "/api/render_region?" + q({ name: S.current, look: S.look, adjust: JSON.stringify(S.adjust),
+      x: box.x.toFixed(5), y: box.y.toFixed(5), w: box.w.toFixed(5), h: box.h.toFixed(5), out_w: ow, k: S.editKey || 0, t: seq });
   };
-  img.onerror = () => { if (seq === GZ.tileSeq) $("busy").textContent = "couldn't render detail"; };
-  img.src = "/api/render_region?" + q({ name: S.current, look: S.look, adjust: JSON.stringify(S.adjust),
-    x: box.x.toFixed(5), y: box.y.toFixed(5), w: box.w.toFixed(5), h: box.h.toFixed(5), out_w: outW, k: S.editKey || 0, t: seq });
+  fetchTile(dpr > 1.2 && draftW >= 300 ? draftW : outW, !(dpr > 1.2 && draftW >= 300));
 }
 $("big").addEventListener("load", () => layoutBig(!GZ.tile));
 window.addEventListener("resize", () => { if (!$("gradeView").hidden) layoutBig(); });
@@ -4580,6 +4618,26 @@ document.addEventListener("keydown", (e) => {
   else if (k === "c" && !String(window.getSelection())) { e.preventDefault(); grCopy(); }
   else if (k === "v") { e.preventDefault(); grPaste(); }
 });
+// The strip: the mouse wheel scrolls it sideways, \ hides it, the current photo stays in view.
+$("thumbs").addEventListener("wheel", (e) => {
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.preventDefault(); $("thumbs").scrollLeft += e.deltaY; }
+}, { passive: false });
+function filmHide(on) {
+  const v = on === undefined ? !$("film").classList.contains("hide") : on;
+  $("film").classList.toggle("hide", v); $("filmHide").textContent = v ? "▸ Photos" : "▾ Photos";
+  try { localStorage.setItem("fls.filmHide", v ? "1" : ""); } catch (e) {}
+  setTimeout(() => window.dispatchEvent(new Event("resize")), 0);   // the photo grows / shrinks to fit
+}
+$("filmHide").onclick = () => filmHide();
+try { if (localStorage.getItem("fls.filmHide")) filmHide(true); } catch (e) {}
+document.addEventListener("keydown", (e) => {
+  if ($("gradeView").hidden || typing(e) || e.metaKey || e.ctrlKey || e.key !== "\\") return;
+  e.preventDefault(); filmHide();
+});
+function thumbInView(name) {
+  const t = document.querySelector(`.thumb[data-name="${CSS.escape(name)}"]`);
+  if (t) t.scrollIntoView({ block: "nearest", inline: "center" });
+}
 function filmFilter() {
   const f = $("filmFilter").value;
   document.querySelectorAll(".thumb").forEach(t => {
@@ -4603,7 +4661,7 @@ $("nextTodo").onclick = () => {
   const todo = (n) => !(S.exported && S.exported.has(n)) && !(S.edited && S.edited.has(n));
   const next = names.slice(i + 1).find(todo) || names.slice(0, Math.max(0, i)).find(todo);
   if (!next) return status("Every photo here is graded or edited.");
-  select(next); const t = document.querySelector(`.thumb[data-name="${CSS.escape(next)}"]`); if (t) t.scrollIntoView({ block: "nearest" });
+  select(next);
 };
 S.split = false; S.splitAt = 0.5;
 function splitPlace() {

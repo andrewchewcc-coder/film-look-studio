@@ -109,6 +109,7 @@ def test_click_through_every_tab(app):
         page.evaluate(f"""async () => {{ const r = await (await api("/api/cull/start", esJSON({{ scope: {{ folder_id: {app['folder']},
             categories: [] }}, label: "E2E" }}))).json();
             await cuLoad(r.session); await new Promise(r => setTimeout(r, 2000));
+            await cuZoom(cuGroup().ids[0], 0.5, 0.5); cuZoomClose();
             cuCompare(); await new Promise(r => setTimeout(r, 2500)); cuCompareClose(); }}""")
 
         # Grade: open a photo, click every tool tab, crop screen + auto-straighten, camera-JPG check, masks list
