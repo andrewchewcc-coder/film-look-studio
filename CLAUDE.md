@@ -178,7 +178,7 @@ error. Extend it when adding a tab, panel or button that calls the server.
 - Drag out (Mac app only, `DRAG` in the page + `DragWebView` / `FileDragSource` in `FilmLookStudio.swift`): the page posts `{drag: [{url, name}]}` once a press on a Library cell / Grade thumb moves 10 px; the app starts a file-promise
   drag and downloads each JPG from `/api/library/dragfile/{id}` or `/api/dragfile?name=` when dropped. `library/dragout.py` makes a COPY (exported JPG, else the graded photo, 4000 px, cached a day in LIBRARY_DIR/drag): never offer an original, Finder moves on same-disk drops.
 - Keys are the same across tabs: P / X / U / 1–5 mark in Library, Cull and Grade (Grade: `gradeMark` → `POST /api/mark_file`; 0 stays Fit there), ← → previous / next (Grade: `gradeStep`, follows the strip filter),
-  V = black & white preview (Cull `cuBW`, Grade `gradeBW`), Z zoom, ? shortcuts. ⌘K = go anywhere (`goOpen`: tabs, commands, Library views, shoots from `#lbWhere`, essays, culls).
+  V = black & white preview (Library viewer `lbBW`, Cull `cuBW`, Grade `gradeBW`), Z zoom, ? shortcuts. ⌘K = go anywhere (`goOpen`: tabs, commands, Library views, shoots from `#lbWhere`, essays, culls).
 - Essays: right-hand panel `#esInsp` (title, count, look `#esInLook` → PATCH look, versions, arrange style, brief via `esBriefPanel` in `#esInBrief`); the bottom panel keeps Arrange + Output only.
 - Drawn masks follow crop changes: brush masks carry `geom` (the crop they were painted under; `recipes._mask_entry` keeps it) and `masks._brush_remapped` traces each pixel
   through `geometry.frame_to_source` / `source_to_frame`; `/api/brush/{id}.png?name=&g=` shows it on the current crop. Gradients are moved on crop save (`refitMasks` → `/api/masks/refit` → `masks.refit`).
