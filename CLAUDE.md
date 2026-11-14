@@ -188,3 +188,7 @@ error. Extend it when adding a tab, panel or button that calls the server.
 - Crop → Transform: Vertical / Horizontal perspective (−100…100) = geometry `perspective` {v, h}, applied after the 90° turns and before the fine
   rotation (`geometry._persp`, `persp_inverse` / `persp_forward`, PERSP_K = 0.004; the page's `inImage` / `perspAB` copy the formula — keep them identical).
   `apply`, `valid` / `max_crop`, the mask point mapping and the crop screen's `crop=turn` render all include it; areas outside the warped photo render black.
+- "Edited since export" (stale): `search._STALE` = exported (p.graded) and the newest grade / crop `updated_at` is later than the newest exported JPG's mtime.
+  `put_grade` / `put` only move `updated_at` when the grade / crop really changes. Shown as the amber G↻ badge + Graded filter "Edited since export" in the
+  Library, "re-export" chip + filter in Grade (`/api/state` `stale`, `edits.stale_names`), counted as to-do by Grade picks, and warned about in Essays → Output →
+  JPG folder (`essay_out.plan` item `stale`, button opens them in Grade).

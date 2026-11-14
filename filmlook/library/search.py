@@ -50,6 +50,17 @@ _EDITED = """EXISTS (SELECT 1 FROM files f2 JOIN grades g2 ON g2.drive_id = f2.d
                       WHERE f2.photo_id = p.id)"""          # graded in the app (on any of the photo's files)
 
 
+# Exported, then graded / cropped again in the app: the JPG is older than your latest grade or crop.
+_STALE = """(p.graded = 1 AND COALESCE((SELECT MAX(CAST(strftime('%s', x.u) AS REAL)) FROM (
+               SELECT g3.updated_at AS u FROM files f3 JOIN grades g3 ON g3.drive_id = f3.drive_id AND g3.rel_path = f3.rel_path
+                WHERE f3.photo_id = p.id
+               UNION ALL
+               SELECT e3.updated_at FROM files f4 JOIN edits e3 ON e3.drive_id = f4.drive_id AND e3.rel_path = f4.rel_path
+                WHERE f4.photo_id = p.id) x), 0)
+           > COALESCE((SELECT MAX(fe.mtime) FROM files fe WHERE fe.photo_id = p.id AND fe.role = 'export'
+                       AND fe.kind = 'jpg' AND fe.missing = 0), 0) + 2)"""
+
+
 def _filters(f):
     where, args = [], []
     cats = f.get("categories", DEFAULT_CATEGORIES)
@@ -69,6 +80,8 @@ def _filters(f):
     g = f.get("graded")
     if g == "edited":                         # graded in the app, not exported yet
         where.append(f"p.graded = 0 AND {_EDITED}")
+    elif g == "stale":                        # exported, then edited again: the JPG is out of date
+        where.append(_STALE)
     elif g is True:
         where.append("p.graded = 1")
     elif g is False:                          # neither exported nor graded in the app
@@ -90,7 +103,8 @@ SELECT = """SELECT p.id, p.thumb, p.capture_time, p.camera, p.lens, p.focal_leng
                    fo.rel_path AS folder, fo.id AS folder_id, f.rel_path, f.drive_id, f.kind, f.missing, d.name AS drive,
                    m.flag AS mark, m.rating AS my_rating,
                    EXISTS (SELECT 1 FROM files f2 JOIN grades g2 ON g2.drive_id = f2.drive_id AND g2.rel_path = f2.rel_path
-                           WHERE f2.photo_id = p.id) AS grade_id
+                           WHERE f2.photo_id = p.id) AS grade_id,
+                   """ + _STALE + """ AS stale
             FROM photos p
             JOIN files f ON f.id = p.primary_file_id
             JOIN folders fo ON fo.id = p.folder_id
@@ -109,7 +123,8 @@ def _shape(r, mounts, score=None):
             "deleted": mount is not None and bool(r["missing"]),
             "path": f"{mount}/{r['rel_path']}" if mount else None,
             "score": None if score is None else round(float(score), 4),
-            "mark": r["mark"], "my_rating": r["my_rating"], "edited": bool(r["grade_id"])}
+            "mark": r["mark"], "my_rating": r["my_rating"], "edited": bool(r["grade_id"]),
+            "stale": bool(r["stale"])}
 
 
 _folder_cache = {"key": None, "words": None, "n": 0}

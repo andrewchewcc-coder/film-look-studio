@@ -33,6 +33,7 @@ def file_name(index, count, title, stem):
 
 def plan(con, essay_id):
     """One entry per photo in order: where its full-size source is and whether it's online."""
+    from .search import _STALE
     mounts = drives.online_mounts(con)
     names = {r["id"]: r["name"] for r in con.execute("SELECT id, name FROM drives")}
     items = essay.items(con, essay_id)
@@ -46,7 +47,8 @@ def plan(con, essay_id):
         use = exp or prim
         kind = "graded" if exp else "raw"
         mount = mounts.get(use["drive_id"]) if use else None
-        out.append({"pos": n, "photo_id": pid, "title": it["title"] or "", "kind": kind,
+        stale = bool(exp) and con.execute(f"SELECT 1 FROM photos p WHERE p.id=? AND {_STALE}", (pid,)).fetchone() is not None
+        out.append({"pos": n, "photo_id": pid, "title": it["title"] or "", "kind": kind, "stale": stale,
                     "stem": Path(prim["rel_path"]).stem if prim else str(pid),
                     "src": str(Path(mount) / use["rel_path"]) if mount else None,
                     "drive": names.get(use["drive_id"]) if use else None,

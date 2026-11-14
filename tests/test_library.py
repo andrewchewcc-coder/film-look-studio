@@ -412,3 +412,26 @@ def test_new_shoots_notice(tmp_path, monkeypatch):
     found = {s["name"]: s for s in scan.new_shoots(con)}
     assert found["2025 02 02 New"]["new"] and found["2025 02 02 New"]["photos"] == 2
     assert not found["2025 01 01 Test"]["new"] and found["2025 01 01 Test"]["change"] == 1
+
+
+def test_edited_since_export_is_stale(tmp_path, monkeypatch):
+    """Exported, then graded again in the app: flagged (Library filter + badge) until it's exported again."""
+    from filmlook.library import search
+    photos = tmp_path / "photos" / "2025 01 01 Test"
+    photos.mkdir(parents=True)
+    (photos / "A.dng").write_bytes(b"raw-a" * 1000)
+    (photos / "A-IG.jpg").write_bytes(b"jpg-a" * 1000)
+    monkeypatch.setattr(scan, "read_exif", lambda paths: {})
+    monkeypatch.setattr(scan.drives, "_volume_info", lambda mount: ("TEST-UUID", "Test"))
+    con = db.connect(tmp_path / "lib.db")
+    scan.add_root(con, tmp_path / "photos")
+    scan.scan(con)
+    raw = con.execute("SELECT drive_id, rel_path, photo_id FROM files WHERE rel_path LIKE '%A.dng'").fetchone()
+    exp_t = con.execute("SELECT mtime FROM files WHERE rel_path LIKE '%A-IG.jpg'").fetchone()[0]
+    stale = lambda: con.execute(f"SELECT {search._STALE} FROM photos p WHERE p.id=?", (raw[2],)).fetchone()[0]
+    assert not stale()                                                 # exported, never graded in the app
+    con.execute("INSERT INTO grades (drive_id, rel_path, look, adjust, updated_at) VALUES (?, ?, 'neutral', '{}', datetime(?, 'unixepoch'))",
+                (raw[0], raw[1], exp_t - 60))
+    assert not stale()                                                 # graded, then exported
+    con.execute("UPDATE grades SET updated_at = datetime(?, 'unixepoch')", (exp_t + 600,))
+    assert stale()                                                     # graded again after the export

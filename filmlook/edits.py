@@ -51,7 +51,7 @@ def put(path, g):
     else:
         con.execute("""INSERT INTO edits (drive_id, rel_path, geometry, updated_at) VALUES (?, ?, ?, datetime('now'))
                        ON CONFLICT(drive_id, rel_path) DO UPDATE SET geometry=excluded.geometry,
-                       updated_at=excluded.updated_at""", (drive_id, rel, json.dumps(g)))
+                       updated_at=CASE WHEN geometry IS excluded.geometry THEN updated_at ELSE excluded.updated_at END""", (drive_id, rel, json.dumps(g)))
     con.commit()
     return g
 
@@ -130,6 +130,17 @@ def marked_names(paths):
     return out
 
 
+def stale_names(paths):
+    """Names of these photo files exported once and graded / cropped again since: the JPG is out of date."""
+    from .library.search import _STALE
+    keys, con, out = _file_keys(paths), _con(), []
+    for d in {k[0] for k in keys}:
+        stale = {r[0] for r in con.execute(f"""SELECT f.rel_path FROM files f JOIN photos p ON p.id = f.photo_id
+                                               WHERE f.drive_id=? AND {_STALE}""", (d,))}
+        out += [n for dd, rel, n in keys if dd == d and rel in stale]
+    return out
+
+
 def exported_names(paths):
     """Names of these photo files whose photo has a graded (exported) JPG, per the library."""
     keys, con, out = _file_keys(paths), _con(), []
@@ -160,6 +171,7 @@ def put_grade(path, look, adjust):
     else:
         con.execute("""INSERT INTO grades (drive_id, rel_path, look, adjust, updated_at) VALUES (?, ?, ?, ?, datetime('now'))
                        ON CONFLICT(drive_id, rel_path) DO UPDATE SET look=excluded.look, adjust=excluded.adjust,
-                       updated_at=excluded.updated_at""", (drive_id, rel, look or "neutral", json.dumps(adjust or {})))
+                       updated_at=CASE WHEN look IS excluded.look AND adjust IS excluded.adjust THEN updated_at
+                                       ELSE excluded.updated_at END""", (drive_id, rel, look or "neutral", json.dumps(adjust or {})))
     con.commit()
     return get_grade(path)

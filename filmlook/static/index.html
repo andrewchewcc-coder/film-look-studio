@@ -121,6 +121,7 @@
   .thumb.edited::after, .thumb.exported::after { position: absolute; right: 2px; bottom: 2px; font-size: 10px; background: #000b; padding: 0 4px; border-radius: 2px; font-weight: 500; }
   .thumb.edited::after { content: "edited"; color: #9ec5ff; }
   .thumb.exported::after { content: "graded"; color: var(--accent); }
+  .thumb.exported.stale::after { content: "re-export"; color: #f0a95a; white-space: nowrap; }
   .thumb .nm { display: none; }
   .thumb[data-stars]:not([data-stars=""])::before { content: attr(data-stars); position: absolute; right: 2px; top: 2px; font-size: 9px; line-height: 1.3; background: #000b; color: #f3c64b; padding: 0 3px; border-radius: 2px; }
   #center { display: flex; flex-direction: column; min-width: 0; }
@@ -316,7 +317,7 @@
   #grid:not(.names) .cell .tags { bottom: 5px !important; }
   .cell .tl span.ic, .cell .tr span.ic { width: 18px; height: 18px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
                                          font-size: 11px; font-weight: 700; box-shadow: 0 0 0 1px #0006; }
-  .cell .tr span.ic.g { background: var(--accent); color: #111; } .cell .tr span.ic.ed { background: #5d8fd6; color: #fff; }
+  .cell .tr span.ic.g { background: var(--accent); color: #111; } .cell .tr span.ic.st { background: #e08a2e; color: #111; width: auto; padding: 0 5px; } .cell .tr span.ic.ed { background: #5d8fd6; color: #fff; }
   #lbNote { min-height: 16px; margin: 4px 0 8px; }
   .selInfo { color: var(--accent); }
   #lbNew { background: #1e1a10; border: 1px solid #5a4a1e; border-radius: 6px; padding: 9px 12px; margin: 8px 0 4px; font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -494,6 +495,7 @@
   #brVPanel .gchip { display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 12px; }
   #brVPanel .gchip.exp { background: #2a2414; color: var(--accent); }
   #brVPanel .gchip.edit { background: #1d2430; color: #9ec5ff; }
+  #brVPanel .gchip.stale { background: #33230f; color: #f0a95a; }
   #brVPanel .gchip.none { background: var(--raised); color: var(--muted); }
   #brVPanel .kv { display: grid; grid-template-columns: 62px 1fr; gap: 3px 8px; font-size: 12px; }
   #brVPanel .kv span:nth-child(odd) { color: var(--muted); }
@@ -712,7 +714,7 @@
     <label for="fFlag">Marks</label>
     <select id="fFlag"><option value="">All</option><option value="pick">Picked</option><option value="reject">Rejected</option><option value="none">Not marked</option></select>
     <label for="fGraded">Graded</label>
-    <select id="fGraded"><option value="">Any</option><option value="1">Graded (exported)</option><option value="edited">Edited, not exported yet</option><option value="0">Not graded</option></select>
+    <select id="fGraded"><option value="">Any</option><option value="1">Graded (exported)</option><option value="edited">Edited, not exported yet</option><option value="stale">Edited since export (JPG out of date)</option><option value="0">Not graded</option></select>
     <label for="fStars">Stars</label>
     <select id="fStars"><option value="0">Any</option><option value="1">★ 1 or more</option><option value="2">★★ 2 or more</option><option value="3">★★★ 3 or more</option><option value="4">★★★★ 4 or more</option><option value="5">★★★★★ 5</option></select>
     <label for="fCamera">Camera</label>
@@ -945,7 +947,7 @@
       <div id="rotBadge" hidden></div>
     </div>
     <section id="film">
-    <div class="filmHead"><button id="filmHide" title="Hide or show the photo strip (\ key)">▾ Photos</button><select id="filmFilter" title="Show only some photos"><option value="">All photos</option><option value="todo">Not graded yet</option><option value="edited">Edited, not exported</option><option value="graded">Graded (exported)</option></select>
+    <div class="filmHead"><button id="filmHide" title="Hide or show the photo strip (\ key)">▾ Photos</button><select id="filmFilter" title="Show only some photos"><option value="">All photos</option><option value="todo">Not graded yet</option><option value="edited">Edited, not exported</option><option value="graded">Graded (exported)</option><option value="stale">Edited since export</option></select>
       <button id="nextTodo" title="Go to the next photo that isn't graded yet">Next not graded ›</button>
       <div class="tickRow"><button id="tickAll" title="Tick every photo shown (for batch export or copying a grade)">Tick all</button><button id="tickNone">Untick all</button></div>
       <span class="hint">Tick photos to batch-export or copy a grade to them.</span></div>
@@ -1617,7 +1619,7 @@ $("curve").addEventListener("dblclick", (e) => {
 $("curvePreset").onchange = () => { const v = $("curvePreset").value; if (v) curveSet(CURVE_PRESETS[v].map(p => [...p])); $("curvePreset").value = ""; };
 
 async function loadState(st) {
-  S.photos = st.photos; S.looks = st.looks; S.edited = new Set(st.edited || []); S.exported = new Set(st.exported || []); S.marks = st.marks || {};
+  S.photos = st.photos; S.looks = st.looks; S.edited = new Set(st.edited || []); S.exported = new Set(st.exported || []); S.stale = new Set(st.stale || []); S.marks = st.marks || {};
   $("backLib").hidden = !(st.collection && S.fromLib);
   if (st.collection) {
     S.folder = null;
@@ -1773,15 +1775,17 @@ function saveGradeNow() {
 }
 function markEdited(name, on) {
   on ? S.edited.add(name) : S.edited.delete(name);
+  if (S.exported && S.exported.has(name)) S.stale.add(name);   // changed after its export: the JPG is out of date
   const t = document.querySelector(`.thumb[data-name="${CSS.escape(name)}"]`);
   if (t) thumbStatus(t);
   if ($("filmFilter").value) filmFilter();
 }
 function thumbStatus(t) {                    // same words as the Library: graded (exported) / edited (not yet)
   const n = t.dataset.name, exp = S.exported && S.exported.has(n), mk = S.marks && S.marks[n] && S.marks[n][0], stars = S.marks && S.marks[n] ? S.marks[n][1] : 0;
-  t.className = "thumb" + (exp ? " exported" : S.edited.has(n) ? " edited" : "") + (mk === "pick" ? " pick" : mk === "reject" ? " rej" : "") + (n === S.current ? " active" : "");
+  const stale = exp && S.stale && S.stale.has(n);
+  t.className = "thumb" + (exp ? " exported" + (stale ? " stale" : "") : S.edited.has(n) ? " edited" : "") + (mk === "pick" ? " pick" : mk === "reject" ? " rej" : "") + (n === S.current ? " active" : "");
   t.dataset.stars = stars ? "★".repeat(stars) : "";
-  t.title = n + (stars ? "  " + "★".repeat(stars) : "") + (exp || S.edited.has(n) ? "\n" : "") + (exp ? "Graded: exported" + (S.edited.has(n) ? " (and its grade is remembered here)" : "") : S.edited.has(n) ? "Edited here, not exported yet" : "");
+  t.title = n + (stars ? "  " + "★".repeat(stars) : "") + (exp || S.edited.has(n) ? "\n" : "") + (stale ? "Edited since its export: the JPG is out of date. Export it again." : exp ? "Graded: exported" + (S.edited.has(n) ? " (and its grade is remembered here)" : "") : S.edited.has(n) ? "Edited here, not exported yet" : "");
 }
 function afterFirstRender() {               // the big preview is up: now the extras, without competing with it
   if (S.stripFor === S.current) return;
@@ -1854,7 +1858,7 @@ async function exportNames(names, own = false) {
       if (j.error) return status("Export failed: " + j.error, true);
       if (j.done < j.total) { status(`Exporting ${j.done + 1}/${j.total}: ${j.current}`); return setTimeout(poll, 800); }
       status(`Done. Saved ${j.total} JPG(s), e.g. ${j.outputs[0]}`);
-      names.forEach(n => S.exported.add(n)); document.querySelectorAll(".thumb").forEach(thumbStatus);   // now graded
+      names.forEach(n => { S.exported.add(n); S.stale.delete(n); }); document.querySelectorAll(".thumb").forEach(thumbStatus);   // now graded
     };
     poll();
   } catch (e) { status(e.message, true); }
@@ -2295,7 +2299,8 @@ function cell(r, i) {
   const tags = [], tl = [], tr = [];             // decision top-left · graded top-right · stars bottom
   if (r.mark === "pick") tl.push(`<span class="pk ic" title="Picked">✓</span>`);
   if (r.mark === "reject") tl.push(`<span class="rj ic" title="Rejected">✕</span>`);
-  if (r.graded) tr.push(`<span class="g ic" title="Graded: exported JPG">G</span>`);
+  if (r.graded && r.stale) tr.push(`<span class="st ic" title="Edited since its export: the JPG is out of date. Re-export it in Grade.">G↻</span>`);
+  else if (r.graded) tr.push(`<span class="g ic" title="Graded: exported JPG">G</span>`);
   else if (r.edited) tr.push(`<span class="ed ic" title="Edited in the app, not exported yet">E</span>`);
   if (r.deleted) tr.push(`<span class="dl">Deleted from drive</span>`);
   else if (!r.online) tr.push(`<span class="o">Drive offline</span>`);
@@ -2355,7 +2360,7 @@ function lbSelect(i, e) {
 function lbGradeTargets() {                  // the selection, else this view's picks still to grade (shooting order)
   const sel = L.photos.filter(r => L.sel.has(r.id));
   if (sel.length) return { rs: sel, what: "selected" };
-  const picks = L.photos.filter(r => r.mark === "pick"), todo = picks.filter(r => !r.graded && !r.edited);
+  const picks = L.photos.filter(r => r.mark === "pick"), todo = picks.filter(r => (!r.graded && !r.edited) || r.stale);   // stale: its JPG needs exporting again
   return todo.length ? { rs: todo, what: "todo" } : { rs: picks, what: "picks" };
 }
 function lbClearSel() {
@@ -2619,7 +2624,8 @@ function lbViewPanel(r) {
   const when = t && !isNaN(t) ? t.toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   const settings = [r.focal_length ? Math.round(r.focal_length) + "mm" : "", r.aperture ? "f/" + r.aperture : "",
     r.shutter ? (r.shutter < 1 ? "1/" + Math.round(1 / r.shutter) : r.shutter + "s") : "", r.iso ? "ISO " + r.iso : ""].filter(Boolean).join(" · ");
-  const status = r.graded ? `<span class="gchip exp">Exported JPG</span>` : r.edited ? `<span class="gchip edit">Edited in the app · not exported yet</span>` : `<span class="gchip none">Not graded yet</span>`;
+  const status = r.graded && r.stale ? `<span class="gchip stale">Exported JPG · edited since, the JPG is out of date</span>`
+    : r.graded ? `<span class="gchip exp">Exported JPG</span>` : r.edited ? `<span class="gchip edit">Edited in the app · not exported yet</span>` : `<span class="gchip none">Not graded yet</span>`;
   const showing = !r.graded ? "" : L.side ? "side" : L.orig ? "orig" : "graded";
   P.innerHTML = `
     <h4>Your decision</h4>
@@ -2951,11 +2957,12 @@ async function saveEdit(g, name = S.current) {
       body: JSON.stringify({ name, geometry: g }) })).json();
     if (name !== S.current) return r;
     S.edit = { geometry: r.geometry, full_size: r.full_size }; S.editKey = Date.now();
+    if (S.exported && S.exported.has(name)) S.stale.add(name);
     PT.m = null;                                  // a painting is shown again through the new crop
     await refitMasks(name, oldGeom);
     showCropInfo(); GZ.fit = true; GZ.tile = null; renderBig(); buildLookStrip();
     const t = [...document.querySelectorAll(".thumb")].find(t => t.dataset.name === name);
-    if (t) t.querySelector("img").src = "/api/thumb?" + q({ name, k: S.editKey });
+    if (t) { t.querySelector("img").src = "/api/thumb?" + q({ name, k: S.editKey }); thumbStatus(t); }
     return r;
   } catch (e) { status("Couldn't save the crop: " + e.message, true); }
 }
@@ -4349,6 +4356,7 @@ async function esExportPanel(P) {
   if (ES.job && ES.job.essay === ES.id) return esJobView(P);
   const plan = await (await api(`/api/essays/${ES.id}/plan`)).json();
   const graded = plan.filter(x => x.kind === "graded").length, raw = plan.length - graded;
+  const stale = plan.filter(x => x.stale);
   const off = [...new Set(plan.filter(x => !x.online).map(x => x.drive || "a drive"))];
   const looks = [{ id: "neutral", name: "Neutral (no look)" }, ...(S.looks || [])];
   P.innerHTML = `<div class="esExp">
@@ -4358,10 +4366,18 @@ async function esExportPanel(P) {
     <div class="esRow">Size: <select id="esExSize"><option value="small">Small – 1080 px (Instagram)</option><option value="web" selected>Web – 2048 px</option>
       <option value="large">Large – 3000 px</option><option value="full">Full size (print)</option></select>
       <button id="esExGo" class="primary">Export</button></div>
+    ${stale.length ? `<div class="warn">${stale.length} photo${stale.length === 1 ? " has" : "s have"} newer edits than ${stale.length === 1 ? "its" : "their"} exported JPG (${stale.map(x => "#" + x.pos).join(", ")}), so the export would use the older JPG.
+      <button id="esStaleGo">Open ${stale.length === 1 ? "it" : "them"} in Grade to export again</button></div>` : ""}
     ${off.length ? `<div class="warn">Needs ${esc(off.join(", "))}, which isn't plugged in. You can start anyway: it will wait for the drive.</div>` : ""}
     <div class="small">Goes to a new folder in Pictures › Film Look Studio Essays. Your originals are never changed.${raw ? " Ungraded photos take about 15 s each at full quality." : ""}</div>
   </div>`;
   api("/api/settings").then(r => r.json()).then(st => { if ($("esExSize")) $("esExSize").value = st.export_size; }).catch(() => {});
+  if ($("esStaleGo")) $("esStaleGo").onclick = async () => {
+    try {
+      const st = await (await api("/api/library/grade", esJSON({ photo_ids: stale.map(x => x.photo_id), label: `${ES.name}: edited since export` }))).json();
+      setTab("grade"); await loadState(st); status("Grade them as you like, then Export → Ticked or one by one. The essay then uses the new JPGs.");
+    } catch (e) { status(e.message, true); }
+  };
   const lk = $("esExLook");
   if (lk) lk.onchange = async () => { ES.look = lk.value; await api("/api/essays/" + ES.id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ look: lk.value }) }); };
   $("esExGo").onclick = async () => {
@@ -4800,7 +4816,8 @@ function filmFilter() {
   const f = $("filmFilter").value;
   document.querySelectorAll(".thumb").forEach(t => {
     const n = t.dataset.name, exp = S.exported && S.exported.has(n), ed = S.edited && S.edited.has(n);
-    t.hidden = f === "todo" ? (exp || ed) : f === "edited" ? (!ed || exp) : f === "graded" ? !exp : false;
+    t.hidden = f === "todo" ? (exp || ed) : f === "edited" ? (!ed || exp) : f === "graded" ? !exp
+      : f === "stale" ? !(exp && S.stale && S.stale.has(n)) : false;
   });
 }
 $("filmFilter").onchange = filmFilter;

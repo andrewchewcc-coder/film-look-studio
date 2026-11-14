@@ -68,7 +68,7 @@ def get_state():
             "collection": coll["label"] if coll else None,
             "photos": [p.name for p in _photos()], "looks": recipes.list_looks(),
             "edited": edits.edited_names(_photos()), "exported": edits.exported_names(_photos()),
-            "marks": edits.marked_names(_photos())}
+            "marks": edits.marked_names(_photos()), "stale": edits.stale_names(_photos())}
 
 
 class FolderIn(BaseModel):
@@ -583,7 +583,7 @@ def library_search(q: str = "", cats: str = "street,travel", year: str = "", dat
                          like=ids(like), unlike=ids(unlike),
                          categories=[c for c in cats.split(",") if c] or None, year=year or None,
                          date_from=date_from or None, date_to=date_to or None, camera=camera or None,
-                         graded=None if graded == "" else "edited" if graded == "edited" else graded == "1",
+                         graded=None if graded == "" else graded if graded in ("edited", "stale") else graded == "1",
                          folder_id=folder_id or None,
                          flag=flag or None, stars=stars or None)
 
@@ -1613,7 +1613,7 @@ def _view_ids(c, v):
     res = search.search(c, text, limit=100000, categories=None, year=v.get("year") or None,
                         date_from=v.get("date_from") or None, date_to=v.get("date_to") or None,
                         camera=v.get("camera") or None,
-                        graded=None if graded == "" else "edited" if graded == "edited" else graded == "1",
+                        graded=None if graded == "" else graded if graded in ("edited", "stale") else graded == "1",
                         folder_id=int(v["folder_id"]) if v.get("folder_id") else None, flag=v.get("flag") or None,
                         stars=int(v.get("stars") or 0) or None, order="oldest")
     rows = res["results"]
