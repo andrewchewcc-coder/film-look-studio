@@ -521,7 +521,8 @@
   #brZoom { flex: 1; overflow: auto; cursor: grab; background: #070707; }
   #brZoom:active { cursor: grabbing; }
   #brVImgs #brZoom img { display: block; flex: none; width: auto; height: auto; max-width: none; max-height: none; object-fit: none; user-select: none; }
-  #brZoomNote { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: #000c; color: var(--text); font-size: 12px; padding: 4px 10px; border-radius: 12px; pointer-events: none; }
+  #brZoomNote { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: #000c; color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 12px; pointer-events: none; transition: opacity .8s; }
+  #brZoomNote.gone { opacity: 0; }   /* the hint fades after a few seconds so it doesn't sit on the photo */
   #brVImgs figure { flex: 1; margin: 0; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
   #brVImgs img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
   #brViewer.bwUsed #brVImgs img { filter: grayscale(var(--bw, 0)); }   /* B&W preview (V): only the amount changes, see #stage.bwUsed */
@@ -2855,7 +2856,9 @@ function lbZoom(fx = 0.5, fy = 0.5) {
   const box = $("brZoom"), im = box.querySelector("img");
   im.onload = () => {
     box.scrollLeft = fx * im.naturalWidth - box.clientWidth / 2; box.scrollTop = fy * im.naturalHeight - box.clientHeight / 2;
-    $("brZoomNote").textContent = `100% · ${graded ? "graded" : "original"} · drag to move · click or Z to fit`;
+    const note = $("brZoomNote");
+    note.textContent = `100% · ${graded ? "graded" : "original"} · drag to move · click or Z to fit`;
+    setTimeout(() => note.classList.add("gone"), 3000);
   };
   im.onerror = () => { $("brZoomNote").textContent = "Couldn't load the full-size photo (is the drive plugged in?)."; };
   im.src = graded ? `/api/browse/graded_full/${r.id}` : `/api/cull/full/${r.id}`;
