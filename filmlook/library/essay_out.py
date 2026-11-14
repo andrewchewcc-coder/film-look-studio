@@ -200,3 +200,50 @@ def _fit(d, text, font, width):
     while text and d.textlength(text + "…", font=font) > width:
         text = text[:-1]
     return text + "…"
+
+
+SLIDE_EDGE = 2560          # big enough for a full-screen Retina display, small enough to load fast
+
+
+def slide_key(con, item, look):
+    """What the slide's picture depends on: the graded JPG it comes from, or the RAW + its grade/look + crop."""
+    import hashlib
+    import json
+    from .. import edits
+    from .essay_book import _largest_export
+    exp = _largest_export(con, item["photo_id"], drives.online_mounts(con))
+    if exp is not None:
+        parts = ["graded", str(exp), Path(exp).stat().st_mtime]
+    else:
+        src = item["src"]
+        parts = ["raw", src, Path(src).stat().st_mtime, edits.get_grade(src) or look, edits.get(src)]
+    return hashlib.sha1(json.dumps(parts, default=str, sort_keys=True).encode()).hexdigest()[:12]
+
+
+def slide(con, essay_id, photo_id, cache_dir, edge=SLIDE_EDGE):
+    """A full-screen-size JPEG of one essay photo as exports show it (cached on the internal
+    disk). None when the photo isn't in the essay or its drive is offline."""
+    from .. import engine, recipes
+    from .essay_book import _largest_export, photo_image
+    it = next((i for i in plan(con, essay_id) if i["photo_id"] == photo_id), None)
+    if it is None or not it["online"]:
+        return None
+    look = con.execute("SELECT look FROM essays WHERE id=?", (essay_id,)).fetchone()["look"] or "neutral"
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    dst = cache_dir / f"{photo_id}_{slide_key(con, it, look)}.jpg"
+    if dst.exists():
+        return dst
+    if _largest_export(con, photo_id, drives.online_mounts(con)) is not None:
+        im = photo_image(con, it, recipes.load_look(look), edge)        # the graded JPG, resized
+    else:                                       # not graded yet: Grade's fast large render (seconds, not a full decode)
+        from .. import edits, geometry, raw
+        src = it["src"]
+        geom = edits.get(src)
+        W, H = geometry.output_size(*raw.full_size(src), geometry.normalise(geom))
+        out_w = min(W, edge if W >= H else round(edge * W / H))
+        im = engine.render_region(src, _own_recipe(src) or recipes.load_look(look), geom, [0, 0, 1, 1], out_w)
+    tmp = dst.with_name(dst.stem + f".{time.time_ns()}.tmp")
+    tmp.write_bytes(engine.jpeg_bytes(im, 88))
+    tmp.replace(dst)
+    return dst

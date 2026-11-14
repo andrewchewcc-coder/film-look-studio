@@ -667,6 +667,30 @@
     header { flex-wrap: wrap; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
   }
+  /* Essay slideshow: full screen, always on black (photos read best on black in light and dark mode) */
+  #ssView { position: fixed; inset: 0; z-index: 900; background: #000; color: #ddd; user-select: none; }
+  #ssView[hidden] { display: none; }
+  #ssView.idle, #ssView.idle * { cursor: none; }
+  #ssView .ssImg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .9s ease; }
+  #ssView .ssImg.on { opacity: 1; }
+  #ssView .ssCard { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    opacity: 0; transition: opacity .9s ease; pointer-events: none; text-align: center; padding: 0 16px; }
+  #ssView .ssCard.on { opacity: 1; pointer-events: auto; }
+  #ssView .ssCard h1 { font-weight: 300; font-size: clamp(28px, 4.5vw, 56px); letter-spacing: .04em; margin: 0; color: #eee; }
+  #ssView .ssCard p { margin: 0; color: #888; font-size: 15px; letter-spacing: .08em; }
+  #ssView .ssCard .row { display: flex; gap: 10px; margin-top: 10px; } #ssView .ssCard button { white-space: nowrap; }
+  #ssView .ssCard button, #ssView .ssBar button, #ssView .ssBar select { background: rgba(255,255,255,.1); color: #eee; border: 1px solid rgba(255,255,255,.18);
+    border-radius: 6px; padding: 6px 12px; font-size: 14px; }
+  #ssView .ssCard button:hover, #ssView .ssBar button:hover { background: rgba(255,255,255,.2); }
+  #ssView .ssCap { position: absolute; left: 0; right: 0; bottom: 22px; text-align: center; font-size: 15px; color: #bbb; letter-spacing: .03em;
+    text-shadow: 0 1px 3px #000; transition: opacity .6s; pointer-events: none; padding: 0 16px; }
+  #ssView .ssWait { position: absolute; top: 18px; right: 20px; font-size: 13px; color: #777; }
+  #ssView .ssBar { position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px;
+    background: rgba(20,20,20,.82); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 8px 10px; transition: opacity .4s;
+    max-width: calc(100vw - 32px); flex-wrap: wrap; justify-content: center; }
+  #ssView.idle .ssBar { opacity: 0; pointer-events: none; }
+  #ssView .ssBar .n { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; font-size: 14px; color: #ccc; }
+  #ssView .ssBar button.on { background: rgba(224,179,74,.25); border-color: rgba(224,179,74,.6); }
 </style>
 </head>
 <body>
@@ -870,6 +894,7 @@
       <div id="esTop">
         <span class="seg"><button data-view="strip" class="on">Strip</button><button data-view="contact">Contact sheet</button><button data-view="spreads">Spreads</button></span>
         <button id="esUndo" title="Undo (⌘Z)">Undo</button>
+        <button id="esShow" title="Play the essay full screen in this order (double-click a photo to start from it)">▶ Slideshow</button>
         <button id="esExport" class="primary" title="Export photos, book PDF, contact sheet or publish to your website">Output…</button>
         <span id="esMore"><button id="esMoreBtn" title="More">⋯</button><div id="esMoreMenu" hidden><button id="esDelete" title="Delete this essay (your photos are not touched)">Delete this essay…</button></div></span>
       </div>
@@ -915,6 +940,22 @@
     </div>
   </div>
 </section>
+<div id="ssView" hidden>
+  <img class="ssImg" alt=""><img class="ssImg" alt="">
+  <div class="ssCard" id="ssStart"><h1 id="ssName"></h1><p id="ssSub"></p></div>
+  <div class="ssCard" id="ssEnd"><p>End</p><h1 id="ssEndName"></h1><div class="row"><button id="ssAgain">↺ Play again</button><button id="ssDone">Close</button></div></div>
+  <div class="ssCap" id="ssCap"></div>
+  <div class="ssWait" id="ssWait" hidden>Preparing…</div>
+  <div class="ssBar">
+    <button id="ssPrev" title="Previous (←)">◀</button>
+    <button id="ssPlay" title="Play / pause (space)">⏸</button>
+    <button id="ssNext" title="Next (→)">▶</button>
+    <span class="n" id="ssN"></span>
+    <select id="ssSpeed" title="Time on each photo"><option value="3">3 s</option><option value="5">5 s</option><option value="8">8 s</option><option value="12">12 s</option><option value="0">Click to advance</option></select>
+    <button id="ssCapBtn" title="Show photo titles (T)">Titles</button>
+    <button id="ssClose" title="Close (Esc)">✕ Close</button>
+  </div>
+</div>
 <div id="picker" hidden><div class="box">
   <h3>Choose a photo folder</h3>
   <div class="prow"><select id="pkPlace"></select><button id="pkUp" title="Go up one folder">↑ Up</button></div>
@@ -4175,13 +4216,15 @@ function esPushUndo() { ES.undo.push({ snap: esSnapshot(), photos: JSON.parse(JS
 let esSaveTimer = null;
 function esSave() {
   clearTimeout(esSaveTimer);
-  esSaveTimer = setTimeout(async () => {
-    const locked = {}, titles = {};
-    ES.photos.forEach(p => { locked[p.id] = p.locked; titles[p.id] = p.title || ""; });
-    try { await api(`/api/essays/${ES.id}/order`, esJSON({ order: ES.photos.map(p => p.id), locked, titles })); esList(); }
-    catch (e) { $("esNote").textContent = "Couldn't save: " + e.message; }
-  }, 250);
+  esSaveTimer = setTimeout(esSaveNow, 250);
   esTransitions();
+}
+async function esSaveNow() {
+  clearTimeout(esSaveTimer);
+  const locked = {}, titles = {};
+  ES.photos.forEach(p => { locked[p.id] = p.locked; titles[p.id] = p.title || ""; });
+  try { await api(`/api/essays/${ES.id}/order`, esJSON({ order: ES.photos.map(p => p.id), locked, titles })); esList(); }
+  catch (e) { $("esNote").textContent = "Couldn't save: " + e.message; }
 }
 async function esTransitions() {
   if (ES.panel === "check") { clearTimeout(ES.checkTimer); ES.checkTimer = setTimeout(() => { if (ES.panel === "check") esPanel("check"); }, 600); }
@@ -4214,6 +4257,7 @@ function esCard(p, i, opts = {}) {
   d.querySelector(".rp").onclick = (e) => { e.stopPropagation(); ES.replaceId = p.id; esPanel("replace"); };
   const ttl = d.querySelector(".ttl");
   if (ttl) ttl.onchange = () => { esPushUndo(); p.title = ttl.value; esSave(); };
+  d.addEventListener("dblclick", (e) => { if (!e.target.closest("button, input")) ssOpen(i); });
   d.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", String(i)); e.dataTransfer.effectAllowed = "move"; });
   d.addEventListener("dragover", (e) => { e.preventDefault(); d.classList.add("drop"); });
   d.addEventListener("dragleave", () => d.classList.remove("drop"));
@@ -4307,6 +4351,132 @@ $("esArrange").onclick = async () => {
   } catch (e) { $("esNote").textContent = e.message; }
 };
 $("esUndo").onclick = () => esUndo();
+
+// --- Slideshow: the essay full screen, in its saved order --------------------------------------
+// Slides come from /api/essays/{id}/slide/{photo} (exactly as exports look); the server prepares
+// them all in the background as soon as the show opens, starting from the first one shown.
+const SS = { on: false, i: 0, playing: true, timer: 0, idle: 0, token: 0, layer: 0, stamp: 0, photos: [], fromStart: true,
+  speed: (() => { try { const v = localStorage.getItem("fls.ssSpeed"); return v === null ? 5 : +v; } catch (e) { return 5; } })(),
+  caps: (() => { try { return localStorage.getItem("fls.ssCaps") !== "0"; } catch (e) { return true; } })() };
+const ssImgs = () => $("ssView").querySelectorAll(".ssImg");
+const ssUrl = (p) => `/api/essays/${ES.id}/slide/${p.id}?v=${SS.stamp}`;
+async function ssOpen(start = 0) {
+  if (!ES.id || !ES.photos.length) return;
+  await esSaveNow();                                   // the server must know the current order
+  Object.assign(SS, { on: true, photos: ES.photos.slice(), stamp: Date.now(), fromStart: start === 0, playing: SS.speed > 0 });
+  api(`/api/essays/${ES.id}/slides/warm?start=${start}`, { method: "POST" }).catch(() => {});
+  const v = $("ssView");
+  v.hidden = false;
+  ssImgs().forEach(im => { im.classList.remove("on"); im.removeAttribute("src"); });
+  $("ssName").textContent = $("ssEndName").textContent = $("esTitle").value || ES.name || "Essay";
+  $("ssSub").textContent = `${SS.photos.length} photographs`;
+  $("ssSpeed").value = String(SS.speed);
+  $("ssCapBtn").hidden = !SS.photos.some(p => p.title);
+  $("ssCapBtn").classList.toggle("on", SS.caps);
+  try {                                                // don't wait for it: some windows never answer; else it fills the window
+    const r = (v.requestFullscreen || v.webkitRequestFullscreen).call(v);
+    if (r && r.catch) r.catch(() => {});
+  } catch (e) {}
+  ssPoke();
+  ssShow(start === 0 ? -1 : start);
+}
+function ssClose() {
+  if (!SS.on) return;
+  SS.on = false; SS.token++;
+  clearTimeout(SS.timer); clearTimeout(SS.idle);
+  $("ssView").hidden = true;
+  if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document).catch?.(() => {});
+  const p = SS.photos[Math.min(Math.max(SS.i, 0), SS.photos.length - 1)];
+  if (p && SS.i < SS.photos.length && typeof esFlash === "function") esFlash([p.id]);   // where you stopped
+}
+function ssSchedule(sec) {
+  clearTimeout(SS.timer);
+  if (SS.playing && sec) SS.timer = setTimeout(() => ssShow(SS.i + 1), sec * 1000);
+}
+async function ssShow(i) {
+  const n = SS.photos.length, tok = ++SS.token;
+  clearTimeout(SS.timer);
+  i = Math.max(SS.fromStart ? -1 : 0, Math.min(i, n));
+  SS.i = i;
+  $("ssPlay").textContent = SS.playing ? "⏸" : "▶︎";
+  $("ssPlay").title = SS.playing ? "Pause (space)" : "Play (space)";
+  $("ssPrev").disabled = i <= (SS.fromStart ? -1 : 0);
+  $("ssNext").disabled = i >= n;
+  $("ssN").textContent = i < 0 ? "Title" : i >= n ? "End" : `${i + 1} / ${n}`;
+  $("ssStart").classList.toggle("on", i < 0);
+  $("ssEnd").classList.toggle("on", i >= n);
+  if (i < 0 || i >= n) {
+    ssImgs().forEach(im => im.classList.remove("on"));
+    $("ssCap").textContent = ""; $("ssWait").hidden = true;
+    if (i >= n) { SS.playing = false; $("ssPlay").textContent = "▶︎"; $("ssView").classList.remove("idle"); }
+    else ssSchedule(Math.min(SS.speed || 3, 4));
+    return;
+  }
+  const p = SS.photos[i], imgs = ssImgs(), back = imgs[1 - SS.layer];
+  const slow = setTimeout(() => { if (tok === SS.token) $("ssWait").hidden = false; }, 500);
+  back.src = ssUrl(p);
+  try { await back.decode(); } catch (e) {}
+  clearTimeout(slow);
+  if (tok !== SS.token || !SS.on) return;
+  $("ssWait").hidden = true;
+  imgs[SS.layer].classList.remove("on"); back.classList.add("on"); SS.layer = 1 - SS.layer;
+  $("ssCap").textContent = SS.caps ? (p.title || "") : "";
+  for (const k of [1, 2]) { const q = SS.photos[i + k]; if (q) (new Image()).src = ssUrl(q); }    // ready before they're needed
+  ssSchedule(SS.speed);
+}
+function ssToggle() {
+  if (SS.i >= SS.photos.length) { SS.playing = true; ssShow(SS.fromStart ? -1 : 0); return; }
+  SS.playing = !SS.playing;
+  if (SS.playing && !SS.speed) { SS.speed = 5; $("ssSpeed").value = "5"; }
+  $("ssPlay").textContent = SS.playing ? "⏸" : "▶︎";
+  ssSchedule(SS.playing ? SS.speed : 0);
+}
+function ssPoke() {                                    // controls and cursor hide after a moment of stillness
+  const v = $("ssView");
+  v.classList.remove("idle");
+  clearTimeout(SS.idle);
+  SS.idle = setTimeout(() => { if (SS.on && SS.i < SS.photos.length && !v.querySelector(".ssBar:hover")) v.classList.add("idle"); }, 2500);
+}
+$("esShow").onclick = () => ssOpen(0);
+$("ssPrev").onclick = () => ssShow(SS.i - 1);
+$("ssNext").onclick = () => ssShow(SS.i + 1);
+$("ssPlay").onclick = () => ssToggle();
+$("ssClose").onclick = $("ssDone").onclick = () => ssClose();
+$("ssAgain").onclick = () => { SS.playing = SS.speed > 0; ssShow(SS.fromStart ? -1 : 0); };
+$("ssSpeed").onchange = () => {
+  SS.speed = +$("ssSpeed").value;
+  try { localStorage.setItem("fls.ssSpeed", String(SS.speed)); } catch (e) {}
+  SS.playing = SS.speed > 0; ssShow(SS.i);
+};
+$("ssCapBtn").onclick = () => {
+  SS.caps = !SS.caps; $("ssCapBtn").classList.toggle("on", SS.caps);
+  try { localStorage.setItem("fls.ssCaps", SS.caps ? "1" : "0"); } catch (e) {}
+  const p = SS.photos[SS.i]; $("ssCap").textContent = SS.caps && p ? (p.title || "") : "";
+};
+$("ssView").addEventListener("mousemove", ssPoke);
+$("ssView").addEventListener("click", (e) => {
+  if (e.target.closest(".ssBar, button, select")) return;
+  ssShow(e.clientX < window.innerWidth * 0.25 ? SS.i - 1 : SS.i + 1);     // left edge = back, elsewhere = next
+});
+const ssFsChange = () => { if (SS.on && !(document.fullscreenElement || document.webkitFullscreenElement)) ssClose(); };
+document.addEventListener("fullscreenchange", ssFsChange);
+document.addEventListener("webkitfullscreenchange", ssFsChange);
+window.addEventListener("keydown", (e) => {               // while showing, every key belongs to the slideshow
+  if (!SS.on) return;
+  e.stopImmediatePropagation();
+  if (e.metaKey || e.ctrlKey) { if (e.key.toLowerCase() === "z") e.preventDefault(); return; }
+  if (e.target.closest && e.target.closest("select")) return;
+  e.preventDefault();                                    // also keeps the Mac from beeping
+  ssPoke();
+  const k = e.key;
+  if (k === "Escape") ssClose();
+  else if (k === "ArrowRight" || k === "ArrowDown" || k === "PageDown" || k === "Enter") ssShow(SS.i + 1);
+  else if (k === "ArrowLeft" || k === "ArrowUp" || k === "PageUp" || k === "Backspace") ssShow(SS.i - 1);
+  else if (k === " ") ssToggle();
+  else if (k === "Home") ssShow(SS.fromStart ? -1 : 0);
+  else if (k === "End") ssShow(SS.photos.length - 1);
+  else if (k === "t" || k === "T") { if (!$("ssCapBtn").hidden) $("ssCapBtn").click(); }
+}, true);
 function esUndo() {
   const u = ES.undo.pop(); if (!u) return $("esNote").textContent = "Nothing to undo.";
   ES.photos = u.photos; esRender(); esSave(); $("esNote").textContent = "Undone.";

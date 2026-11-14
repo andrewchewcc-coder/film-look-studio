@@ -177,3 +177,30 @@ def test_book_printing_orders():
     assert len(zine) % 4 == 0 and kinds(zine)[:3] == ["c", "b", "1"]
     # booklet order: 8 pages = 2 sheets; outer sheet front = back cover | front cover
     assert essay_book.imposition(8) == [(7, 0), (1, 6), (5, 2), (3, 4)]
+
+
+def test_slideshow_slides_are_cached_and_follow_regrades(tmp_path, monkeypatch):
+    import os
+    import sqlite3
+    from PIL import Image
+    from filmlook.library import essay_book, essay_out
+    con = sqlite3.connect(":memory:")
+    con.row_factory = sqlite3.Row
+    con.execute("CREATE TABLE essays (id INTEGER PRIMARY KEY, look TEXT)")
+    con.execute("INSERT INTO essays VALUES (1, 'neutral')")
+    jpg = tmp_path / "graded.jpg"
+    Image.new("RGB", (300, 200), (90, 60, 30)).save(jpg)
+    monkeypatch.setattr(essay_out, "plan", lambda c, eid: [{"photo_id": 7, "online": True, "src": str(jpg), "kind": "graded"},
+                                                           {"photo_id": 8, "online": False, "src": None, "kind": "raw"}])
+    monkeypatch.setattr(essay_out.drives, "online_mounts", lambda c: {})
+    monkeypatch.setattr(essay_book, "_largest_export", lambda c, pid, m: jpg)
+    calls = []
+    monkeypatch.setattr(essay_book, "photo_image", lambda c, it, r, edge: calls.append(edge) or Image.open(jpg).convert("RGB"))
+    cache = tmp_path / "slides"
+    a = essay_out.slide(con, 1, 7, cache)
+    assert a.exists() and Image.open(a).size == (300, 200)
+    assert essay_out.slide(con, 1, 7, cache) == a and len(calls) == 1          # second time: from the cache
+    os.utime(jpg, (1, 1))                                                      # exported again → a new slide
+    assert essay_out.slide(con, 1, 7, cache) != a and len(calls) == 2
+    assert essay_out.slide(con, 1, 8, cache) is None                           # drive offline
+    assert essay_out.slide(con, 1, 99, cache) is None                          # not in the essay

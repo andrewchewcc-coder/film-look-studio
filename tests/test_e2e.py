@@ -157,6 +157,17 @@ def test_click_through_every_tab(app):
         page.evaluate(f"""async () => {{ await esLoad({app['essay']}); await new Promise(r => setTimeout(r, 2500));
             for (const p of ["check", "ai", "pairs", "bench", "fill", "export", "book", "contact", "publish", "brief"]) {{
                 await esPanel(p); await new Promise(r => setTimeout(r, 1500)); }} }}""")
+        # Slideshow: title card, then the photos (rendered from the RAW at full-screen size), end card, Esc
+        page.click("#esShow")
+        page.wait_for_function("SS.on && SS.i === -1 && $('ssStart').classList.contains('on')")
+        page.keyboard.press("ArrowRight")
+        page.wait_for_function("SS.i === 0 && [...document.querySelectorAll('#ssView .ssImg.on')].some(im => im.naturalWidth > 0)",
+                               timeout=60000)
+        page.keyboard.press("End")
+        page.keyboard.press("ArrowRight")
+        page.wait_for_function("$('ssEnd').classList.contains('on') && $('ssN').textContent === 'End'", timeout=60000)
+        page.keyboard.press("Escape")
+        page.wait_for_function("!SS.on && $('ssView').hidden")
 
         # ⌘K: go anywhere lists tabs, shoots, essays and culls
         page.evaluate("async () => { await goOpen(); $('goQ').value = 'e2e'; goDraw(); goClose(); }")

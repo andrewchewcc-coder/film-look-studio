@@ -181,6 +181,11 @@ error. Extend it when adding a tab, panel or button that calls the server.
   with `worked_at` + `worked` [exported, graded, cropped]. Library Show: Recently graded (`runRecent`, 30 days, "Today" / "Yesterday" / date headers, a
   "Graded 17:26" tag per cell) and the Recent work shelf (`#lbShelf`, `lbShelfLoad`, last 7 days, newest 40) over the plain All shoots list only (no shoot,
   search or filter); a shelf photo opens the Recently graded view large (`lbRecentOpen`); ▾ folds it (fls.shelfFold).
+- Essay slideshow (`#esShow` ▶ Slideshow, double-click a card = start there; `ssOpen`/`ssShow`, `#ssView` outside `#essayView`):
+  title card → photos in saved order (crossfade, 3/5/8/12 s or click, Titles = photo titles) → end card. Slides from
+  `/api/essays/{id}/slide/{photo}` = `essay_out.slide`: graded JPG resized, else `engine.render_region` (Grade's fast large render,
+  ~4 s) at 2560 px; cached in LIBRARY_DIR/views/slides keyed on source mtime + grade/look + crop. `slides/warm?start=` prepares
+  the rest in the background. No countdown bar (he found it stressful). Full screen is requested but not awaited (some WebViews never answer); keys are captured while on.
 - Grade ticking (`tickThumb(name, on, range)`): the checkbox, ⌘-click a photo or T ticks; Shift-click ticks every photo shown between the last one ticked
   (`S.lastTick`) and this one. Export → Copy grade + export ticked (`#copyExport`) = `/api/grade/copy` onto the ticked others, then `exportNames(ticked, own=true)`.
 - Keys are the same across tabs: P / X / U / 1–5 mark in Library, Cull and Grade (Grade: `gradeMark` → `POST /api/mark_file`; 0 stays Fit there), ← → previous / next (Grade: `gradeStep`, follows the strip filter),

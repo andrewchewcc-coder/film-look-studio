@@ -2138,6 +2138,62 @@ def essay_open(body: RevealIn):
     return {"ok": True}
 
 
+# --- slideshow --------------------------------------------------------------------------------
+# Full-screen slides look exactly like the exported photos (graded JPG, else RAW + grade/look + crop),
+# cached in LIBRARY_DIR/views/slides. Offline drives fall back to the essay thumbnail.
+
+_slide_locks: dict = {}
+_slide_warming: set = set()
+
+
+def _slide_dir():
+    from .library import LIBRARY_DIR
+    return LIBRARY_DIR / "views" / "slides"
+
+
+def _slide_file(eid, pid):
+    from .library import essay_out
+    with _slide_locks.setdefault(pid, threading.Lock()):        # warm-up and page asking at once: render once
+        return essay_out.slide(_lib().con(), eid, pid, _slide_dir())
+
+
+@app.get("/api/essays/{eid}/slide/{photo_id}")
+def essay_slide(eid: int, photo_id: int):
+    _essay_row(eid)
+    try:
+        dst = _slide_file(eid, photo_id)
+    except Exception:
+        dst = None
+    if dst is None:
+        return essay_thumb(photo_id)
+    return FileResponse(dst, media_type="image/jpeg", headers=_RECHECK)
+
+
+@app.post("/api/essays/{eid}/slides/warm")
+def essay_slides_warm(eid: int, start: int = 0):
+    """Prepare every slide in the background, from `start` on, then the ones before it."""
+    from .library import essay
+    _essay_row(eid)
+    ids = [i["photo_id"] for i in essay.items(_lib().con(), eid)]
+    if eid in _slide_warming:
+        return {"ok": True, "count": len(ids)}
+    _slide_warming.add(eid)
+    order = ids[start:] + ids[:start]
+
+    def work():
+        try:
+            for pid in order:
+                try:
+                    _slide_file(eid, pid)
+                except Exception:
+                    pass
+        finally:
+            _slide_warming.discard(eid)
+
+    threading.Thread(target=work, daemon=True).start()
+    return {"ok": True, "count": len(ids)}
+
+
 @app.get("/api/essays/thumb/{photo_id}")
 def essay_thumb(photo_id: int):
     """The essay's view of a photo (graded JPG if any, else RAW preview with crop)."""
