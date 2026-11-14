@@ -2692,8 +2692,8 @@ function lbZoom(fx = 0.5, fy = 0.5) {
     if (Math.abs(dx) + Math.abs(dy) > 3) moved = true; box.scrollLeft = drag.l - dx; box.scrollTop = drag.t - dy; };
   box.onpointerup = () => { const wasMoved = moved; drag = null; if (!wasMoved) lbViewRender(); };
 }
-$("brVPrev").onclick = () => { if (L.view > 0) { L.view--; lbViewRender(); } };
-$("brVNext").onclick = () => { if (L.view < L.photos.length - 1) { L.view++; lbViewRender(); } };
+$("brVPrev").onclick = (e) => { e.currentTarget.blur(); if (L.view > 0) { L.view--; lbViewRender(); } };   // blur: a focused button would take the next key press
+$("brVNext").onclick = (e) => { e.currentTarget.blur(); if (L.view < L.photos.length - 1) { L.view++; lbViewRender(); } };
 function lbCloseViewer() {
   $("brViewer").hidden = true; const r = L.photos[L.view]; L.view = null;
   if (r) {                                    // back to where you were; nothing gets selected by looking
@@ -2713,10 +2713,16 @@ document.addEventListener("keydown", (e) => {
   if (inView) {
     if (k === "Escape" && L.zoomed) { e.preventDefault(); return lbViewRender(); }
     if (k === "Escape" || k === " ") { e.preventDefault(); return lbCloseViewer(); }
-    if (k === "ArrowRight" && L.view < L.photos.length - 1) { L.view++; return lbViewRender(); }
-    if (k === "ArrowLeft" && L.view > 0) { L.view--; return lbViewRender(); }
-    if (k === "g" || k === "G") { L.orig = !L.orig; L.side = false; return lbViewRender(); }
-    if (k === "s" || k === "S") { L.side = !L.side; return lbViewRender(); }
+    // Every key the viewer uses is marked handled (preventDefault), also at the first / last photo:
+    // otherwise the Mac app's web view finds nothing to scroll and plays the system alert sound.
+    if (k === "ArrowRight" || k === "ArrowLeft" || k === "ArrowUp" || k === "ArrowDown") {
+      e.preventDefault();
+      if (k === "ArrowRight" && L.view < L.photos.length - 1) { L.view++; lbViewRender(); }
+      if (k === "ArrowLeft" && L.view > 0) { L.view--; lbViewRender(); }
+      return;
+    }
+    if (k === "g" || k === "G") { e.preventDefault(); L.orig = !L.orig; L.side = false; return lbViewRender(); }
+    if (k === "s" || k === "S") { e.preventDefault(); L.side = !L.side; return lbViewRender(); }
     if (k === "z" || k === "Z") { e.preventDefault(); return lbZoom(); }
     if (k === "v" || k === "V") { e.preventDefault(); return lbBW(); }
   } else {
