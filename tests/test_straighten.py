@@ -37,3 +37,30 @@ def test_looking_up_is_not_mistaken_for_a_tilt():
 def test_no_lines_no_answer():
     angle, conf = straighten.estimate(np.full((800, 1200), 0.5, np.float32))
     assert angle is None and conf == 0
+
+
+def _fixed_k(img, v):
+    """Keystone left after the app's Vertical perspective v."""
+    from filmlook import geometry
+    rgb = np.repeat(img[:, :, None], 3, axis=2).astype(np.float32)
+    out = geometry.apply(rgb, {"perspective": {"v": v, "h": 0}})
+    k, _, _ = straighten.keystone(out)
+    return k
+
+
+def test_auto_perspective_stands_converging_verticals_up():
+    from filmlook import geometry
+    for keystone in (0.06, -0.04):                       # street(): + = tops lean out (looking down), − = looking up
+        img = street(keystone=keystone)
+        k, tilt, conf = straighten.keystone(img)
+        assert conf >= straighten.SURE and abs(tilt) < 0.3
+        assert (k > 0) == (keystone > 0)                 # tops lean out = positive k
+        v = straighten.vertical_slider(k, img.shape[1], img.shape[0], geometry.PERSP_K)
+        assert (v < 0) == (keystone > 0)                 # looking down: − widens the bottom
+        assert abs(_fixed_k(img, round(v))) < abs(k) * 0.25
+
+
+def test_auto_perspective_leaves_straight_photos_alone():
+    from filmlook import geometry
+    k, _, _ = straighten.keystone(street())
+    assert abs(straighten.vertical_slider(k, 1600, 1067, geometry.PERSP_K)) < 3

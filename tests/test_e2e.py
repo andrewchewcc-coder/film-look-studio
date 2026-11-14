@@ -120,6 +120,7 @@ def test_click_through_every_tab(app):
             for (const k of ["adjust", "tone", "masks", "out", "crop", "look"]) { gradeTab(k); await new Promise(r => setTimeout(r, 400)); }
             await cropEnter(); await new Promise(r => setTimeout(r, 1500));
             $("crAuto").click(); await new Promise(r => setTimeout(r, 2500));
+            $("crAutoV").click(); await new Promise(r => setTimeout(r, 3000));
             setPersp(30, -20); await new Promise(r => setTimeout(r, 1500)); cropExit(true);        // Transform, saved
             await new Promise(r => setTimeout(r, 2500));
             await api("/api/render?" + q({ name: S.photos[0], look: S.look, edge: 400, crop: "saved" }));

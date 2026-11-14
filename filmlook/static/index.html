@@ -979,6 +979,7 @@
       <input type="range" id="crPv" min="-100" max="100" step="1" value="0" title="+ widens the top: buildings that lean in when you look up stand straight. − widens the bottom."></div>
     <div class="slider"><label>Horizontal<span id="crPhVal">0</span></label>
       <input type="range" id="crPh" min="-100" max="100" step="1" value="0" title="+ widens the right side, − the left: for a wall or shop front photographed at an angle"></div>
+    <div class="row"><button id="crAutoV" title="Find the building edges and set Vertical (and the angle) so converging verticals stand up straight">Auto vertical</button></div>
     <div class="row"><button id="crRotL" title="Rotate 90° left">⟲ 90°</button><button id="crRotR" title="Rotate 90° right">⟳ 90°</button><button id="crFlipH" title="Flip left-right">⇋ Flip</button><button id="crFlipV" title="Flip upside down">⇵ Flip</button></div>
     <div id="crSize" class="small"></div>
     <div class="row" style="margin-top:14px"><button id="crReset" title="R">Reset</button><button id="crCancel" title="Esc">Cancel</button><button id="crDone" class="primary" title="Enter">Done</button></div>
@@ -3034,6 +3035,27 @@ $("crAuto").onclick = async () => {
     else { setAngle(r.angle); status(`Straightened ${r.angle > 0 ? "+" : ""}${r.angle.toFixed(2)}° so the verticals stand up. Adjust with −0.1° / +0.1° if needed.`); }
   } catch (e) { status(e.message, true); }
   finally { btn.disabled = false; btn.textContent = "Auto-straighten"; }
+};
+$("crAutoV").onclick = async () => {           // Vertical perspective + angle from the building edges (/api/auto_perspective)
+  if (!S.current) return;
+  const name = S.current, btn = $("crAutoV");
+  btn.disabled = true; btn.textContent = "Looking at the building edges…";
+  try {
+    const t = { rot90: CR.g.rot90, flip_h: CR.g.flip_h, flip_v: CR.g.flip_v, perspective: CR.g.perspective || null };
+    const r = await (await api("/api/auto_perspective?" + q({ name, turn: JSON.stringify(t) }))).json();
+    if (S.current !== name || !CR.on) return;
+    const h = (CR.g.perspective && CR.g.perspective.h) || 0;
+    if (r.v === null) status("No clear building edges to go by: set Vertical by hand (+ when buildings lean in).");
+    else if (!r.sure) status(`Not sure (too few straight edges across the frame): it would be Vertical ${r.v > 0 ? "+" : ""}${r.v}. Left as it was.`);
+    else if (Math.abs(r.v) < 2) { if (r.angle !== null) CR.g.angle = Math.max(-45, Math.min(45, r.angle)); setPersp(0, h);
+      status("The verticals don't converge: no perspective needed" + (r.angle ? `; straightened ${r.angle > 0 ? "+" : ""}${r.angle.toFixed(2)}°.` : ".")); }
+    else {
+      if (r.angle !== null) CR.g.angle = Math.max(-45, Math.min(45, Math.round(r.angle * 100) / 100));
+      setPersp(r.v, h);
+      status(`Vertical ${r.v > 0 ? "+" : ""}${r.v}${r.angle ? `, straightened ${r.angle > 0 ? "+" : ""}${r.angle.toFixed(2)}°` : ""}: the buildings stand up straight. Full correction can look stretched; ease Vertical back a little if it does.`);
+    }
+  } catch (e) { status(e.message, true); }
+  finally { btn.disabled = false; btn.textContent = "Auto vertical"; }
 };
 function applyRatio() {
   const r = currentRatio();

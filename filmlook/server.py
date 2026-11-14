@@ -271,6 +271,40 @@ def auto_straighten(name: str, turn: str = "{}"):
     return {"angle": angle, "confidence": conf, "sure": angle is not None and conf >= straighten.SURE}
 
 
+@app.get("/api/auto_perspective")
+def auto_perspective(name: str, turn: str = "{}"):
+    """Vertical perspective (and the fine angle) that stand converging verticals up straight: measured on the
+    photo with its flips / 90-degree turns only, then checked once on the corrected photo and nudged.
+    sure=False: not enough lines spread across the frame."""
+    from . import straighten
+    import numpy as np
+    t = json.loads(turn or "{}")
+    p = _photo(name)
+    base = {"rot90": t.get("rot90", 0), "flip_h": t.get("flip_h", False), "flip_v": t.get("flip_v", False)}
+    keep_h = (t.get("perspective") or {}).get("h") or 0
+
+    def measure(v):
+        g = dict(base, perspective={"v": v, "h": keep_h} if (v or keep_h) else None)
+        img = np.asarray(engine.render_preview(p, _recipe("neutral", "{}"), edge=straighten.WORK_EDGE, geom=g), np.float32) / 255
+        return straighten.keystone(img), img.shape[1], img.shape[0]
+
+    (k, tilt, conf), w, h = measure(0)
+    if k is None:
+        return {"v": None, "angle": None, "confidence": 0, "sure": False}
+    v = straighten.vertical_slider(k, w, h, geometry.PERSP_K)
+    sure = conf >= straighten.SURE and abs(v) <= 100   # beyond the slider: not a building looked up at
+    v = max(-100.0, min(100.0, v))
+    if sure and abs(v) >= 3:                           # check on the corrected photo and nudge what's left
+        (k2, tilt2, conf2), w, h = measure(round(v))
+        if k2 is None or abs(k2) > max(0.5, 0.5 * abs(k)):
+            sure = False                               # the lines didn't straighten (e.g. shot straight up)
+        else:
+            v = max(-100.0, min(100.0, v + straighten.vertical_slider(k2, w, h, geometry.PERSP_K)))
+            tilt = tilt2
+    v = int(round(v))
+    return {"v": v, "angle": tilt, "confidence": conf, "sure": sure}
+
+
 _warm_queue = []
 _warm_lock = threading.Lock()
 

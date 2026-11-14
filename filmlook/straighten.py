@@ -33,10 +33,11 @@ def lines(gray):
     return out
 
 
-def fit(found):
-    """Robust fit of lean = tilt + k * offset. Returns (tilt, share of evidence that agrees)."""
+def fit(found, with_k=False):
+    """Robust fit of lean = tilt + k * offset. Returns (tilt, share of evidence that agrees), or
+    (tilt, k, agree) with with_k (k: degrees of lean per half-width away from the middle)."""
     if len(found) < 4:
-        return None, 0.0
+        return (None, None, 0.0) if with_k else (None, 0.0)
     d, x, L = (np.array(v, np.float64) for v in zip(*found))
     wt = L.copy()
     A = np.stack([np.ones_like(x), x], axis=1)
@@ -46,7 +47,43 @@ def fit(found):
         r = d - A @ coef
         wt = L / np.maximum(1.0, np.abs(r) / 0.5)                    # Huber-like: outliers fade
     agree = L[np.abs(r) < 0.75].sum() / L.sum()
+    if with_k:
+        return float(coef[0]), float(coef[1]), float(agree)
     return float(coef[0]), float(agree)
+
+
+def _gray(display):
+    img = np.asarray(display, np.float32)
+    gray = img @ np.float32([0.2126, 0.7152, 0.0722]) if img.ndim == 3 else img
+    h, w = gray.shape
+    s = WORK_EDGE / max(h, w)
+    if s < 1:
+        gray = transform.resize(gray, (round(h * s), round(w * s)), anti_aliasing=True)
+    return gray
+
+
+def keystone(display):
+    """Converging verticals (looking up or down). Returns (k, tilt, confidence): k = degrees of lean per
+    half-width from the middle (negative: tops lean in, as when looking up), tilt as `estimate` gives it.
+    (None, None, 0) when there's too little to go by."""
+    gray = _gray(display)
+    found = lines(gray)
+    tilt, k, agree = fit(found, with_k=True)
+    if tilt is None or abs(tilt) > MAX_TILT:
+        return None, None, 0.0
+    xs = np.array([x for _, x, _ in found]); Ls = np.array([L for *_, L in found])
+    spread = float(np.sqrt(np.average(xs ** 2, weights=Ls)))          # lines only near the middle say little about k
+    total = Ls.sum() / max(gray.shape)
+    conf = agree * min(1.0, total / 3) * min(1.0, spread / 0.35)
+    return round(k, 3), round(-tilt, 2), round(float(conf), 2)
+
+
+def vertical_slider(k, w, h, k_per_unit):
+    """Geometry's Vertical value that stands converging verticals of lean-slope k up straight on a
+    (turned) w x h photo. Near the middle the warp moves x by a·u·v, i.e. a lean of −a·u radians at
+    u (half long sides); offsets here are in half widths, so k = −degrees(a)·w/long."""
+    a = -math.radians(k) * max(w, h) / w
+    return a / k_per_unit
 
 
 def estimate(display):
