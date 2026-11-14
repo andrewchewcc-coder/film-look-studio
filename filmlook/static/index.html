@@ -83,6 +83,8 @@
   button.linkish:hover { color: var(--text); }
   #folderName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
   #folderName b { color: var(--text); font-weight: 600; }
+  #curName { color: var(--text); font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #curName:not(:empty)::before { content: "·"; color: var(--muted); margin: 0 6px; }
   input[type=text] { background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 7px 10px; border-radius: 6px; font: inherit; }
   button { background: var(--raised); color: var(--text); border: 1px solid var(--btnline); padding: 7px 12px; border-radius: 6px; font: inherit; cursor: pointer; }
   button:hover { border-color: var(--hoverline); }
@@ -659,7 +661,7 @@
 <header>
   <h1>Film Look Studio</h1>
   <div class="tabs"><button id="tabLib">Library</button><button id="tabCull">Cull</button><button id="tabGrade">Grade</button><button id="tabEssay">Essays</button></div>
-  <div id="folderBar"><button id="backLib" hidden title="Back to the Library, where these photos came from">← Library</button><span id="folderName" title="">No folder open</span><button id="open" class="linkish" title="Open a folder that isn't in the Library">Open a folder…</button></div>
+  <div id="folderBar"><button id="backLib" hidden title="Back to the Library, where these photos came from">← Library</button><span id="folderName" title="">No folder open</span><span id="curName" title="The photo you're grading"></span><button id="open" class="linkish" title="Open a folder that isn't in the Library">Open a folder…</button></div>
   <div id="hdrRight"><button id="noteBtn" title="Recent messages">🔔<i hidden></i></button><button id="actBtn" hidden title="What's running in the background"></button><button id="keysBtn" title="Keyboard shortcuts (?)">?</button><button id="setBtn" title="Settings">⚙ Settings</button><button id="quitBtn" title="Stop Film Look Studio (closing the browser also stops it after 10 minutes)">Quit</button></div>
 </header>
 <div id="actPop" hidden></div>
@@ -1665,6 +1667,7 @@ async function select(name) {
   saveGradeNow();                             // the photo we're leaving keeps its grade
   GZ.fit = true; GZ.tile = null; $("bigTile").hidden = true;
   S.current = name; S.editKey = Date.now();
+  $("curName").textContent = name;
   document.querySelectorAll(".thumb").forEach(t => t.classList.toggle("active", t.dataset.name === name)); thumbInView(name);
   $("empty").hidden = true; $("big").hidden = false;
   S.beforeSrc = null; S.afterSrc = null; S.stripFor = null; S.camSrc = null; S.camImg = null;
@@ -1865,7 +1868,11 @@ async function exportNames(names, own = false) {
 }
 
 $("open").onclick = () => { S.fromLib = false; openPicker("grade"); };
-$("backLib").onclick = () => { saveGradeNow(); setTab("lib"); };
+$("backLib").onclick = async () => {        // back to the Library, at the photo you were grading
+  saveGradeNow();
+  try { if (S.current) L.focusId = (await (await api("/api/photo_id?" + q({ name: S.current }))).json()).id; } catch (e) {}
+  setTab("lib");
+};
 async function openGradeFolder(folder) {
   try { loadState(await (await api("/api/folder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folder }) })).json()); }
   catch (e) { noteAlert(e.message); }
@@ -1941,6 +1948,7 @@ const L = { like: [], unlike: [], offset: 0, total: 0, seq: 0, polling: false, p
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function setTab(tab) {
+  if (!$("libView").hidden && tab !== "lib") L.scroll = $("libMain").scrollTop;   // a hidden panel forgets its scroll
   const lib = tab === "lib", grade = tab === "grade", cullT = tab === "cull", essT = tab === "essay";
   $("libView").hidden = !lib; $("gradeView").hidden = !grade; $("cullView").hidden = !cullT;
   $("essayView").hidden = !essT; $("tabEssay").classList.toggle("on", essT);
@@ -2126,9 +2134,17 @@ function params(offset) {
   return p;
 }
 async function libRefresh() {                 // marks may have changed elsewhere: reload, keep scroll and selection
-  const keep = $("libMain").scrollTop;
+  const keep = L.scroll ?? $("libMain").scrollTop; L.scroll = null;
   await runSearch(false, Math.max(L.offset, 0));
   $("libMain").scrollTop = keep;
+  const id = L.focusId; L.focusId = null;       // back from Grade: show the photo you were grading
+  const i = id ? L.photos.findIndex(r => r.id === id) : -1;
+  if (i < 0) return;
+  if (L.view != null && !$("brViewer").hidden) { L.view = i; return lbViewRender(); }   // it was open large: show its new version
+  L.sel = new Set([id]); L.last = i;
+  document.querySelectorAll("#grid .cell").forEach(c => c.classList.toggle("sel", L.sel.has(+c.dataset.id)));
+  lbCount();
+  const c = $("grid").querySelector(`.cell[data-id="${id}"]`); if (c) c.scrollIntoView({ block: "center" });
 }
 function lbModeControls() {                   // these filters don't apply to the Second look views
   const on = !!$("lbMode").value;
@@ -2290,7 +2306,7 @@ function describe(r) {
     r.shutter ? (r.shutter < 1 ? "1/" + Math.round(1 / r.shutter) : r.shutter + "s") : "", r.iso ? "ISO " + r.iso : ""];
   return bits.filter(Boolean).join(" · ");
 }
-function lbThumb(r) { return $("lbView").value === "graded" && r.graded ? `/api/browse/thumb/${r.id}` : `/api/library/thumb/${r.id}`; }
+function lbThumb(r) { return $("lbView").value === "graded" && r.graded ? `/api/browse/thumb/${r.id}?v=2` : `/api/library/thumb/${r.id}`; }
 function cell(r, i) {
   const d = document.createElement("div");
   d.className = "cell" + (r.online ? "" : " offline") + (r.mark === "reject" ? " rejected" : "") + (L.sel.has(r.id) ? " sel" : "")
@@ -2602,7 +2618,7 @@ function lbOpenViewer(i) { L.view = i; L.orig = $("lbView").value === "original"
 function lbViewRender() {
   const r = L.photos[L.view]; if (!r) return;
   L.zoomed = false;
-  const graded = `/api/browse/graded/${r.id}`, orig = `/api/cull/view/${r.id}`;
+  const graded = `/api/browse/graded/${r.id}?v=2`, orig = `/api/cull/view/${r.id}`;
   $("brVImgs").innerHTML = r.graded && L.side
     ? `<figure><img src="${orig}"><figcaption>Original</figcaption></figure><figure><img src="${graded}"><figcaption>Graded</figcaption></figure>`
     : `<figure><img src="${r.graded && !L.orig ? graded : orig}"><figcaption>${r.graded ? (L.orig ? "Original (G for graded)" : "Graded (G for original)") : "Not graded yet"}</figcaption></figure>`;
@@ -2616,7 +2632,7 @@ function lbViewRender() {
   $("brVName").textContent = `${L.view + 1} / ${L.photos.length}`;
   $("brVShoot").textContent = r.folder || "";
   lbViewPanel(r);
-  const n = L.photos[L.view + 1]; if (n) { const im = new Image(); im.src = n.graded && !L.orig ? `/api/browse/graded/${n.id}` : `/api/cull/view/${n.id}`; }
+  const n = L.photos[L.view + 1]; if (n) { const im = new Image(); im.src = n.graded && !L.orig ? `/api/browse/graded/${n.id}?v=2` : `/api/cull/view/${n.id}`; }
 }
 // Everything about the photo in one place: decision, stars, graded, (reasons), details, actions.
 function lbViewPanel(r) {
@@ -3957,7 +3973,7 @@ async function esList() {
   $("esList").innerHTML = rows.length ? "" : "None yet.";
   for (const r of rows) {
     const d = document.createElement("div"); d.className = "esItem" + (r.id === ES.id ? " on" : "");
-    d.innerHTML = `${r.cover ? `<img class="esCover" src="/api/essays/thumb/${r.cover}" alt="" loading="lazy">` : `<span class="esCover"></span>`}
+    d.innerHTML = `${r.cover ? `<img class="esCover" src="/api/essays/thumb/${r.cover}?v=2" alt="" loading="lazy">` : `<span class="esCover"></span>`}
       <div><b>${esc(r.name)}</b><small>${r.count} photo${r.count === 1 ? "" : "s"}${r.target && r.target !== r.count ? ` of ${r.target}` : ""} · ${esWhen(r.updated)}</small></div>`;
     d.onclick = () => esLoad(r.id);
     $("esList").appendChild(d);
@@ -4029,7 +4045,7 @@ function esCard(p, i, opts = {}) {
   const d = document.createElement("div");
   d.className = "esCard" + (p.locked ? " locked" : ""); d.draggable = !p.locked; d.dataset.i = i;
   d.title = (p.why && p.why.length ? "Chosen because: " + p.why.join(" · ") + "\n" : "") + p.name;
-  d.innerHTML = `<img src="/api/essays/thumb/${p.id}" alt="" draggable="false"><span class="num">${i + 1}</span>
+  d.innerHTML = `<img src="/api/essays/thumb/${p.id}?v=2" alt="" draggable="false"><span class="num">${i + 1}</span>
     <span class="tools"><button class="lk ${p.locked ? "on" : ""}" title="${p.locked ? "Unlock" : "Lock in place"}">${p.locked ? "🔒" : "🔓"}</button><button class="rp" title="Suggest a replacement from the bench">⇄</button><button class="rm" title="Remove from the essay">✕</button></span>
     ${p.image === "graded" ? `<span class="gr" title="Shown as your graded JPG">graded</span>` : ""}
     ${opts.titles ? `<input class="ttl" placeholder="Title" value="${esc(p.title || "")}">` : `<div class="cap">${esc(p.title || p.name)}</div>`}`;
@@ -4086,7 +4102,7 @@ function esRender() {
         const page = document.createElement("div");
         page.className = "esPage " + (side ? "right" : "left") + (pg ? "" : " blank");
         if (pg) {
-          page.innerHTML = `<img src="/api/essays/thumb/${pg.p.id}" alt="" draggable="false"><span class="pn">${pg.i + 1}</span>`;
+          page.innerHTML = `<img src="/api/essays/thumb/${pg.p.id}?v=2" alt="" draggable="false"><span class="pn">${pg.i + 1}</span>`;
           page.querySelector("img").addEventListener("load", () => esFitPage(page));
           page.draggable = !pg.p.locked; page.dataset.i = pg.i;
           page.addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", String(pg.i)));
@@ -4258,7 +4274,7 @@ async function esPanel(which) {
   // A fresh box per request: an older, slower request then writes into a box no longer shown.
   const P = document.createElement("div"); P.style.display = "contents"; P.textContent = "Looking…";
   $("esPanelBody").replaceChildren(P);
-  const thumb = (id) => `<img src="/api/essays/thumb/${id}" alt="">`;
+  const thumb = (id) => `<img src="/api/essays/thumb/${id}?v=2" alt="">`;
   const num = (id) => ES.photos.findIndex(p => p.id === id) + 1;
   try {
     if (which === "check") {
@@ -4438,7 +4454,7 @@ async function esBenchPanel(P) {
   for (const x of r.results) {
     const d = document.createElement("div"); d.className = "esCand";
     const n = x.like ? num(x.like) : 0;
-    d.innerHTML = `<img src="/api/essays/thumb/${x.id}" alt="" title="${esc(x.name)}"><div class="why">${esc(x.reason)}${n ? ` (#${n})` : ""}</div>
+    d.innerHTML = `<img src="/api/essays/thumb/${x.id}?v=2" alt="" title="${esc(x.name)}"><div class="why">${esc(x.reason)}${n ? ` (#${n})` : ""}</div>
       <div class="acts"><button class="add">Add</button>${n ? `<button class="sw">Swap for #${n}</button>` : ""}</div>`;
     d.querySelector(".add").onclick = async () => { await esPutIn(x.id, ES.gap); ES.gap = null; d.remove(); };
     const sw = d.querySelector(".sw");
@@ -4451,11 +4467,11 @@ async function esReplacePanel(P) {
   document.querySelector('#esPanelTabs [data-p="replace"]').hidden = false;
   if (k < 0) { P.textContent = "Click ⇄ on a photo to see replacements for it."; return; }
   const rs = await (await api(`/api/essays/${ES.id}/replace/${pid}`)).json();
-  P.innerHTML = `<div class="esCand"><img src="/api/essays/thumb/${pid}" alt=""><div class="why">Replacements for #${k + 1}, from the bench</div></div>`;
+  P.innerHTML = `<div class="esCand"><img src="/api/essays/thumb/${pid}?v=2" alt=""><div class="why">Replacements for #${k + 1}, from the bench</div></div>`;
   if (!rs.length) P.insertAdjacentHTML("beforeend", `<div class="esCand"><div class="why">Nothing on the bench fits here.</div></div>`);
   for (const x of rs) {
     const d = document.createElement("div"); d.className = "esCand";
-    d.innerHTML = `<img src="/api/essays/thumb/${x.id}" alt="" title="${esc(x.name)}"><div class="why">${esc(x.reasons.join(" · "))}</div>
+    d.innerHTML = `<img src="/api/essays/thumb/${x.id}?v=2" alt="" title="${esc(x.name)}"><div class="why">${esc(x.reasons.join(" · "))}</div>
       <div class="acts"><button>Swap in</button></div>`;
     d.querySelector("button").onclick = async () => {
       if (ES.photos[k] && ES.photos[k].locked) return $("esNote").textContent = "That photo is locked — unlock it first.";
@@ -4643,7 +4659,7 @@ async function esPublishForm(F, conn) {
       ${connected ? `<button id="pbAltGo">${have ? "Rewrite" : "Write"} alt text with Claude${est !== null ? ` (about $${est.toFixed(2)})` : ""}</button>` : `<span class="small">Connect Claude in ⚙ Settings to have it written for you.</span>`}
       ${have ? `<button id="pbAltShow">${A.dataset.open ? "Hide" : "Show / edit"}</button>` : ""}</div><div id="pbAltList"></div>`;
     const list = () => {
-      $("pbAltList").innerHTML = ES.photos.map((p, k) => `<div class="esRow" style="align-items:center"><img src="/api/essays/thumb/${p.id}" alt="" style="height:44px;border-radius:3px">
+      $("pbAltList").innerHTML = ES.photos.map((p, k) => `<div class="esRow" style="align-items:center"><img src="/api/essays/thumb/${p.id}?v=2" alt="" style="height:44px;border-radius:3px">
         <span class="small">#${k + 1}</span><input type="text" data-id="${p.id}" value="${esc(pbAlt[p.id] || "")}" maxlength="250" placeholder="Describe the photo" style="flex:1"></div>`).join("");
       $("pbAltList").querySelectorAll("input").forEach(i => i.addEventListener("input", () => { pbAlt[i.dataset.id] = i.value; save(); }));
     };

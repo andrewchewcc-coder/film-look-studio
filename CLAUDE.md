@@ -192,3 +192,7 @@ error. Extend it when adding a tab, panel or button that calls the server.
   `put_grade` / `put` only move `updated_at` when the grade / crop really changes. Shown as the amber G↻ badge + Graded filter "Edited since export" in the
   Library, "re-export" chip + filter in Grade (`/api/state` `stale`, `edits.stale_names`), counted as to-do by Grade picks, and warned about in Essays → Output →
   JPG folder (`essay_out.plan` item `stale`, button opens them in Grade).
+- Per-photo picture URLs (`/api/library/thumb`, `/api/browse/thumb|graded`, `/api/cull/view`, `/api/essays/thumb`) send `Cache-Control: no-cache` (`_RECHECK`):
+  their content changes under the same address after a re-export or re-crop. Don't give them a long max-age again (the window kept old exports for a day).
+- Grade ← Library goes back to the photo you were grading (`/api/photo_id` → `L.focusId`; `libRefresh` selects and centres it, or shows it in the big viewer if that was open).
+  The Library's scroll is saved on leaving (`L.scroll`; a hidden panel loses scrollTop). Grade's top bar shows the current file name (`#curName`).

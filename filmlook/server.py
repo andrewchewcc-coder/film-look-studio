@@ -56,6 +56,11 @@ def index():
     return (STATIC / "index.html").read_text()
 
 
+# Pictures of a photo can change under the same address (re-exported, re-cropped): the window asks each time
+# whether its copy is still current (a quick "not modified" when it is) instead of keeping it for a day.
+_RECHECK = {"Cache-Control": "no-cache"}
+
+
 @app.get("/favicon.ico")
 def favicon():
     return Response(status_code=204)
@@ -595,7 +600,7 @@ def library_thumb(photo_id: int):
     p = thumbs.path(row["thumb"]) if row and row["thumb"] else None
     if not p or not p.exists():
         raise HTTPException(404, "no thumbnail yet")
-    return FileResponse(p, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+    return FileResponse(p, media_type="image/jpeg", headers=_RECHECK)
 
 
 def _drag_response(src, graded, stem):
@@ -683,6 +688,17 @@ class FileMarkIn(LibMarkIn):
     name: str
 
 
+@app.get("/api/photo_id")
+def photo_id(name: str):
+    """The library id of a photo of the open folder / collection (to go back to it in the Library)."""
+    p = _photo(name)
+    con, drive_id, rel = edits._where(p)
+    row = con.execute("SELECT photo_id FROM files WHERE drive_id=? AND rel_path=?", (drive_id, rel)).fetchone() if drive_id else None
+    if not row or not row[0]:
+        raise HTTPException(404, "not in the Library")
+    return {"id": row[0]}
+
+
 @app.post("/api/mark_file")
 def mark_file(body: FileMarkIn):
     """The same marks from Grade, for a photo of the open folder (by file name)."""
@@ -737,7 +753,7 @@ def browse_thumb(photo_id: int):
         name = essay._essay_thumb(photo_id, kind, path, key)
         if name:
             return FileResponse(essay.ESSAY_THUMBS / name, media_type="image/jpeg",
-                                headers={"Cache-Control": "max-age=86400"})
+                                headers=_RECHECK)
     return library_thumb(photo_id)
 
 
@@ -762,7 +778,7 @@ def browse_graded(photo_id: int):
         tmp = dst.with_name(f"{dst.stem}.{uuid.uuid4().hex[:6]}.tmp")
         im.save(tmp, "JPEG", quality=88)
         tmp.replace(dst)
-    return FileResponse(dst, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+    return FileResponse(dst, media_type="image/jpeg", headers=_RECHECK)
 
 
 @app.get("/api/browse/graded_full/{photo_id}")
@@ -1469,7 +1485,7 @@ def cull_view(photo_id: int):
         dst = _make_view(photo_id)
     if dst is None:
         return library_thumb(photo_id)
-    return FileResponse(dst, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
+    return FileResponse(dst, media_type="image/jpeg", headers=_RECHECK)
 
 
 _full_lock = threading.Lock()
@@ -2087,7 +2103,7 @@ def essay_thumb(photo_id: int):
     es = _essay()
     r = _lib().con().execute("SELECT thumb FROM essay_features WHERE photo_id=?", (photo_id,)).fetchone()
     if r and r[0] and (es.ESSAY_THUMBS / r[0]).exists():
-        return FileResponse(es.ESSAY_THUMBS / r[0], media_type="image/jpeg", headers={"Cache-Control": "max-age=3600"})
+        return FileResponse(es.ESSAY_THUMBS / r[0], media_type="image/jpeg", headers=_RECHECK)
     return library_thumb(photo_id)
 
 
