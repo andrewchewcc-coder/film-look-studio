@@ -177,6 +177,12 @@ error. Extend it when adding a tab, panel or button that calls the server.
   Grade's photo list (`.thumb`) and Cull's strip (`.cuTile`) share one look: 2 px border, green pick / red reject (`/api/state` `marks` ← `edits.marked_names`), accent outline for the current photo, small dark corner chips.
 - Drag out (Mac app only, `DRAG` in the page + `DragWebView` / `FileDragSource` in `FilmLookStudio.swift`): the page posts `{drag: [{url, name}]}` once a press on a Library cell / Grade thumb moves 10 px; the app starts a file-promise
   drag and downloads each JPG from `/api/library/dragfile/{id}` or `/api/dragfile?name=` when dropped. `library/dragout.py` makes a COPY (exported JPG, else the graded photo, 4000 px, cached a day in LIBRARY_DIR/drag): never offer an original, Finder moves on same-disk drops.
+- Recent work (`library/recent.py`, `/api/library/recent?days=`): photos whose grade / crop `updated_at` or exported JPG mtime is within `days`, newest first,
+  with `worked_at` + `worked` [exported, graded, cropped]. Library Show: Recently graded (`runRecent`, 30 days, "Today" / "Yesterday" / date headers, a
+  "Graded 17:26" tag per cell) and the Recent work shelf (`#lbShelf`, `lbShelfLoad`, last 7 days, newest 40) over the plain All shoots list only (no shoot,
+  search or filter); a shelf photo opens the Recently graded view large (`lbRecentOpen`); ▾ folds it (fls.shelfFold).
+- Grade ticking (`tickThumb(name, on, range)`): the checkbox, ⌘-click a photo or T ticks; Shift-click ticks every photo shown between the last one ticked
+  (`S.lastTick`) and this one. Export → Copy grade + export ticked (`#copyExport`) = `/api/grade/copy` onto the ticked others, then `exportNames(ticked, own=true)`.
 - Keys are the same across tabs: P / X / U / 1–5 mark in Library, Cull and Grade (Grade: `gradeMark` → `POST /api/mark_file`; 0 stays Fit there), ← → previous / next (Grade: `gradeStep`, follows the strip filter),
   V = black & white preview (Library viewer `lbBW`, Cull `cuBW`, Grade `gradeBW`), Z zoom, ? shortcuts. ⌘K = go anywhere (`goOpen`: tabs, commands, Library views, shoots from `#lbWhere`, essays, culls).
 - Essays: right-hand panel `#esInsp` (title, count, look `#esInLook` → PATCH look, versions, arrange style, brief via `esBriefPanel` in `#esInBrief`); the bottom panel keeps Arrange + Output only.

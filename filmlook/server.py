@@ -1210,6 +1210,13 @@ def library_second(mode: str = "second", year: str = "", date_from: str = "", da
     return {"total": res["total"], "results": out, "note": res["note"]}
 
 
+@app.get("/api/library/recent")
+def library_recent(days: int = 7, offset: int = 0, limit: int = 200):
+    """Recent work: photos graded, cropped or exported in the last `days` days, newest first."""
+    from .library import recent
+    return recent.recent(_lib().con(), days=max(1, min(days, 366)), offset=offset, limit=min(limit, 500))
+
+
 class DecideIn(BaseModel):
     decision: str | None = None
 

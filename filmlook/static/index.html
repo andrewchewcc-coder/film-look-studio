@@ -375,6 +375,18 @@
   #more { display: block; margin: 16px auto; }
   .divider { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin: 14px 0 4px; }
   .divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+  #lbShelf { margin: 2px 0 10px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--card); }
+  .shHead { display: flex; align-items: baseline; gap: 8px; font-size: 13px; }
+  .shHead span { color: var(--muted); font-size: 12px; }
+  .shHead button { font-size: 12px; padding: 2px 8px; }
+  #lbShelf.folded #lbShelfRow { display: none; }
+  #lbShelf.folded #lbShelfHide { transform: rotate(-90deg); }
+  #lbShelfRow { display: flex; gap: 6px; overflow-x: auto; margin-top: 8px; padding-bottom: 4px; }
+  #lbShelfRow .sh { flex: 0 0 auto; height: 96px; position: relative; cursor: pointer; border-radius: 4px; overflow: hidden; background: var(--stage); }
+  #lbShelfRow .sh img { height: 100%; display: block; }
+  #lbShelfRow .sh b { position: absolute; left: 3px; bottom: 3px; font-size: 10px; font-weight: 500; background: rgba(0,0,0,.6); color: #fff; padding: 1px 5px; border-radius: 4px; }
+  #lbShelfRow .sh:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .cell .tags .wk { background: rgba(0,0,0,.6); color: #fff; }
   .dayHead { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 8px; margin: 16px 0 2px; padding-bottom: 4px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600; }
   .dayHead:first-child { margin-top: 2px; }
   .dayHead span { font-weight: 400; color: var(--muted); font-size: 12px; }
@@ -698,7 +710,7 @@
     <div><h4>Library</h4><p><b>Click</b> select · <b>⌘-click</b> add · <b>Shift-click</b> range<br><b>⌘A</b> select all · <b>Esc</b> clear<br><b>Arrows</b> move · <b>Space / Enter</b> view large<br><b>F</b> show in Finder</p></div>
     <div><h4>Big viewer</h4><p><b>← →</b> previous / next<br><b>Click / Z</b> zoom to 100% (drag to move)<br><b>G</b> graded / original · <b>S</b> side by side<br><b>V</b> black &amp; white preview · <b>Esc / Space</b> close</p></div>
     <div><h4>Cull</h4><p><b>← →</b> frame · <b>↑ ↓</b> group<br><b>Enter</b> next group · <b>Shift+Enter</b> previous<br><b>Z</b> zoom where you point · <b>C</b> compare two frames at 100% · <b>P</b> pick (stays in the group) · <b>Shift+P</b> pick and go to the next group<br><b>V</b> black &amp; white preview</p></div>
-    <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>J</b> (hold) camera JPG · <b>← →</b> previous / next photo · <b>V</b> black &amp; white preview · <b>\</b> hide the photo strip · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
+    <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>J</b> (hold) camera JPG · <b>← →</b> previous / next photo · <b>V</b> black &amp; white preview · <b>T</b> tick / untick (⌘-click a photo; Shift-click a range) · <b>\</b> hide the photo strip · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
     <div><h4>Essays</h4><p><b>⌘Z</b> undo · drag to reorder<br><b>🔒</b> lock a photo · <b>⇄</b> replace</p></div>
   </div>
   <div class="small">Press <b>?</b> any time to see this.</div>
@@ -709,7 +721,7 @@
     <select id="lbWhere" hidden><option value="">All shoots</option></select>
     <div id="lbTree"></div>
     <label for="lbMode">Show</label>
-    <select id="lbMode"><option value="">All photos</option><option value="second">Worth a second look</option><option value="this_day">On this day</option></select>
+    <select id="lbMode"><option value="">All photos</option><option value="second">Worth a second look</option><option value="this_day">On this day</option><option value="recent">Recently graded</option></select>
     <div class="sideHead">Filter <span id="fCount"></span><button id="fClear" hidden title="Turn all filters off">Clear</button></div>
     <label>Dates</label>
     <div class="dates2"><span>From</span><input type="date" id="fFrom"><span>To</span><input type="date" id="fTo"></div>
@@ -753,6 +765,9 @@
     <div id="lbChips" hidden></div>
     <div id="lbNew" hidden></div>
     <div id="lbNote" class="small"></div>
+    <div id="lbShelf" hidden><div class="shHead"><b>Recent work</b><span id="lbShelfSub"></span><span style="flex:1"></span>
+      <button id="lbShelfAll" title="Show all recent work in the grid (Show: Recently graded)">See all ›</button><button id="lbShelfHide" title="Fold the shelf away (it stays folded)">▾</button></div>
+      <div id="lbShelfRow"></div></div>
     <div id="grid" class="grid"></div>
     <button id="more" hidden>Show more</button>
     <div id="libEmpty" hidden></div>
@@ -951,8 +966,8 @@
     <section id="film">
     <div class="filmHead"><button id="filmHide" title="Hide or show the photo strip (\ key)">▾ Photos</button><select id="filmFilter" title="Show only some photos"><option value="">All photos</option><option value="todo">Not graded yet</option><option value="edited">Edited, not exported</option><option value="graded">Graded (exported)</option><option value="stale">Edited since export</option></select>
       <button id="nextTodo" title="Go to the next photo that isn't graded yet">Next not graded ›</button>
-      <div class="tickRow"><button id="tickAll" title="Tick every photo shown (for batch export or copying a grade)">Tick all</button><button id="tickNone">Untick all</button></div>
-      <span class="hint">Tick photos to batch-export or copy a grade to them.</span></div>
+      <div class="tickRow"><button id="tickAll" title="Tick every photo shown (for batch export or copying a grade). One at a time: T or ⌘-click; Shift-click ticks a range.">Tick all</button><button id="tickNone">Untick all</button></div>
+      <span id="filmTicked" class="hint" title="Tick: T, ⌘-click, Shift-click for a range. Then Export → Copy grade + export ticked."></span></div>
     <div id="thumbs"></div></section>
   </section>
   <aside>
@@ -1065,6 +1080,7 @@
 
     <div class="gsub">Other photos</div>
     <div class="row"><button id="copyGrade" title="Give the ticked photos this look, sliders and curve (each keeps its own crop)" disabled>Copy this grade to ticked (0)</button></div>
+    <div class="row"><button id="copyExport" class="primary" title="Give the ticked photos this grade, then export them all (this photo too, if it's ticked). Each keeps its own crop." disabled>Copy grade + export ticked (0)</button></div>
     <div class="small">Each photo remembers its own look, sliders and curve.</div>
   </div>
   <div id="gActions">
@@ -1639,19 +1655,36 @@ async function loadState(st) {
   for (const name of S.photos) {
     const t = document.createElement("div"); t.dataset.name = name; thumbStatus(t);
     t.innerHTML = `<img loading="lazy" src="/api/thumb?${q({ name })}"><input type="checkbox" title="Include in batch export"><div class="nm">${name}</div>`;
-    t.querySelector("input").addEventListener("click", (e) => {
-      e.stopPropagation(); e.target.checked ? S.ticked.add(name) : S.ticked.delete(name); updateTicked();
+    t.querySelector("input").addEventListener("click", (e) => { e.stopPropagation(); tickThumb(name, e.target.checked, e.shiftKey); });
+    t.addEventListener("click", (e) => {        // ⌘-click ticks / unticks without opening (Shift too: a range)
+      if (e.metaKey || e.ctrlKey || e.shiftKey) { e.preventDefault(); return tickThumb(name, !S.ticked.has(name), e.shiftKey); }
+      select(name);
     });
-    t.addEventListener("click", () => select(name));
     $("thumbs").appendChild(t);
   }
   filmFilter();
   if (S.photos.length) { select(S.photos.includes(S.current) ? S.current : S.photos[0]); }
   else if (st.folder) { $("empty").textContent = "No photos (RAW or JPG) in this folder."; }
 }
+// Tick one photo; with Shift, every photo shown between the last one ticked and this one gets the same state.
+function tickThumb(name, on, range = false) {
+  const shown = [...document.querySelectorAll("#thumbs .thumb")].filter(t => !t.hidden).map(t => t.dataset.name);
+  let names = [name];
+  if (range && S.lastTick && shown.includes(S.lastTick)) {
+    const a = shown.indexOf(S.lastTick), b = shown.indexOf(name);
+    names = shown.slice(Math.min(a, b), Math.max(a, b) + 1);
+  }
+  names.forEach(n => {
+    on ? S.ticked.add(n) : S.ticked.delete(n);
+    const cb = document.querySelector(`#thumbs .thumb[data-name="${CSS.escape(n)}"] input`); if (cb) cb.checked = on;
+  });
+  S.lastTick = name; updateTicked();
+}
 function updateTicked() {
   $("exportsel").textContent = `Ticked (${S.ticked.size})`; $("exportsel").disabled = !S.ticked.size;
   $("copyGrade").textContent = `Copy this grade to ticked (${S.ticked.size})`; $("copyGrade").disabled = !S.ticked.size;
+  $("copyExport").textContent = `Copy grade + export ticked (${S.ticked.size})`; $("copyExport").disabled = !S.ticked.size;
+  $("filmTicked").textContent = S.ticked.size ? `${S.ticked.size} ticked` : "T or ⌘-click to tick"; 
   updateCopyRatio();
 }
 function updateCopyRatio() {
@@ -1889,6 +1922,21 @@ $("copyGrade").onclick = async () => {
     const r = await (await api("/api/grade/copy", esJSON({ names, look: S.look, adjust: { ...S.adjust, masks: (S.adjust.masks || []).filter(m => m.kind !== "brush") } }))).json();   // painting only fits its own photo
     S.edited = new Set(r.edited); document.querySelectorAll(".thumb").forEach(thumbStatus);
     status(`Gave ${r.copied} photo(s) this grade. Each keeps its own crop.`);
+  } catch (e) { status(e.message, true); }
+};
+$("copyExport").onclick = async () => {        // one step: this grade onto the ticked photos, then export them
+  const names = S.photos.filter(n => S.ticked.has(n)), others = names.filter(n => n !== S.current);
+  if (!names.length) return status("Tick photos in the strip first (⌘-click, Shift-click for a range, or T).");
+  const already = others.filter(n => (S.edited && S.edited.has(n)) || (S.exported && S.exported.has(n))).length;
+  if (!confirm(`Give ${others.length} ticked photo(s) this grade and export ${names.length} JPG(s)?` +
+      (already ? `\n\n${already} of them already have a grade of their own: it will be replaced.` : "") +
+      "\n\nEach photo keeps its own crop. Originals are never changed.")) return;
+  try {
+    if (others.length) {
+      const r = await (await api("/api/grade/copy", esJSON({ names: others, look: S.look, adjust: { ...S.adjust, masks: (S.adjust.masks || []).filter(m => m.kind !== "brush") } }))).json();
+      S.edited = new Set(r.edited); document.querySelectorAll(".thumb").forEach(thumbStatus);
+    }
+    exportNames(names, true);
   } catch (e) { status(e.message, true); }
 };
 $("lut").onclick = () => { location.href = "/api/lut?" + q({ look: S.look, adjust: JSON.stringify(S.adjust), name: S.current || "" }); };
@@ -2180,6 +2228,11 @@ function understood(u) {
 async function runSearch(more = false, atLeast = 0) {
   if ($("lbMode").value) return runSecond(more);
   lbModeControls();
+  if (!more) {                                  // the Recent work shelf: only over the plain All shoots list
+    const plain = !$("lbWhere").value && !$("libq").value.trim() && !L.like.length
+      && !["fFrom", "fTo", "fCamera", "fGraded", "fFlag"].some(id => $(id).value) && !+$("fStars").value;
+    if (plain) lbShelfLoad(); else $("lbShelf").hidden = true;
+  }
   const seq = ++L.seq;
   if (!more) L.offset = 0;
   const p = params(L.offset);
@@ -2271,6 +2324,8 @@ $("more").onclick = () => runSearch(true);
 // Second look, as Library views: photos you haven't picked, rejected or graded that deserve another
 // look (or ones taken on this day in past years), ranked, with reasons. Works for any Browse choice.
 async function runSecond(more = false) {
+  if ($("lbMode").value === "recent") return runRecent(more);
+  $("lbShelf").hidden = true;
   const seq = ++L.seq, mode = $("lbMode").value, v = $("lbWhere").value;
   lbModeControls();
   if (!more) L.offset = 0;
@@ -2278,6 +2333,7 @@ async function runSecond(more = false) {
               date_to: $("fTo").value, offset: L.offset, limit: 120 };
   lbTreeDraw();
   const where = $("lbWhere").selectedOptions[0];
+  $("lbSub").title = "";
   $("lbTitle").textContent = (mode === "this_day" ? "On this day · " : "Worth a second look · ") + (where ? where.textContent.replace(/ \(\d+\)$/, "") : "All shoots");
   if (!more) $("lbSub").textContent = "Looking… (the first time after opening the app takes about 15 seconds)";
   let res;
@@ -2294,6 +2350,81 @@ async function runSecond(more = false) {
   $("libEmpty").textContent = L.total ? "" : (mode === "this_day" ? "Nothing from this date in past years that still needs a look." : "Nothing here needs a second look.");
   lbCount(); lbCullButton();
 }
+// Recent work: what you graded, cropped or exported lately (/api/library/recent), newest first, under
+// "Today" / "Yesterday" / date headers. The shelf above the plain All shoots list shows the last 7 days.
+const RECENT_DAYS = 30;
+function workedWhen(t) {
+  const d = new Date(t * 1000), today = new Date(); today.setHours(0, 0, 0, 0);
+  const day = new Date(d); day.setHours(0, 0, 0, 0);
+  const ago = Math.round((today - day) / 86400000);
+  return ago === 0 ? "Today" : ago === 1 ? "Yesterday" : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+}
+function workedWhat(r) {
+  const hm = new Date(r.worked_at * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return (r.worked.includes("exported") ? "Exported" : r.worked.includes("graded") ? "Graded" : "Cropped") + " " + hm;
+}
+async function runRecent(more = false) {
+  $("lbShelf").hidden = true;
+  const seq = ++L.seq;
+  lbModeControls();
+  if (!more) L.offset = 0;
+  lbTreeDraw();
+  $("lbTitle").textContent = "Recently graded";
+  if (!more) $("lbSub").textContent = "Loading…";
+  let res;
+  try { res = await (await api("/api/library/recent?" + q({ days: RECENT_DAYS, offset: L.offset, limit: 200 }))).json(); }
+  catch (e) { if (seq === L.seq) $("lbSub").textContent = e.message; return; }
+  if (seq !== L.seq) return;
+  if (!more) { L.photos = []; $("grid").innerHTML = ""; L.day = null; }
+  for (const r of res.results) {
+    const day = workedWhen(r.worked_at);
+    if (L.day !== day) {
+      L.day = day; const h = document.createElement("div"); h.className = "dayHead";
+      h.innerHTML = esc(day); $("grid").appendChild(h);
+    }
+    L.photos.push(r);
+    const c = cell(r, L.photos.length - 1);
+    c.querySelector(".tags").insertAdjacentHTML("afterbegin", `<span class="wk" title="${esc(r.worked.join(", "))}">${esc(workedWhat(r))}</span>`);
+    $("grid").appendChild(c);
+  }
+  L.total = res.total; L.offset += res.results.length;
+  $("more").hidden = L.offset >= L.total;
+  $("lbSub").textContent = `${L.total.toLocaleString()} photos worked on · last ${RECENT_DAYS} days`;
+  $("lbSub").title = "Graded, cropped or exported in the app (or exported elsewhere and scanned), newest work first";
+  $("libEmpty").hidden = L.total > 0;
+  $("libEmpty").textContent = L.total ? "" : `Nothing graded in the last ${RECENT_DAYS} days.`;
+  lbCount(); lbCullButton();
+}
+async function lbShelfLoad() {                 // the 7-day shelf over the plain All shoots list
+  const sh = $("lbShelf");
+  let res;
+  try { res = await (await api("/api/library/recent?" + q({ days: 7, limit: 40 }))).json(); } catch (e) { sh.hidden = true; return; }
+  if ($("lbMode").value || $("lbWhere").value || $("libq").value.trim()) return;   // the view changed meanwhile
+  sh.hidden = !res.total;
+  if (!res.total) return;
+  let folded = false; try { folded = localStorage.getItem("fls.shelfFold") === "1"; } catch (e) {}
+  sh.classList.toggle("folded", folded);
+  $("lbShelfSub").textContent = `last 7 days · ${res.total} photo${res.total > 1 ? "s" : ""}` + (res.total > res.results.length ? ` (newest ${res.results.length} here)` : "");
+  const row = $("lbShelfRow"); row.innerHTML = "";
+  for (const r of res.results) {
+    const t = document.createElement("div"); t.className = "sh";
+    t.title = `${r.name}\n${r.folder}\n${workedWhat(r)} · ${workedWhen(r.worked_at)}`;
+    t.innerHTML = `<img loading="lazy" src="${lbThumb(r)}" alt="" draggable="false"><b>${esc(workedWhen(r.worked_at))}</b>`;
+    t.onclick = () => lbRecentOpen(r.id);
+    row.appendChild(t);
+  }
+}
+async function lbRecentOpen(id) {             // shelf photo → Recently graded view, that photo large
+  $("lbMode").value = "recent"; lbFilterUI(); L.sel.clear();
+  await runSearch();
+  const i = L.photos.findIndex(r => r.id === id);
+  if (i >= 0) lbOpenViewer(i);
+}
+$("lbShelfAll").onclick = () => { $("lbMode").value = "recent"; lbFilterUI(); L.sel.clear(); runSearch(); $("libMain").scrollTop = 0; };
+$("lbShelfHide").onclick = () => {
+  const f = !$("lbShelf").classList.contains("folded"); $("lbShelf").classList.toggle("folded", f);
+  try { localStorage.setItem("fls.shelfFold", f ? "1" : "0"); } catch (e) {}
+};
 async function lbNotNow(rs) {                // don't suggest these again
   for (const r of rs) {
     try { await api("/api/second/decide/" + r.id, esJSON({ decision: "dismiss" })); r.dismissed = true; lbRedraw(r); }
@@ -2745,7 +2876,7 @@ document.addEventListener("keydown", (e) => {
   else if (k === "x" || k === "X") libMark(targets, { flag: "reject" });
   else if (k === "u" || k === "U") libMark(targets, { flag: null });
   else if (/^[0-5]$/.test(k)) libMark(targets, { rating: +k });
-  else if ((k === "n" || k === "N") && $("lbMode").value) lbNotNow(targets);
+  else if ((k === "n" || k === "N") && ["second", "this_day"].includes($("lbMode").value)) lbNotNow(targets);
   else return;
   e.preventDefault();
 });
@@ -3962,6 +4093,7 @@ document.addEventListener("keydown", (e) => {
   else if (k === "0") { e.preventDefault(); zoomFit(); }
   else if (k === "z" || k === "Z") { e.preventDefault(); if (GZ.fit) zoomTo(1, ...p); else zoomFit(); }
   else if (k === "v" || k === "V") { e.preventDefault(); gradeBW(); }
+  else if (k === "t" || k === "T") { e.preventDefault(); tickThumb(S.current, !S.ticked.has(S.current)); }
   else if (k === "ArrowRight" || k === "ArrowLeft") { e.preventDefault(); gradeStep(k === "ArrowRight" ? 1 : -1); }
   else if ("pPxXuU".includes(k)) { e.preventDefault(); gradeMark({ flag: k.toLowerCase() === "p" ? "pick" : k.toLowerCase() === "x" ? "reject" : null }); }
   else if ("12345".includes(k)) { e.preventDefault(); const cur = (S.marks[S.current] || [null, 0])[1]; gradeMark({ rating: cur === +k ? 0 : +k }); }
@@ -5100,6 +5232,7 @@ function goStatic() {
     { label: "Hide / show the photo strip (Grade)", kind: "Command", run: () => { setTab("grade"); filmHide(); } },
     { label: "Worth a second look", kind: "Library view", run: () => { setTab("lib"); $("lbMode").value = "second"; $("lbMode").dispatchEvent(new Event("change")); } },
     { label: "On this day", kind: "Library view", run: () => { setTab("lib"); $("lbMode").value = "this_day"; $("lbMode").dispatchEvent(new Event("change")); } },
+    { label: "Recently graded", kind: "Library view", run: () => { setTab("lib"); $("lbMode").value = "recent"; $("lbMode").dispatchEvent(new Event("change")); } },
     { label: "All photos", kind: "Library view", run: () => { setTab("lib"); $("lbMode").value = ""; $("lbWhere").value = ""; $("lbWhere").dispatchEvent(new Event("change")); } },
   ];
 }

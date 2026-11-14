@@ -136,6 +136,16 @@ def test_click_through_every_tab(app):
               masks: [{ kind: "radial", cx: 0.5, cy: 0.5, rx: 0.2, ry: 0.2 }, { kind: "linear" }, { kind: "brush", id }] }));
             await api("/api/mark_file", esJSON({ name: S.photos[0], flag: "pick", rating: 3 }));   // marking from Grade
             gradeStep(1); gradeBW(); gradeBW();
+            tickThumb(S.photos[0], true); tickThumb(S.photos[Math.min(1, S.photos.length - 1)], true, true);   // Shift-click range
+            window.confirm = () => true; $("copyExport").click();                       // copy grade + export ticked
+            for (let i = 0; i < 60 && !S.photos.filter(n => S.ticked.has(n)).every(n => S.exported.has(n)); i++)
+              await new Promise(r => setTimeout(r, 500));
+            if (!S.photos.filter(n => S.ticked.has(n)).every(n => S.exported.has(n))) throw new Error("copy + export ticked didn't export");
+            tickAll(false);
+            const rec = await (await api("/api/library/recent?days=7")).json();         // Recent work shelf + view
+            if (!rec.total) throw new Error("recent work is empty after an export");
+            await lbShelfLoad(); await lbRecentOpen(rec.results[0].id); lbCloseViewer();
+            $("lbMode").value = ""; lbFilterUI();
             await api("/api/dragfile?" + q({ name: S.photos[0] }));                   // the JPG copy used to drag a photo out
             await api("/api/library/dragfile/" + (await (await api("/api/library/search?cats=&limit=1")).json()).results[0].id);
             await api("/api/render?" + q({ name: S.photos[0], look: S.look, edge: 400, adjust: JSON.stringify({ masks: [

@@ -435,3 +435,31 @@ def test_edited_since_export_is_stale(tmp_path, monkeypatch):
     assert not stale()                                                 # graded, then exported
     con.execute("UPDATE grades SET updated_at = datetime(?, 'unixepoch')", (exp_t + 600,))
     assert stale()                                                     # graded again after the export
+
+
+def test_recent_work_lists_what_you_graded_or_exported(tmp_path, monkeypatch):
+    """Library → Recently graded / the Recent work shelf: newest work first, older work left out."""
+    import time
+    from filmlook.library import recent
+    photos = tmp_path / "photos" / "2025 01 01 Test"
+    photos.mkdir(parents=True)
+    for n in "ABC":
+        (photos / f"{n}.dng").write_bytes(f"raw-{n}".encode() * 1000)
+    (photos / "B-IG.jpg").write_bytes(b"jpg-b" * 1000)
+    monkeypatch.setattr(scan, "read_exif", lambda paths: {})
+    monkeypatch.setattr(scan.drives, "_volume_info", lambda mount: ("TEST-UUID", "Test"))
+    con = db.connect(tmp_path / "lib.db")
+    scan.add_root(con, tmp_path / "photos")
+    scan.scan(con)
+    now = time.time()
+    row = lambda n: con.execute("SELECT drive_id, rel_path, photo_id FROM files WHERE rel_path LIKE ?", (f"%{n}.dng",)).fetchone()
+    a, b, c = row("A"), row("B"), row("C")
+    con.execute("INSERT INTO grades (drive_id, rel_path, look, adjust, updated_at) VALUES (?, ?, 'neutral', '{}', datetime(?, 'unixepoch'))",
+                (a[0], a[1], now - 3600))                                  # graded an hour ago
+    con.execute("UPDATE files SET mtime=? WHERE rel_path LIKE '%B-IG.jpg'", (now - 60,))   # exported a minute ago
+    con.execute("INSERT INTO edits (drive_id, rel_path, geometry, updated_at) VALUES (?, ?, '{}', datetime(?, 'unixepoch'))",
+                (c[0], c[1], now - 20 * 86400))                            # cropped 20 days ago
+    r = recent.recent(con, days=7, now=now)
+    assert [x["id"] for x in r["results"]] == [b[2], a[2]] and r["total"] == 2
+    assert r["results"][0]["worked"] == ["exported"] and r["results"][1]["worked"] == ["graded"]
+    assert [x["id"] for x in recent.recent(con, days=30, now=now)["results"]] == [b[2], a[2], c[2]]
