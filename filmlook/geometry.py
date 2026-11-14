@@ -1,10 +1,13 @@
 """Crop and straighten: non-destructive geometry applied after decoding, before the grade.
 
-Order: (perspective — reserved) -> flip / 90-degree turns -> fine rotation -> crop.
+Order: flip / 90-degree turns -> perspective (Transform) -> fine rotation -> crop.
 
 Everything is resolution independent, so one stored edit gives the same framing on the
 1600 px preview, a 512 px thumbnail and the full-resolution export:
   - `rot90`  : 0 / 90 / 180 / 270 clockwise, after optional `flip_h` / `flip_v`
+  - `perspective`: {"v": -100..100, "h": -100..100} or None. Vertical: + makes the top wider (buildings
+               that lean in when you look up stand straight); horizontal: + makes the right side wider.
+               A projective warp about the centre of the turned image, same canvas size (corners may empty).
   - `angle`  : fine rotation in degrees, positive = clockwise, about the image centre;
                the canvas keeps the turned image's size (corners outside are empty)
   - `crop`   : [x, y, w, h] as fractions of that canvas, or None for the whole frame
@@ -29,6 +32,12 @@ def normalise(g):
     out = {"rot90": int(g["rot90"]) % 360 // 90 * 90, "flip_h": bool(g["flip_h"]), "flip_v": bool(g["flip_v"]),
            "angle": float(max(-MAX_ANGLE, min(MAX_ANGLE, float(g["angle"] or 0.0)))),
            "aspect": str(g.get("aspect") or "original")[:20], "perspective": None, "crop": None}
+    p = g.get("perspective")
+    if isinstance(p, dict):
+        v = max(-100.0, min(100.0, float(p.get("v") or 0.0)))
+        h = max(-100.0, min(100.0, float(p.get("h") or 0.0)))
+        if abs(v) > 1e-3 or abs(h) > 1e-3:
+            out["perspective"] = {"v": round(v, 2), "h": round(h, 2)}
     c = g.get("crop")
     if c:
         x, y, w, h = (float(v) for v in c)
@@ -41,7 +50,49 @@ def normalise(g):
 
 def is_identity(g):
     g = normalise(g)
-    return not (g["rot90"] or g["flip_h"] or g["flip_v"] or abs(g["angle"]) > 1e-6 or g["crop"])
+    return not (g["rot90"] or g["flip_h"] or g["flip_v"] or abs(g["angle"]) > 1e-6 or g["crop"] or g["perspective"])
+
+
+PERSP_K = 0.004          # slider 100 -> 0.4: the far edge 1.67x the near one at full strength
+
+
+def _persp(g):
+    """(a, b) of the warp x' = x / (1 + b x + a y), y' = y / (1 + b x + a y) in centred units of half the
+    long side; (0, 0) when there is none."""
+    p = g.get("perspective") if isinstance(g, dict) else None
+    if not p:
+        return 0.0, 0.0
+    return float(p.get("v") or 0) * PERSP_K, -float(p.get("h") or 0) * PERSP_K
+
+
+def persp_inverse(x, y, cw, ch, ab):
+    """Corrected-canvas point (pixels) -> point in the turned image (pixels). Points the warp can't reach
+    go far outside (so they count as empty)."""
+    a, b = ab
+    if not a and not b:
+        return x, y
+    r = max(cw, ch) / 2
+    u, v = (x - cw / 2) / r, (y - ch / 2) / r
+    d = 1 - b * u - a * v
+    d = np.where(np.asarray(d) > 1e-6, d, np.nan) if isinstance(d, np.ndarray) else (d if d > 1e-6 else float("nan"))
+    ox, oy = cw / 2 + u / d * r, ch / 2 + v / d * r
+    if isinstance(ox, np.ndarray):
+        bad = np.isnan(ox) | np.isnan(oy)
+        ox, oy = np.where(bad, -1e9, ox), np.where(bad, -1e9, oy)
+    elif ox != ox:
+        ox = oy = -1e9
+    return ox, oy
+
+
+def persp_forward(x, y, cw, ch, ab):
+    """Point in the turned image (pixels) -> corrected-canvas point (pixels)."""
+    a, b = ab
+    if not a and not b:
+        return x, y
+    r = max(cw, ch) / 2
+    u, v = (x - cw / 2) / r, (y - ch / 2) / r
+    d = 1 + b * u + a * v
+    return cw / 2 + u / d * r, ch / 2 + v / d * r
 
 
 def turned_size(w, h, g):
@@ -69,16 +120,18 @@ def _turn(img, g):
     return np.ascontiguousarray(img)
 
 
-def valid(x, y, cw, ch, angle):
-    """Is canvas point (x, y) inside the rotated image? (pixel units, canvas cw x ch)"""
+def valid(x, y, cw, ch, angle, persp=(0.0, 0.0)):
+    """Is canvas point (x, y) inside the rotated (and perspective-corrected) image? (pixels, canvas cw x ch)"""
     t = math.radians(angle)
     dx, dy = x - cw / 2, y - ch / 2
     sx = cw / 2 + dx * math.cos(t) + dy * math.sin(t)   # inverse of a clockwise turn
     sy = ch / 2 - dx * math.sin(t) + dy * math.cos(t)
-    return -1e-6 <= sx <= cw + 1e-6 and -1e-6 <= sy <= ch + 1e-6
+    sx, sy = persp_inverse(sx, sy, cw, ch, persp)
+    e = 1e-6 * max(cw, ch)
+    return -e <= sx <= cw + e and -e <= sy <= ch + e
 
 
-def max_crop(cw, ch, angle, ratio=None, center=(0.5, 0.5)):
+def max_crop(cw, ch, angle, ratio=None, center=(0.5, 0.5), persp=(0.0, 0.0)):
     """Largest crop of `ratio` (w/h in pixels; None = canvas ratio) around `center` that has no
     empty corners after rotating by `angle`. Returns [x, y, w, h] as fractions."""
     ratio = ratio or cw / ch
@@ -89,7 +142,7 @@ def max_crop(cw, ch, angle, ratio=None, center=(0.5, 0.5)):
         w = s * min(cw, ch * ratio)
         h = w / ratio
         corners = [(cx - w / 2, cy - h / 2), (cx + w / 2, cy - h / 2), (cx - w / 2, cy + h / 2), (cx + w / 2, cy + h / 2)]
-        ok = all(0 <= px <= cw and 0 <= py <= ch and valid(px, py, cw, ch, angle) for px, py in corners)
+        ok = all(0 <= px <= cw and 0 <= py <= ch and valid(px, py, cw, ch, angle, persp) for px, py in corners)
         lo, hi = (s, hi) if ok else (lo, s)
     w = lo * min(cw, ch * ratio)
     h = w / ratio
@@ -106,7 +159,8 @@ def apply(img, g, rows=256):
     x, y, w, h = g["crop"] or (0.0, 0.0, 1.0, 1.0)
     ox, oy = x * cw, y * ch
     ow, oh = max(1, round(w * cw)), max(1, round(h * ch))
-    if abs(g["angle"]) < 1e-6:          # straight crop: exact pixels, no resampling
+    ab = _persp(g)
+    if abs(g["angle"]) < 1e-6 and not g["perspective"]:   # straight crop: exact pixels, no resampling
         x0, y0 = int(round(ox)), int(round(oy))
         return np.ascontiguousarray(img[y0:y0 + oh, x0:x0 + ow])
     t = math.radians(g["angle"])
@@ -117,12 +171,18 @@ def apply(img, g, rows=256):
     def strip(r0):
         r1 = min(oh, r0 + rows)
         ys = (np.arange(r0, r1, dtype=np.float32) + np.float32(oy + 0.5 - ch / 2))[:, None]
-        sx = cw / 2 + xs * cos + ys * sin - 0.5
-        sy = ch / 2 - xs * sin + ys * cos - 0.5
+        sx = cw / 2 + xs * cos + ys * sin
+        sy = ch / 2 - xs * sin + ys * cos
+        if ab[0] or ab[1]:
+            sx, sy = persp_inverse(sx, sy, cw, ch, ab)
+            sx, sy = sx.astype(np.float32), sy.astype(np.float32)
+        empty = (sx < -1) | (sx > cw + 1) | (sy < -1) | (sy > ch + 1)    # outside the photo: black, not smeared edges
+        sx, sy = sx - 0.5, sy - 0.5
         for c in range(img.shape[2]):
             vals = _bilinear(img[..., c], sx, sy)
             if img.dtype.kind == "u":
                 vals = np.clip(vals + 0.5, 0, np.iinfo(img.dtype).max)
+            vals[empty] = 0
             out[r0:r1, :, c] = vals
 
     with ThreadPoolExecutor(max_workers=max(1, min(4, (os.cpu_count() or 2) - 1))) as pool:
@@ -135,7 +195,7 @@ def with_ratio(g, w, h, ratio, label):
     w x h (oriented) photo, keeping its own turns and straightening."""
     g = normalise(g)
     cw, ch = turned_size(w, h, g)
-    g["crop"] = max_crop(cw, ch, g["angle"], ratio=float(ratio))
+    g["crop"] = max_crop(cw, ch, g["angle"], ratio=float(ratio), persp=_persp(g))
     g["aspect"] = label
     return normalise(g)
 
@@ -192,6 +252,7 @@ def frame_to_source(fx, fy, W, H, g):
     t = math.radians(g["angle"])
     tx = cw / 2 + X * math.cos(t) + Y * math.sin(t)
     ty = ch / 2 - X * math.sin(t) + Y * math.cos(t)
+    tx, ty = persp_inverse(tx, ty, cw, ch, _persp(g))
     return _turned_to_src(tx, ty, W, H, g)
 
 
@@ -200,6 +261,7 @@ def source_to_frame(sx, sy, W, H, g):
     g = normalise(g)
     cw, ch = _turn_dims(W, H, g)
     tx, ty = _src_to_turned(np.asarray(sx, np.float64), np.asarray(sy, np.float64), W, H, g)
+    tx, ty = persp_forward(tx, ty, cw, ch, _persp(g))
     a, b = tx - cw / 2, ty - ch / 2
     t = math.radians(g["angle"])
     X = math.cos(t) * a - math.sin(t) * b + cw / 2
@@ -211,4 +273,4 @@ def source_to_frame(sx, sy, W, H, g):
 def same(g1, g2):
     """Do two edits frame the photo identically?"""
     a, b = normalise(g1), normalise(g2)
-    return all(a[k] == b[k] for k in ("rot90", "flip_h", "flip_v", "angle", "crop"))
+    return all(a[k] == b[k] for k in ("rot90", "flip_h", "flip_v", "angle", "crop", "perspective"))

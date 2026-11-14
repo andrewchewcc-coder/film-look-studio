@@ -119,7 +119,11 @@ def test_click_through_every_tab(app):
             await select(S.photos[0]); await new Promise(r => setTimeout(r, 2500));
             for (const k of ["adjust", "tone", "masks", "out", "crop", "look"]) { gradeTab(k); await new Promise(r => setTimeout(r, 400)); }
             await cropEnter(); await new Promise(r => setTimeout(r, 1500));
-            $("crAuto").click(); await new Promise(r => setTimeout(r, 2500)); cropExit(false);
+            $("crAuto").click(); await new Promise(r => setTimeout(r, 2500));
+            setPersp(30, -20); await new Promise(r => setTimeout(r, 1500)); cropExit(true);        // Transform, saved
+            await new Promise(r => setTimeout(r, 2500));
+            await api("/api/render?" + q({ name: S.photos[0], look: S.look, edge: 400, crop: "saved" }));
+            await saveEdit(blankEdit());
             await (await api("/api/mask_info?" + q({ name: S.photos[0], kind: "sky" }))).json();
             const c = document.createElement("canvas"); c.width = c.height = 8;     // a painted mask + both gradients render
             c.getContext("2d").fillRect(0, 0, 4, 8);

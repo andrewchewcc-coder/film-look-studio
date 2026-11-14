@@ -152,7 +152,8 @@ def render(name: str, look: str = "neutral", adjust: str = "{}", edge: int = 140
         g = edits.get(p)
     elif crop == "turn":
         t = json.loads(turn) if turn else edits.get(p)
-        g = {"rot90": t.get("rot90", 0), "flip_h": t.get("flip_h", False), "flip_v": t.get("flip_v", False)}
+        g = {"rot90": t.get("rot90", 0), "flip_h": t.get("flip_h", False), "flip_v": t.get("flip_v", False),
+             "perspective": t.get("perspective")}
     else:
         g = None
     return _jpeg(engine.render_preview(p, _recipe(look, adjust), edge=min(edge, engine.PREVIEW_EDGE), geom=g))
@@ -257,7 +258,8 @@ def auto_straighten(name: str, turn: str = "{}"):
     on the photo with its flips / 90-degree turns but no fine rotation. sure=False: not enough lines."""
     from . import straighten
     t = json.loads(turn or "{}")
-    g = {"rot90": t.get("rot90", 0), "flip_h": t.get("flip_h", False), "flip_v": t.get("flip_v", False)}
+    g = {"rot90": t.get("rot90", 0), "flip_h": t.get("flip_h", False), "flip_v": t.get("flip_v", False),
+             "perspective": t.get("perspective")}
     img = engine.render_preview(_photo(name), _recipe("neutral", "{}"), edge=straighten.WORK_EDGE, geom=g)
     import numpy as np
     angle, conf = straighten.estimate(np.asarray(img, np.float32) / 255)

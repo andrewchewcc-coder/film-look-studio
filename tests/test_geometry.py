@@ -130,3 +130,30 @@ def test_grades_are_remembered_per_photo(tmp_path, monkeypatch):
     edits.put_grade("a.dng", "classic-chrome", {})                 # change of mind replaces it
     assert edits.get_grade("a.dng")["look"] == "classic-chrome"
     assert edits.put_grade("a.dng", "neutral", {"strength": 1}) is None   # back to plain: forgotten
+
+
+def test_perspective_transform():
+    """Vertical / horizontal perspective: stored, round-trips through the point mapping, matches apply(),
+    and the auto-trimmed crop leaves out the corners the warp empties."""
+    import numpy as np
+    from filmlook import geometry as G
+    assert G.normalise({"perspective": {"v": 0, "h": 0}})["perspective"] is None
+    assert G.normalise({"perspective": {"v": 250, "h": -3}})["perspective"] == {"v": 100.0, "h": -3.0}
+    assert not G.is_identity({"perspective": {"v": 20}})
+    W, H = 300, 200
+    g = {"rot90": 90, "perspective": {"v": 60, "h": -40}, "angle": 4, "crop": [0.2, 0.15, 0.6, 0.7]}
+    fx, fy = np.linspace(0.1, 0.9, 9), np.linspace(0.9, 0.1, 9)
+    sx, sy = G.frame_to_source(fx, fy, W, H, g)
+    bx, by = G.source_to_frame(sx, sy, W, H, g)
+    assert np.allclose(bx, fx) and np.allclose(by, fy)
+    img = np.zeros((H, W, 3), np.float32)
+    img[60, 120] = 1                                                    # a dot on the photo...
+    out = G.apply(img, g)[..., 0]
+    yy, xx = np.unravel_index(np.argmax(out), out.shape)
+    u, v = G.source_to_frame(120.5, 60.5, W, H, g)                      # ...lands where the mapping says
+    assert abs((xx + 0.5) / out.shape[1] - u) < 0.01 and abs((yy + 0.5) / out.shape[0] - v) < 0.01
+    up = G.normalise({"perspective": {"v": 50}})                       # top widened: bottom corners empty
+    ab = G._persp(up)
+    assert G.valid(150, 5, W, H, 0, ab) and not G.valid(5, 195, W, H, 0, ab)
+    c = G.with_ratio(up, W, H, 1.5, "3:2")["crop"]
+    assert c[2] < 1 and all(G.valid(x * W, y * H, W, H, 0, ab) for x in (c[0], c[0] + c[2]) for y in (c[1], c[1] + c[3]))

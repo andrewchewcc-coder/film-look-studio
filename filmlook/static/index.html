@@ -970,6 +970,11 @@
       <input type="range" id="crAngle" min="-45" max="45" step="0.05" value="0"></div>
     <div class="row"><button id="crMinus" title="−0.1° ( [ )">−0.1°</button><button id="crPlus" title="+0.1° ( ] )">+0.1°</button><button id="crLevel" title="Draw along a horizon or building edge">📏 Draw level line</button></div>
     <div class="row"><button id="crAuto" title="Stand the verticals (buildings, poles, door frames) up straight">Auto-straighten</button></div>
+    <div class="field"><span class="small">Transform (perspective) · double-click a slider to reset it</span></div>
+    <div class="slider"><label>Vertical<span id="crPvVal">0</span></label>
+      <input type="range" id="crPv" min="-100" max="100" step="1" value="0" title="+ widens the top: buildings that lean in when you look up stand straight. − widens the bottom."></div>
+    <div class="slider"><label>Horizontal<span id="crPhVal">0</span></label>
+      <input type="range" id="crPh" min="-100" max="100" step="1" value="0" title="+ widens the right side, − the left: for a wall or shop front photographed at an angle"></div>
     <div class="row"><button id="crRotL" title="Rotate 90° left">⟲ 90°</button><button id="crRotR" title="Rotate 90° right">⟳ 90°</button><button id="crFlipH" title="Flip left-right">⇋ Flip</button><button id="crFlipV" title="Flip upside down">⇵ Flip</button></div>
     <div id="crSize" class="small"></div>
     <div class="row" style="margin-top:14px"><button id="crReset" title="R">Reset</button><button id="crCancel" title="Esc">Cancel</button><button id="crDone" class="primary" title="Enter">Done</button></div>
@@ -2770,7 +2775,7 @@ $("showFolders").onclick = () => openSettings("setFolders");
 // canvas keeps the turned size) -> crop as fractions of that canvas.
 const RATIOS = { "3:2": 3 / 2, "4:5": 4 / 5, "5:4": 5 / 4, "1:1": 1, "16:9": 16 / 9, "65:24": 65 / 24 };
 const CR = { on: false, g: null, box: null, base: null, ww: 0, wh: 0, ratio: null, label: "original", tool: null };
-const blankEdit = () => ({ rot90: 0, flip_h: false, flip_v: false, angle: 0, crop: null, aspect: "original" });
+const blankEdit = () => ({ rot90: 0, flip_h: false, flip_v: false, angle: 0, crop: null, aspect: "original", perspective: null });
 
 async function loadEdit() {
   const name = S.current;
@@ -2791,6 +2796,7 @@ function showCropInfo() {
   const bits = [];
   if (g.crop) bits.push(`Cropped${g.aspect && !["original", "free", "custom"].includes(g.aspect) ? " " + g.aspect : ""}`);
   if (Math.abs(g.angle) > 0.001) bits.push(`straightened ${g.angle > 0 ? "+" : ""}${g.angle.toFixed(1)}°`);
+  if (g.perspective) bits.push("perspective corrected");
   if (g.rot90) bits.push(`turned ${g.rot90}°`);
   if (g.flip_h || g.flip_v) bits.push("flipped");
   $("cropInfo").textContent = (bits.length ? bits.join(" · ") : "Full frame, as shot") + ` · ${w.toLocaleString()} × ${h.toLocaleString()} px`;
@@ -2799,9 +2805,17 @@ function showCropInfo() {
 }
 
 // canvas-space checks (pixels of the on-screen canvas; rotation is uniform so scale doesn't matter)
+const PERSP_K = 0.004;                      // = geometry.PERSP_K
+function perspAB(g) { const p = g && g.perspective; return p ? [(p.v || 0) * PERSP_K, -(p.h || 0) * PERSP_K] : [0, 0]; }
 function inImage(x, y) {
   const t = CR.g.angle * Math.PI / 180, dx = x - CR.ww / 2, dy = y - CR.wh / 2;
-  const sx = CR.ww / 2 + dx * Math.cos(t) + dy * Math.sin(t), sy = CR.wh / 2 - dx * Math.sin(t) + dy * Math.cos(t);
+  let sx = CR.ww / 2 + dx * Math.cos(t) + dy * Math.sin(t), sy = CR.wh / 2 - dx * Math.sin(t) + dy * Math.cos(t);
+  const [a, b] = perspAB(CR.g);
+  if (a || b) {                            // undo the perspective warp (geometry.persp_inverse)
+    const r = Math.max(CR.ww, CR.wh) / 2, u = (sx - CR.ww / 2) / r, v = (sy - CR.wh / 2) / r, d = 1 - b * u - a * v;
+    if (d <= 1e-6) return false;
+    sx = CR.ww / 2 + u / d * r; sy = CR.wh / 2 + v / d * r;
+  }
   const e = 1e-6 * Math.max(CR.ww, CR.wh);
   return sx >= -e && sx <= CR.ww + e && sy >= -e && sy <= CR.wh + e;
 }
@@ -2876,10 +2890,13 @@ function drawCrop() {
   $("crSize").textContent = `Output: ${px[0].toLocaleString()} × ${px[1].toLocaleString()} px (${(px[0] * px[1] / 1e6).toFixed(1)} MP)`;
   placeGrips();
   $("crAngle").value = CR.g.angle;
+  const pp = CR.g.perspective || { v: 0, h: 0 };
+  $("crPv").value = pp.v || 0; $("crPh").value = pp.h || 0;
+  $("crPvVal").textContent = (pp.v > 0 ? "+" : "") + (pp.v || 0); $("crPhVal").textContent = (pp.h > 0 ? "+" : "") + (pp.h || 0);
   $("crAngleVal").textContent = (CR.g.angle > 0 ? "+" : "") + CR.g.angle.toFixed(2) + "°";
 }
 function loadCropImage() {
-  const t = { rot90: CR.g.rot90, flip_h: CR.g.flip_h, flip_v: CR.g.flip_v };
+  const t = { rot90: CR.g.rot90, flip_h: CR.g.flip_h, flip_v: CR.g.flip_v, perspective: CR.g.perspective || null };
   $("cropImg").src = "/api/render?" + q({ name: S.current, look: S.look, adjust: JSON.stringify(S.adjust),
                                            crop: "turn", turn: JSON.stringify(t), edge: 1600 });
 }
@@ -2954,12 +2971,22 @@ async function refitMasks(name, oldGeom) {
   } catch (e) { status("Couldn't move the drawn masks with the crop: " + e.message, true); }
 }
 function cropReset() {
-  const turned = CR.g.rot90 || CR.g.flip_h || CR.g.flip_v;
+  const turned = CR.g.rot90 || CR.g.flip_h || CR.g.flip_v || CR.g.perspective;
   CR.g = blankEdit(); CR.portraitSwap = false; $("crRatio").value = "original"; $("crCustom").hidden = true;
   layoutCrop(); CR.box = { x: 0, y: 0, w: CR.ww, h: CR.wh }; CR.base = { ...CR.box };
   if (turned) loadCropImage();
   drawCrop();
 }
+function setPersp(v, h) {                   // Transform sliders: the photo is re-rendered warped; the crop trims to fit
+  v = Math.max(-100, Math.min(100, Math.round(v))); h = Math.max(-100, Math.min(100, Math.round(h)));
+  CR.g.perspective = v || h ? { v, h } : null;
+  CR.box = fit({ ...CR.base });
+  drawCrop(); clearTimeout(CR.pTimer); CR.pTimer = setTimeout(loadCropImage, 120);
+}
+$("crPv").addEventListener("input", () => setPersp(+$("crPv").value, +$("crPh").value));
+$("crPh").addEventListener("input", () => setPersp(+$("crPv").value, +$("crPh").value));
+$("crPv").addEventListener("dblclick", () => { $("crPv").value = 0; setPersp(0, +$("crPh").value); });
+$("crPh").addEventListener("dblclick", () => { $("crPh").value = 0; setPersp(+$("crPv").value, 0); });
 function setAngle(a) {
   CR.g.angle = Math.max(-45, Math.min(45, Math.round(a * 100) / 100));
   CR.box = fit({ ...CR.base });          // trims as you rotate, grows back when you return
@@ -2970,7 +2997,7 @@ $("crAuto").onclick = async () => {
   const name = S.current, btn = $("crAuto");
   btn.disabled = true; btn.textContent = "Looking for verticals…";
   try {
-    const t = { rot90: CR.g.rot90, flip_h: CR.g.flip_h, flip_v: CR.g.flip_v };
+    const t = { rot90: CR.g.rot90, flip_h: CR.g.flip_h, flip_v: CR.g.flip_v, perspective: CR.g.perspective || null };
     const r = await (await api("/api/auto_straighten?" + q({ name, turn: JSON.stringify(t) }))).json();
     if (S.current !== name || !CR.on) return;
     if (r.angle === null) status("No clear vertical lines to go by: try 📏 Draw level line along an edge you know is straight.");
@@ -3121,7 +3148,7 @@ $("copyRatio").onclick = async () => {
 $("crDone").onclick = () => cropExit(true);
 $("crCancel").onclick = () => cropExit(false);
 $("crReset").onclick = () => cropReset();
-$("cropResetSaved").onclick = () => { if (S.current && confirm("Remove the crop and straightening from this photo?")) saveEdit(blankEdit()); };
+$("cropResetSaved").onclick = () => { if (S.current && confirm("Remove the crop, straightening and perspective from this photo?")) saveEdit(blankEdit()); };
 $("crRatio").onchange = () => { CR.portraitSwap = false; applyRatio(); };
 ["crCw", "crCh"].forEach(id => $(id).addEventListener("input", applyRatio));
 $("crSwap").onclick = () => { CR.portraitSwap = !CR.portraitSwap; applyRatio(); };

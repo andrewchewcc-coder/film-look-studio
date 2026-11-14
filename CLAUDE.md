@@ -185,3 +185,6 @@ error. Extend it when adding a tab, panel or button that calls the server.
 - Cull frames per page (`cuPage` / `cuSlots`, never more than two rows: `CU_ROWS`, Review picks too): a group that fits at a readable size (long side ≥ 360 px,
   short ≥ 230) shows whole; bigger ones page with at least 4 a page, the most frames that still fill the screen within 10% of the best (full 4 × 2 / 5 × 2 grids).
   Every page full but the last, which keeps the full pages' grid (`CU.slots`, fixed column / row tracks in `cuFit`) so frames keep their size and place. Never a scrolling row.
+- Crop → Transform: Vertical / Horizontal perspective (−100…100) = geometry `perspective` {v, h}, applied after the 90° turns and before the fine
+  rotation (`geometry._persp`, `persp_inverse` / `persp_forward`, PERSP_K = 0.004; the page's `inImage` / `perspAB` copy the formula — keep them identical).
+  `apply`, `valid` / `max_crop`, the mask point mapping and the crop screen's `crop=turn` render all include it; areas outside the warped photo render black.
