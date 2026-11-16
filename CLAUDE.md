@@ -107,6 +107,12 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   site's essay layout: Gallery style `carousel` (default; Spectra Image Gallery carousel, `SPECTRA_GALLERY`, from "Fire Dragon
   Festival 2026") or `slideshow` (Spectra container 89% + Visual Portfolio fade slider, `VP_SETTINGS`, from "Bedok Jetty"). Only ever adds
   media and drafts; never edits or deletes site content.
+- Website redesign (Nov 2026): his own theme "Andrew Chew Folio" (dark, Archivo/Inter/IBM Plex Mono). Sections = categories Stories (14),
+  Archive (15), Lab (16); Single frames is a PAGE (1652) with one gallery, not a category. Old Street works (7) / Eclectic (8) are empty
+  and hidden in the Section picker (photo sections first, other non-empty categories under Other; a saved removed one switches to Stories).
+  The theme lays out a story's photos itself from the gallery block (any style): rows `publish.story_rows` (1,2,2,1,3 repeating; a
+  leftover single joins the row before, max 3), captions "01 / 12" + EXIF time, all paragraphs (intro + closing) above the photos;
+  date line `publish.story_date`. Preview (/api/essays/{id}/preview) imitates it using the live theme style.css from his site.
 - `filmlook/appsettings.py` – ⚙ Settings: defaults (look, export size/quality), storage (preview cache
   capped, default 4 GB, trimmed on start and as it grows; views; old DB copies), backups of your work to
   <drive>/Film Look Studio Backups (newest 10). Header: activity indicator (`/api/activity`), ? shortcuts.

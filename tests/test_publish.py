@@ -116,3 +116,17 @@ def test_upload_creates_a_draft_and_never_edits(monkeypatch, tmp_path):
     assert r["post_id"] == 555 and "post=555" in r["edit"]
     saved = json.loads(con.execute("SELECT source FROM essays WHERE id=1").fetchone()[0])["publish"]
     assert saved["post_id"] == 555
+
+
+def test_story_layout_matches_the_folio_theme():
+    from filmlook import publish
+    assert publish.story_rows(10) == [1, 2, 2, 1, 3, 1]                  # Lines Out
+    assert publish.story_rows(12) == [1, 2, 2, 1, 3, 1, 2]               # Fire Dragon Festival
+    assert publish.story_rows(13) == [1, 2, 2, 1, 3, 1, 3]               # Thaipusam
+    assert publish.story_rows(15) == [1, 2, 2, 1, 3, 1, 2, 3]            # Rain over Tokyo
+    assert publish.story_rows(1) == [1] and publish.story_rows(0) == []
+    assert publish.story_date(["2026-03-20T20:21:57", "2026-03-20T19:00:42"]) == "20 March 2026"
+    assert publish.story_date(["2023-05-02T10:00:00", "2023-05-20T10:00:00"]) == "May 2023"
+    assert publish.story_date(["2023-05-02T10:00:00", "2023-11-20T10:00:00", None]) == "May – Nov 2023"
+    assert publish.story_date(["2017-05-02T10:00:00", "2023-11-20T10:00:00"]) == "2017 – 2023"
+    assert publish.story_date([]) == ""

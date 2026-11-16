@@ -318,3 +318,45 @@ def upload_essay(con, essay_id, job=None, cancelled=lambda: False, poll=3.0):
     con.commit()
     job["current"] = ""
     return {"post_id": post["id"], "edit": edit, "preview": preview}
+
+
+# --- Andrew Chew Folio theme (from Nov 2026) ------------------------------------------------------
+# The theme lays out a story's photos itself, whatever gallery block the post uses: rows of
+# 1, 2, 2, 1, 3 photos over and over (one left over joins the row before, up to 3), each
+# captioned "01 / 12" and the time it was taken; all the text paragraphs sit above the photos.
+# Learnt from his live posts (Nov 2026); used only for the app's local preview.
+
+STORY_ROWS = (1, 2, 2, 1, 3)
+SECTIONS = ("Stories", "Archive", "Lab")          # his photo sections, in menu order
+MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September",
+          "October", "November", "December")
+
+
+def story_rows(n):
+    """How many photos go in each row: [1, 2, 2, 1, 3, 1, 2, …]."""
+    rows, k, left = [], 0, n
+    while left > 0:
+        take = min(STORY_ROWS[k % len(STORY_ROWS)], left)
+        if left - take == 1 and take < 3:
+            take += 1                                   # a single photo left over joins this row (rows hold up to 3)
+        rows.append(take)
+        left -= take
+        k += 1
+    return rows
+
+
+def story_date(times):
+    """The date line under a story, as the theme shows it: '20 March 2026', 'May 2023',
+    'May – Nov 2023' or '2017 – 2023'. `times` = ISO capture times (None skipped)."""
+    from datetime import datetime
+    ds = sorted(datetime.fromisoformat(t[:19]) for t in times if t)
+    if not ds:
+        return ""
+    a, b = ds[0], ds[-1]
+    if a.date() == b.date():
+        return f"{a.day} {MONTHS[a.month - 1]} {a.year}"
+    if (a.year, a.month) == (b.year, b.month):
+        return f"{MONTHS[a.month - 1]} {a.year}"
+    if a.year == b.year:
+        return f"{MONTHS[a.month - 1][:3]} – {MONTHS[b.month - 1][:3]} {a.year}"
+    return f"{a.year} – {b.year}"
