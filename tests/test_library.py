@@ -463,3 +463,40 @@ def test_recent_work_lists_what_you_graded_or_exported(tmp_path, monkeypatch):
     assert [x["id"] for x in r["results"]] == [b[2], a[2]] and r["total"] == 2
     assert r["results"][0]["worked"] == ["exported"] and r["results"][1]["worked"] == ["graded"]
     assert [x["id"] for x in recent.recent(con, days=30, now=now)["results"]] == [b[2], a[2], c[2]]
+
+
+def test_tags_find_photos_exactly(tmp_path, monkeypatch):
+    from filmlook.library import search, tags
+    monkeypatch.setattr(scan.drives, "_volume_info", lambda mount: ("TEST-UUID", "Test"))
+    monkeypatch.setattr(scan, "read_exif", lambda paths: {})
+    shoot = tmp_path / "photos" / "2025 02 12 Kampong Glam"
+    shoot.mkdir(parents=True)
+    for n in ("A.dng", "B.dng", "C.dng"):
+        (shoot / n).write_bytes(n.encode() * 500)
+    con = db.connect(tmp_path / "lib.db")
+    scan.add_root(con, tmp_path / "photos")
+    scan.scan(con)
+    a, b, c = [r[0] for r in con.execute("SELECT p.id FROM photos p JOIN files f ON f.id = p.primary_file_id ORDER BY f.rel_path")]
+
+    assert tags.split(" Sultan  Mosque, rain ,, #rain") == ["Sultan Mosque", "rain"]
+    assert tags.add(con, [a, b], "Sultan Mosque, rain") == 4
+    assert tags.add(con, [c], ["sultan mosque"]) == 1             # joins the existing spelling
+    assert tags.add(con, [a], ["SULTAN MOSQUE"]) == 0             # already there
+    assert tags.all_tags(con) == [{"tag": "Sultan Mosque", "count": 3}, {"tag": "rain", "count": 2}]
+    assert tags.for_photos(con, [c]) == {c: ["Sultan Mosque"]}
+
+    ids = lambda res: sorted(r["id"] for r in res["results"])
+    assert ids(search.search(con, categories=None, tags=["rain"])) == sorted([a, b])
+    assert ids(search.search(con, categories=None, tags=["rain", "sultan mosque"])) == sorted([a, b])
+    assert ids(search.search(con, categories=None, untagged=True)) == []
+    typed = search.search(con, "sultan mosque", categories=None)  # typing the tag = only photos with it
+    assert ids(typed) == sorted([a, b, c]) and typed["understood"]["tags"] == ["Sultan Mosque"]
+    assert search.search(con, categories=None, tags=["rain"])["results"][0]["tags"] == ["rain", "Sultan Mosque"]
+
+    tags.remove(con, [b], ["rain"])
+    assert ids(search.search(con, categories=None, tags=["rain"])) == [a]
+    tags.rename(con, "rain", "Sultan Mosque")                     # merging into an existing tag
+    assert tags.all_tags(con) == [{"tag": "Sultan Mosque", "count": 3}]
+    tags.rename(con, "sultan mosque", "Masjid Sultan")
+    assert tags.all_tags(con) == [{"tag": "Masjid Sultan", "count": 3}]
+    assert tags.delete(con, "masjid sultan") == 3 and tags.all_tags(con) == []

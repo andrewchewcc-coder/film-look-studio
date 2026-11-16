@@ -192,6 +192,11 @@ error. Extend it when adding a tab, panel or button that calls the server.
   `/api/essays/{id}/slide/{photo}` = `essay_out.slide`: graded JPG resized, else `engine.render_region` (Grade's fast large render,
   ~4 s) at 2560 px; cached in LIBRARY_DIR/views/slides keyed on source mtime + grade/look + crop. `slides/warm?start=` prepares
   the rest in the background. No countdown bar (he found it stressful). Full screen is requested but not awaited (some WebViews never answer); keys are captured while on.
+- Tags = his own keywords ("Sultan Mosque"), `library/tags.py`, table `photo_tags` (case-insensitive, first spelling kept; library DB only, never
+  written to photo files). Grid shows every tag as its own label (Display → Show tags on photos, fls.tagsShow). Library: select + T or Tag… (`#tagBox`, `tagOpen(ids, label, done)`), viewer panel tag field (T focuses it), sidebar
+  Tags list = filter (several = all of them; Untagged; Edit → ✎ rename/merge, ✕ remove). Typing a tag in search = exactly the photos with it
+  (`tags.find_in`; extra words only order them, all count as clear matches). Cull: T tags the frame, Shift+T the whole group. A tag filter flows
+  into Make an essay / Publish via the view (`_view_ids`). Sidecar XMP/ON1 keywords are NOT imported (only 4 in his library).
 - Grade ticking (`tickThumb(name, on, range)`): the checkbox, ⌘-click a photo or T ticks; Shift-click ticks every photo shown between the last one ticked
   (`S.lastTick`) and this one. Export → Copy grade + export ticked (`#copyExport`) = `/api/grade/copy` onto the ticked others, then `exportNames(ticked, own=true)`.
 - Keys are the same across tabs: P / X / U / 1–5 mark in Library, Cull and Grade (Grade: `gradeMark` → `POST /api/mark_file`; 0 stays Fit there), ← → previous / next (Grade: `gradeStep`, follows the strip filter),

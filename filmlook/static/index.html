@@ -288,6 +288,28 @@
   #addEsBox h3 { margin: 0 0 4px; font-size: 16px; }
   #addEsBox label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
   #addEsBox select { width: 100%; height: 34px; background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 0 8px; border-radius: 6px; font: inherit; }
+  #tagBox { position: fixed; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+  #tagBox[hidden] { display: none; }
+  #tagBox .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; width: min(460px, 100%); max-height: 90vh; overflow-y: auto; }
+  #tagBox h3 { margin: 0 0 4px; font-size: 16px; }
+  #tagBox label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 4px; }
+  #tagBox input, .vtags input { width: 100%; height: 34px; box-sizing: border-box; background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 0 8px; border-radius: 6px; font: inherit; }
+  #tgOn, #tgQuick { margin-top: 8px; }
+  #tgQuick .small { margin-bottom: 6px; }
+  .tgChip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; margin: 0 4px 5px 0; height: auto; font-size: 12px; line-height: 18px;
+            border-radius: 12px; border: 1px solid var(--line); background: var(--field); color: var(--text); cursor: pointer; }
+  .tgChip.on { border-color: var(--accent); }
+  .tgChip i { font-style: normal; color: var(--muted); font-size: 11px; }
+  .tgChip button, .tgChip [data-ren], .tgChip [data-del] { border: 0; background: none; padding: 0 0 0 3px; margin: 0; height: auto; color: var(--muted); cursor: pointer; font-size: 11px; }
+  .tgChip button:hover, .tgChip [data-ren]:hover, .tgChip [data-del]:hover { color: var(--text); }
+  #lbTags { margin-top: 4px; }
+  #lbTags .small { line-height: 1.5; }
+  .sideHead #tgEdit { margin-left: auto; height: 22px; padding: 0 8px; font-size: 11px; }
+  .sideHead #tgEdit.on { border-color: var(--accent); }
+  .linkish { border: 0; background: none; color: var(--accent); padding: 0; height: auto; font-size: 12px; cursor: pointer; }
+  .vtags input { margin-top: 2px; }
+  #grid.notags .cell .tags .tg { display: none; }
+  .cell .tags .tg, .cuCard .tags .tg { color: #9fd3ff; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #briefBox { position: absolute; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center; z-index: 6; padding: 16px; }
   #briefBox[hidden] { display: none; }
   #briefBox .box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; width: min(460px, 100%); max-height: 90vh; overflow-y: auto; }
@@ -732,9 +754,9 @@
   <div class="keysGrid">
     <div><h4>Anywhere</h4><p><b>⌘K</b> go to a shoot, essay, cull or command<br><b>?</b> this list</p></div>
     <div><h4>Marking (Library, viewer, Cull, Grade)</h4><p><b>P</b> pick · <b>X</b> reject · <b>U</b> unmark<br><b>0–5</b> stars (0 clears; in Grade 0 is Fit, so press the same star again)<br><b>V</b> black &amp; white preview (Library viewer, Cull, Grade)<br><b>N</b> not now (Worth a second look)</p></div>
-    <div><h4>Library</h4><p><b>Click</b> select · <b>⌘-click</b> add · <b>Shift-click</b> range<br><b>⌘A</b> select all · <b>Esc</b> clear<br><b>Arrows</b> move · <b>Space / Enter</b> view large<br><b>F</b> show in Finder</p></div>
-    <div><h4>Big viewer</h4><p><b>← →</b> previous / next<br><b>Click / Z</b> zoom to 100% (drag to move)<br><b>G</b> graded / original · <b>S</b> side by side<br><b>V</b> black &amp; white preview · <b>Esc / Space</b> close</p></div>
-    <div><h4>Cull</h4><p><b>← →</b> frame · <b>↑ ↓</b> group<br><b>Enter</b> next group · <b>Shift+Enter</b> previous<br><b>Z</b> zoom where you point · <b>C</b> compare two frames at 100% · <b>P</b> pick (stays in the group) · <b>Shift+P</b> pick and go to the next group<br><b>V</b> black &amp; white preview</p></div>
+    <div><h4>Library</h4><p><b>Click</b> select · <b>⌘-click</b> add · <b>Shift-click</b> range<br><b>⌘A</b> select all · <b>Esc</b> clear<br><b>Arrows</b> move · <b>Space / Enter</b> view large<br><b>F</b> show in Finder · <b>T</b> tag</p></div>
+    <div><h4>Big viewer</h4><p><b>← →</b> previous / next<br><b>Click / Z</b> zoom to 100% (drag to move)<br><b>G</b> graded / original · <b>S</b> side by side<br><b>V</b> black &amp; white preview · <b>T</b> add a tag · <b>Esc / Space</b> close</p></div>
+    <div><h4>Cull</h4><p><b>← →</b> frame · <b>↑ ↓</b> group<br><b>Enter</b> next group · <b>Shift+Enter</b> previous<br><b>Z</b> zoom where you point · <b>C</b> compare two frames at 100% · <b>P</b> pick (stays in the group) · <b>Shift+P</b> pick and go to the next group<br><b>V</b> black &amp; white preview<br><b>T</b> tag this frame · <b>Shift+T</b> tag the whole group</p></div>
     <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>J</b> (hold) camera JPG · <b>← →</b> previous / next photo · <b>V</b> black &amp; white preview · <b>T</b> tick / untick (⌘-click a photo; Shift-click a range) · <b>\</b> hide the photo strip · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
     <div><h4>Essays</h4><p><b>⌘Z</b> undo · drag to reorder<br><b>🔒</b> lock a photo · <b>⇄</b> replace</p></div>
   </div>
@@ -758,12 +780,15 @@
     <select id="fStars"><option value="0">Any</option><option value="1">★ 1 or more</option><option value="2">★★ 2 or more</option><option value="3">★★★ 3 or more</option><option value="4">★★★★ 4 or more</option><option value="5">★★★★★ 5</option></select>
     <label for="fCamera">Camera</label>
     <select id="fCamera"><option value="">All cameras</option></select>
+    <div class="sideHead">Tags <span id="tgCount"></span><button id="tgEdit" hidden title="Rename or remove tags">Edit</button></div>
+    <div id="lbTags"></div>
     <div class="sideHead">Display</div>
     <label for="lbView">View</label>
     <select id="lbView"><option value="graded">Graded versions</option><option value="original">Originals</option></select>
     <label for="lbSize">Thumbnail size</label>
     <input type="range" id="lbSize" min="120" max="420" step="10" value="180">
     <label class="chk"><input type="checkbox" id="lbNames"> Show file names</label>
+    <label class="chk"><input type="checkbox" id="lbTagsShow" checked> Show tags on photos</label>
     <div id="libTools">
       <button id="scanBtn">Scan for new photos</button><button id="pauseBtn" hidden>Pause</button>
       <div class="bar"><div id="scanBar"></div></div>
@@ -780,6 +805,7 @@
       <span style="flex:1"></span>
       <span id="lbCount" class="small"></span>
       <button id="lbEssay" title="Make a photo essay, zine or book from these photos: the app chooses the best ones to your brief">Make an essay</button>
+      <button id="lbTag" hidden title="Add tags (keywords) to the selected photos, e.g. Sultan Mosque (T)">Tag…</button>
       <button id="lbAddEssay" hidden title="Add the selected photos to an essay you already have">Add to essay…</button>
       <button id="lbPublish" title="Publish these photos to your WordPress website (as an essay, in shooting order)">Publish…</button>
       <button id="lbGrade" hidden title="Open these photos in Grade">Grade picks</button>
@@ -860,7 +886,7 @@
       <button id="cuBack" title="Back to the cull list (progress is saved)">Back</button>
     </div>
     <div id="cuFrames"></div>
-    <div id="cuFoot"><button id="cuPrev" title="Previous group (↑ or Shift+Enter)">◀ Previous</button><button id="cuCmpBtn" title="Compare two frames at 100%, zoomed together (C). Shift-click two frames to choose which.">Compare</button><button id="cuBW" title="Black and white preview (V)">B&amp;W</button><span id="cuWhy"></span><span id="cuPages" hidden></span>
+    <div id="cuFoot"><button id="cuPrev" title="Previous group (↑ or Shift+Enter)">◀ Previous</button><button id="cuCmpBtn" title="Compare two frames at 100%, zoomed together (C). Shift-click two frames to choose which.">Compare</button><button id="cuBW" title="Black and white preview (V)">B&amp;W</button><button id="cuTagBtn" title="Tag this frame, e.g. Sultan Mosque (T) · Shift+T or Shift-click: every frame in this group">Tag…</button><span id="cuWhy"></span><span id="cuPages" hidden></span>
       <span class="small" id="cuKeys">P pick · X reject · U unmark · 1–5 stars · ← → frame · ↑ ↓ group · Z zoom where you point</span>
       <button id="cuNextBtn" title="Next group (↓ or Enter)">Next ▶</button></div>
     <div id="cuStrip"></div>
@@ -1132,6 +1158,18 @@
   </div>
   </aside>
 </main>
+<div id="tagBox" hidden><div class="box">
+  <h3>Tags</h3>
+  <div id="tgFrom" class="small"></div>
+  <div id="tgOn"></div>
+  <label for="tgIn">Add tags <span class="small">(commas between several, e.g. Sultan Mosque, rain)</span></label>
+  <div class="row" style="gap:6px;align-items:center"><input type="text" id="tgIn" list="tgList" placeholder="Sultan Mosque" spellcheck="false" autocomplete="off" style="flex:1"><button id="tgAdd" style="flex:0 0 auto">Add</button></div>
+  <datalist id="tgList"></datalist>
+  <div id="tgQuick"></div>
+  <div id="tgMsg" class="small"></div>
+  <div class="small" style="margin-top:8px">Tags stay in the app's library. Your photo files and drives are not changed.</div>
+  <div class="row" style="justify-content:flex-end;margin-top:10px"><button id="tgDone" class="primary" style="flex:0 0 auto" title="Saves anything typed above, then closes">Save &amp; close</button></div>
+</div></div>
 <script>
 const SLIDERS = [
   ["strength", "Look strength", 0, 1, 0.05, 1],
@@ -2035,7 +2073,7 @@ document.addEventListener("keyup", e => { if (e.key === "b" && bDown) showBefore
 
 
 // --- Library -------------------------------------------------------------------------
-const L = { like: [], unlike: [], offset: 0, total: 0, seq: 0, polling: false, photos: [], sel: new Set(), last: null, view: null, side: false, orig: false, shoots: [], hover: null };
+const L = { like: [], unlike: [], offset: 0, total: 0, seq: 0, polling: false, photos: [], sel: new Set(), last: null, view: null, side: false, orig: false, shoots: [], hover: null, tags: [], untagged: false, tagEdit: false, tagAll: false };
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function setTab(tab) {
@@ -2064,6 +2102,7 @@ function fillSelect(sel, values, keep) {
 async function loadLib() {
   const st = await (await api("/api/library/state")).json();
   fillSelect($("fCamera"), st.facets.cameras, true);
+  tagsLoad();
   L.shoots = await (await api("/api/browse/shoots")).json();
   lbWhereFill();
   $("roots").innerHTML = st.roots.length ? st.roots.map(r =>
@@ -2222,6 +2261,8 @@ function params(offset) {
   if (folder) p.folder_id = folder;
   if (L.like.length) p.like = L.like.join(",");
   if (L.unlike.length) p.unlike = L.unlike.join(",");
+  if (L.tags.length) p.tags = L.tags.join(",");
+  if (L.untagged) p.untagged = 1;
   return p;
 }
 async function libRefresh() {                 // marks may have changed elsewhere: reload, keep scroll and selection
@@ -2263,8 +2304,8 @@ function lbSteerNote() {
 function understood(u) {
   if (!u) return "";
   const MON = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const bits = [...u.colours.map(c => "colour: " + c), ...(u.mono ? ["black & white"] : []),
-                ...u.folder_words.map(w => "shoot: " + w), ...(u.month ? [MON[u.month]] : []), ...(u.year ? [u.year] : [])];
+  const bits = [...(u.tags || []).map(t => "tag: " + t), ...(u.colours || []).map(c => "colour: " + c), ...(u.mono ? ["black & white"] : []),
+                ...(u.folder_words || []).map(w => "shoot: " + w), ...(u.month ? [MON[u.month]] : []), ...(u.year ? [u.year] : [])];
   return bits.length ? ` (${bits.join(" · ")})` : "";
 }
 async function runSearch(more = false, atLeast = 0) {
@@ -2272,7 +2313,7 @@ async function runSearch(more = false, atLeast = 0) {
   lbModeControls();
   if (!more) {                                  // the Recent work shelf: only over the plain All shoots list
     const plain = !$("lbWhere").value && !$("libq").value.trim() && !L.like.length
-      && !["fFrom", "fTo", "fCamera", "fGraded", "fFlag"].some(id => $(id).value) && !+$("fStars").value;
+      && !["fFrom", "fTo", "fCamera", "fGraded", "fFlag"].some(id => $(id).value) && !+$("fStars").value && !L.tags.length && !L.untagged;
     if (plain) lbShelfLoad(); else $("lbShelf").hidden = true;
   }
   const seq = ++L.seq;
@@ -2295,8 +2336,9 @@ async function runSearch(more = false, atLeast = 0) {
   } finally { clearTimeout(slow); clearTimeout(limit); }
   if (seq !== L.seq) return;
   if (!more) { L.photos = []; $("grid").innerHTML = ""; L.divided = false; L.grouped = false; L.day = null; }
+  const tagOnly = !!p.q && res.strong == null && !L.like.length;   // the words were exactly a tag: every photo with it
   for (const r of res.results) {
-    const ranked = p.q || L.like.length;
+    const ranked = (p.q && !tagOnly) || L.like.length;
     if (!ranked && !L.grouped) lbDayHead(r);
     if (ranked && r.grouped && !L.grouped) {
       L.grouped = L.divided = true;
@@ -2316,9 +2358,9 @@ async function runSearch(more = false, atLeast = 0) {
   const ids = new Set(L.photos.map(r => r.id)); L.sel = new Set([...L.sel].filter(i => ids.has(i)));
   L.total = res.total; L.offset += res.results.length;
   $("more").hidden = L.offset >= L.total;
-  const order = p.q ? "best match first" : p.order === "oldest" ? "shooting order" : "newest first";
+  const order = p.q && !tagOnly ? "best match first" : p.order === "oldest" ? "shooting order" : "newest first";
   const asked = p.q ? `“${p.q}”` : "photos like the one you chose";
-  $("lbSub").textContent = p.q || L.like.length ? `${(res.strong || 0).toLocaleString()} clear matches for ${asked}${understood(res.understood)}${L.like.length || L.unlike.length ? " · steered by your choices" : ""} · best match first` : `${L.total.toLocaleString()} photos · ${order}`;
+  $("lbSub").textContent = tagOnly ? `${L.total.toLocaleString()} photos tagged ${res.understood.tags.map(t => `“${t}”`).join(" and ")} · ${order}` : p.q || L.like.length ? `${(res.strong || 0).toLocaleString()} clear matches for ${asked}${understood(res.understood)}${L.like.length || L.unlike.length ? " · steered by your choices" : ""} · best match first` : `${L.total.toLocaleString()} photos · ${order}`;
   $("libEmpty").hidden = L.total > 0;
   $("libEmpty").textContent = L.total ? "" : "No photos match. Try other words or loosen the filters.";
   lbCount(); lbNoteDeleted(); lbCullButton();
@@ -2494,6 +2536,7 @@ function cell(r, i) {
   else if (r.edited) tr.push(`<span class="ed ic" title="Edited in the app, not exported yet">E</span>`);
   if (r.deleted) tr.push(`<span class="dl">Deleted from drive</span>`);
   else if (!r.online) tr.push(`<span class="o">Drive offline</span>`);
+  for (const t of r.tags || []) tags.push(`<span class="tg" title="Tag: ${esc(t)}">🏷 ${esc(t)}</span>`);   // every tag, each its own label
   if (r.my_rating > 0) tags.push(`<span class="st" title="Your stars">${"★".repeat(r.my_rating)}</span>`);
   const stars = [1, 2, 3, 4, 5].map(n => `<b data-r="${n}" class="${(r.my_rating || 0) >= n ? "on" : ""}">★</b>`).join("");
   if (r.dismissed) tags.push(`<span class="o">Not now</span>`);
@@ -2501,7 +2544,7 @@ function cell(r, i) {
   const label = r.reasons && r.reasons.length ? r.reasons.join(" · ") : r.name;
   d.innerHTML = `<img loading="lazy" src="${lbThumb(r)}" alt="" draggable="false"><div class="tl">${tl.join("")}</div><div class="tr">${tr.join("")}</div><div class="tags">${tags.join("")}</div><div class="nm${r.reasons ? " why" : ""}">${esc(label)}</div>
     <div class="acts"><button data-f="pick" class="${r.mark === "pick" ? "on" : ""}" title="Pick (P)">✓</button><button data-f="reject" class="${r.mark === "reject" ? "on" : ""}" title="Reject (X)">✕</button><button data-f="" title="Unmark (U)">↺</button>${r.reasons ? `<button data-n title="Not now: don't suggest it again (N)">Not now</button>` : ""}<span class="st">${stars}</span></div>${r.reasons ? "" : `<div class="steer"><button data-like class="${L.like.includes(r.id) ? "on" : ""}" title="Show more photos like this one">More like this</button>${lbSearching() ? `<button data-unlike class="${L.unlike.includes(r.id) ? "on" : ""}" title="Not what you're looking for: push photos like this one down">Not this</button>` : ""}</div>`}`;
-  d.title = `${r.name}\n${r.folder}\n${describe(r)}` + (r.reasons ? `\n${r.reasons.join(" · ")}` : "");
+  d.title = `${r.name}\n${r.folder}\n${describe(r)}` + (r.tags && r.tags.length ? `\nTags: ${r.tags.join(", ")}` : "") + (r.reasons ? `\n${r.reasons.join(" · ")}` : "");
   d.onclick = (e) => lbSelect(+d.dataset.i, e);
   d.ondblclick = () => {                      // opening the viewer to look shouldn't change the selection
     if (L.selPrev) { L.sel = L.selPrev; document.querySelectorAll("#grid .cell").forEach(c => c.classList.toggle("sel", L.sel.has(+c.dataset.id))); lbCount(); }
@@ -2560,7 +2603,7 @@ function lbClearSel() {
 }
 function lbCount() {
   const k = L.sel.size, g = lbGradeTargets();
-  $("lbAddEssay").hidden = !k;
+  $("lbAddEssay").hidden = !k; $("lbTag").hidden = !k;
   $("lbGrade").hidden = !g.rs.length;
   $("lbGrade").textContent = g.what === "selected" ? `Grade selected (${g.rs.length})` :
     g.what === "todo" ? `Grade picks (${g.rs.length} to do)` : `Grade picks (all ${g.rs.length} done)`;
@@ -2653,6 +2696,134 @@ $("brGo").onclick = async () => {
   } catch (e) { $("brMsg").textContent = e.message; }
   finally { $("brGo").disabled = false; }
 };
+// --- Tags: your own keywords ("Sultan Mosque") for exact finding. Kept in the library only, never in photo files.
+var TG = { all: [], ids: [], tags: {}, done: null };   // var: lbFilterUI may draw the sidebar before this line runs
+async function tagsLoad() {
+  try { TG.all = await (await api("/api/tags")).json(); } catch (e) { TG.all = []; }
+  $("tgList").innerHTML = TG.all.map(t => `<option value="${esc(t.tag)}">`).join("");
+  lbTagsDraw();
+  return TG.all;
+}
+async function tagApi(kind, ids, tags) {
+  const r = await (await api("/api/tags/" + kind, esJSON({ photo_ids: ids, tags }))).json();
+  tagsLoad();
+  return r;
+}
+// The Tags box: for a selection in the Library or frames in Cull. done(tagsById) updates the caller.
+async function tagOpen(ids, label, done) {
+  if (!ids.length) return;
+  TG.ids = ids; TG.done = done; TG.tags = {};
+  $("tgFrom").textContent = label || `${ids.length} photo${ids.length === 1 ? "" : "s"}`;
+  $("tgMsg").textContent = ""; $("tgIn").value = ""; $("tgOn").innerHTML = ""; $("tgQuick").innerHTML = "";
+  $("tagBox").hidden = false; $("tgIn").focus();
+  try { TG.tags = await (await api("/api/tags/photos", esJSON({ photo_ids: ids }))).json(); } catch (e) { $("tgMsg").textContent = e.message; }
+  tagBoxDraw();
+}
+function tagBoxDraw() {
+  const n = TG.ids.length, count = {};
+  for (const id of TG.ids) for (const t of TG.tags[id] || []) count[t] = (count[t] || 0) + 1;
+  const on = Object.keys(count).sort((a, b) => a.localeCompare(b));
+  $("tgOn").innerHTML = on.length ? on.map(t => `<span class="tgChip on">${esc(t)}${n > 1 && count[t] < n ? ` <i>on ${count[t]} of ${n}</i>` : ""}<button data-x="${esc(t)}" title="Take this tag off ${n > 1 ? "these photos" : "this photo"}">✕</button></span>`).join("")
+    : `<span class="small">No tags on ${n > 1 ? "these photos" : "this photo"} yet.</span>`;
+  const full = new Set(on.filter(t => count[t] === n).map(t => t.toLowerCase()));
+  const quick = TG.all.filter(t => !full.has(t.tag.toLowerCase())).slice(0, 16);
+  $("tgQuick").innerHTML = quick.length ? `<div class="small">Your tags · click to add</div>` +
+    quick.map(t => `<button class="tgChip" data-a="${esc(t.tag)}" title="Add “${esc(t.tag)}” (on ${t.count} photo${t.count === 1 ? "" : "s"})">${esc(t.tag)} <i>${t.count}</i></button>`).join("") : "";
+  $("tgOn").querySelectorAll("[data-x]").forEach(b => b.onclick = () => tagChange("remove", [b.dataset.x]));
+  $("tgQuick").querySelectorAll("[data-a]").forEach(b => b.onclick = () => tagChange("add", [b.dataset.a]));
+}
+async function tagChange(kind, tags) {
+  $("tgMsg").textContent = "";
+  try {
+    const r = await tagApi(kind, TG.ids, tags);
+    TG.tags = r.tags;
+    await tagsLoad(); tagBoxDraw();
+    if (TG.done) TG.done(TG.tags);
+    if (kind === "add") $("tgMsg").textContent = `Added ${tags.join(", ")}.`;
+  } catch (e) { $("tgMsg").textContent = "Couldn't save: " + e.message; $("tgIn").focus(); return false; }
+  $("tgIn").focus(); return true;
+}
+function tagClose() { $("tagBox").hidden = true; TG.done = null; }
+async function tagAddTyped() {             // whatever is typed is saved: by Enter, Add, or Save & close
+  const v = $("tgIn").value.trim(); if (!v) return true;
+  $("tgIn").value = ""; return tagChange("add", [v]);
+}
+$("tgAdd").onclick = () => tagAddTyped();
+$("tgDone").onclick = async () => { if (await tagAddTyped() !== false) tagClose(); };
+$("tagBox").onclick = (e) => { if (e.target.id === "tagBox") tagClose(); };
+$("tgIn").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); if (!$("tgIn").value.trim()) return tagClose(); tagAddTyped(); }
+  else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); tagClose(); }
+});
+document.addEventListener("keydown", (e) => {
+  if (!$("tagBox").hidden && e.key === "Escape" && !typing(e)) { e.preventDefault(); tagClose(); }
+});
+function lbTagOpen(rs) {
+  if (!rs.length) return;
+  tagOpen(rs.map(r => r.id), rs.length === 1 ? rs[0].name : `${rs.length} selected photos`, (tags) => {
+    for (const r of rs) { r.tags = tags[r.id] || []; lbRedraw(r); }
+    if (L.view != null && !$("brViewer").hidden) lbViewPanel(L.photos[L.view]);
+  });
+}
+$("lbTag").onclick = () => lbTagOpen(L.photos.filter(r => L.sel.has(r.id)));
+// The sidebar's Tags: click one to see only photos with it (several: photos with all of them).
+function lbTagsDraw() {
+  const el = $("lbTags"); if (!el || !TG) return;
+  $("tgEdit").hidden = !TG.all.length; $("tgEdit").classList.toggle("on", L.tagEdit);
+  $("tgEdit").textContent = L.tagEdit ? "Done" : "Edit";
+  $("tgCount").textContent = L.tags.length || L.untagged ? `· ${L.tags.length + (L.untagged ? 1 : 0)} on` : "";
+  if (!TG.all.length) {
+    el.innerHTML = `<div class="small">No tags yet. Select photos and press <b>T</b> (or click <b>Tag…</b>) to add one, e.g. “Sultan Mosque”. In Cull press <b>T</b> too.</div>`;
+    return;
+  }
+  const isOn = (t) => L.tags.some(x => x.toLowerCase() === t.toLowerCase());
+  const list = L.tagAll ? TG.all : TG.all.filter((t, i) => i < 15 || isOn(t.tag));
+  el.innerHTML = list.map(t => `<button class="tgChip${isOn(t.tag) ? " on" : ""}" data-t="${esc(t.tag)}" title="${L.tagEdit ? "✎ rename · ✕ remove from every photo" : `Show only photos tagged “${esc(t.tag)}”`}">${esc(t.tag)} <i>${t.count}</i>${L.tagEdit ? `<span data-ren title="Rename (or merge into another tag)">✎</span><span data-del title="Remove this tag from every photo">✕</span>` : ""}</button>`).join("")
+    + (L.tagEdit ? "" : `<button class="tgChip${L.untagged ? " on" : ""}" data-u title="Photos with no tags yet">Untagged</button>`)
+    + (TG.all.length > 15 ? `<div><button class="linkish" data-more>${L.tagAll ? "Show fewer" : `All ${TG.all.length} tags`}</button></div>` : "");
+  el.querySelectorAll("[data-t]").forEach(b => b.onclick = async (e) => {
+    const t = b.dataset.t;
+    if (e.target.closest("[data-ren]")) {
+      const nw = prompt(`Rename the tag “${t}” on every photo.\n\n(Type the name of another tag to merge the two.)`, t);
+      if (!nw || !nw.trim() || nw.trim() === t) return;
+      try {
+        const r = await (await api("/api/tags/rename", esJSON({ old: t, new: nw }))).json();
+        L.tags = L.tags.map(x => x.toLowerCase() === t.toLowerCase() ? r.tag : x);
+        await tagsLoad(); lbFilterUI(); runSearch();
+      } catch (err) { $("lbNote").textContent = err.message; }
+      return;
+    }
+    if (e.target.closest("[data-del]")) {
+      const n = (TG.all.find(x => x.tag === t) || {}).count || 0;
+      if (!confirm(`Remove the tag “${t}” from all ${n} photo${n === 1 ? "" : "s"}?\n\nOnly the tag goes: the photos stay as they are.`)) return;
+      try {
+        await api("/api/tags/delete", esJSON({ old: t }));
+        L.tags = L.tags.filter(x => x.toLowerCase() !== t.toLowerCase());
+        await tagsLoad(); lbFilterUI(); runSearch();
+      } catch (err) { $("lbNote").textContent = err.message; }
+      return;
+    }
+    if (L.tagEdit) return;
+    L.tags = isOn(t) ? L.tags.filter(x => x.toLowerCase() !== t.toLowerCase()) : [...L.tags, t];
+    if (L.tags.length) L.untagged = false;
+    lbFilterUI(); L.sel.clear(); $("lbNote").textContent = ""; runSearch();
+  });
+  const u = el.querySelector("[data-u]");
+  if (u) u.onclick = () => { L.untagged = !L.untagged; if (L.untagged) L.tags = []; lbFilterUI(); L.sel.clear(); runSearch(); };
+  const m = el.querySelector("[data-more]");
+  if (m) m.onclick = () => { L.tagAll = !L.tagAll; lbTagsDraw(); };
+}
+$("tgEdit").onclick = () => { L.tagEdit = !L.tagEdit; lbTagsDraw(); };
+// Cull: T tags the frame in focus, Shift+T (or Shift-click Tag…) every frame of the group.
+function cuTag(all) {
+  const g = cuGroup(); if (!g) return;
+  const ids = all ? g.ids.slice() : [g.ids[CU.fi]];
+  tagOpen(ids, ids.length > 1 ? `All ${ids.length} frames in this group` : (CU.frames[ids[0]] || {}).name, (tags) => {
+    for (const id of ids) if (CU.frames[id]) CU.frames[id].tags = tags[id] || [];
+    cuShow();
+  });
+}
+$("cuTagBtn").onclick = (e) => { e.currentTarget.blur(); cuTag(e.shiftKey); };
 // "New shoot" notice: spots new shoot folders (or new photos in one) on plugged-in drives.
 const NEW = { pending: [], ready: [] };
 function newSeen() { try { return JSON.parse(localStorage.getItem("fls.newDismissed") || "[]"); } catch (e) { return []; } }
@@ -2822,6 +2993,9 @@ function lbViewPanel(r) {
     <div class="seg3"><button data-m="pick" class="${r.mark === "pick" ? "pk" : ""}" title="P">✓ Pick</button><button data-m="reject" class="${r.mark === "reject" ? "rj" : ""}" title="X">✕ Reject</button><button data-m="" class="${!r.mark ? "on" : ""}" title="U">— None</button></div>
     <h4>Stars</h4>
     <div class="vstars">${[1, 2, 3, 4, 5].map(n => `<b data-s="${n}" class="${(r.my_rating || 0) >= n ? "on" : ""}" title="${n} (press ${n}; 0 clears)">★</b>`).join("")}</div>
+    <h4>Tags</h4>
+    <div class="vtags">${(r.tags || []).map(t => `<span class="tgChip on">${esc(t)}<button data-tx="${esc(t)}" title="Take this tag off">✕</button></span>`).join("")}
+      <input id="vTagIn" list="tgList" placeholder="Add a tag… (T)" spellcheck="false" autocomplete="off"></div>
     <h4>Graded</h4>
     <div>${status}</div>
     ${r.graded ? `<div class="seg3" style="margin-top:8px"><button data-v="graded" class="${showing === "graded" ? "on" : ""}" title="G">Graded</button><button data-v="orig" class="${showing === "orig" ? "on" : ""}" title="G">Original</button><button data-v="side" class="${showing === "side" ? "on" : ""}" title="S">Side by side</button></div>` : ""}
@@ -2832,8 +3006,18 @@ function lbViewPanel(r) {
       ${settings ? `<span>Settings</span><span>${esc(settings)}</span>` : ""}${!r.online ? `<span>Drive</span><span>${r.deleted ? "deleted from drive" : esc(r.drive) + " is offline"}</span>` : ""}</div>
     <h4>Actions</h4>
     <div class="acts"><button data-a="grade">Open in Grade</button><button data-a="finder">Show in Finder</button><button data-a="essay">Add to essay…</button><button data-a="like">More like this</button>${lbSearching() ? `<button data-a="unlike">Not this</button>` : ""}${r.reasons ? `<button data-a="notnow">Not now (don't suggest again)</button>` : ""}</div>
-    <div class="keys">P pick · X reject · U none · 0–5 stars<br>${r.graded ? "G graded / original · S side by side<br>" : ""}Click or Z zoom to 100% · ← → previous / next<br>V black &amp; white · F Finder · Esc close</div>`;
+    <div class="keys">P pick · X reject · U none · 0–5 stars<br>${r.graded ? "G graded / original · S side by side<br>" : ""}Click or Z zoom to 100% · ← → previous / next<br>V black &amp; white · T tag · F Finder · Esc close</div>`;
   P.querySelectorAll("[data-m]").forEach(b => b.onclick = () => libMark([r], { flag: b.dataset.m || null }));
+  const vt = async (kind, tags) => {
+    try { const res = await tagApi(kind, [r.id], tags); r.tags = res.tags[r.id] || []; lbRedraw(r); lbViewPanel(r); if (kind === "add") $("vTagIn").focus(); }
+    catch (e) { $("lbNote").textContent = "Couldn't save the tag: " + e.message; }
+  };
+  P.querySelectorAll("[data-tx]").forEach(b => b.onclick = () => vt("remove", [b.dataset.tx]));
+  $("vTagIn").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && $("vTagIn").value.trim()) { e.preventDefault(); vt("add", [$("vTagIn").value]); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); $("vTagIn").blur(); }
+  });
+  $("vTagIn").addEventListener("change", () => { if ($("vTagIn").value.trim()) vt("add", [$("vTagIn").value]); });   // picked from the suggestions
   P.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { const n = +b.dataset.s; libMark([r], { rating: r.my_rating === n ? 0 : n }); });
   P.querySelectorAll("[data-v]").forEach(b => b.onclick = () => { L.side = b.dataset.v === "side"; L.orig = b.dataset.v === "orig"; lbViewRender(); });
   P.querySelectorAll("[data-a]").forEach(b => b.onclick = () => {
@@ -2880,7 +3064,7 @@ function lbCloseViewer() {
 $("brVClose").onclick = lbCloseViewer;
 
 document.addEventListener("keydown", (e) => {
-  if ($("libView").hidden || typing(e) || !$("setBox").hidden || !$("keysBox").hidden || !$("briefBox").hidden || !$("addEsBox").hidden) return;
+  if ($("libView").hidden || typing(e) || !$("setBox").hidden || !$("keysBox").hidden || !$("briefBox").hidden || !$("addEsBox").hidden || !$("tagBox").hidden) return;
   const k = e.key, inView = L.view != null;
   if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === "a" && !inView) { e.preventDefault(); return $("lbAll").click(); }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -2901,6 +3085,7 @@ document.addEventListener("keydown", (e) => {
     if (k === "s" || k === "S") { e.preventDefault(); L.side = !L.side; return lbViewRender(); }
     if (k === "z" || k === "Z") { e.preventDefault(); return lbZoom(); }
     if (k === "v" || k === "V") { e.preventDefault(); return lbBW(); }
+    if ((k === "t" || k === "T") && $("vTagIn")) { e.preventDefault(); return $("vTagIn").focus(); }
   } else {
     if ((k === " " || k === "Enter") && targets.length) { e.preventDefault(); return lbOpenViewer(L.photos.indexOf(targets[0])); }
     if (k === "Escape" && L.sel.size) { e.preventDefault(); return lbClearSel(); }
@@ -2916,6 +3101,7 @@ document.addEventListener("keydown", (e) => {
   }
   if (!targets.length) return;
   if (k === "f" || k === "F") lbFinder(targets);
+  else if (k === "t" || k === "T") lbTagOpen(targets);
   else if (k === "p" || k === "P") libMark(targets, { flag: "pick" });
   else if (k === "x" || k === "X") libMark(targets, { flag: "reject" });
   else if (k === "u" || k === "U") libMark(targets, { flag: null });
@@ -2952,6 +3138,9 @@ function lbFilterUI() {
   if ($("fGraded").value) on.push({ ids: ["fGraded"], label: opt("fGraded"), off: () => { $("fGraded").value = ""; } });
   if ($("fStars").value && $("fStars").value !== "0") on.push({ ids: ["fStars"], label: opt("fStars"), off: () => { $("fStars").value = "0"; } });
   if ($("fCamera").value) on.push({ ids: ["fCamera"], label: opt("fCamera"), off: () => { $("fCamera").value = ""; } });
+  for (const t of L.tags) on.push({ ids: [], label: `Tag: ${t}`, off: () => { L.tags = L.tags.filter(x => x !== t); } });
+  if (L.untagged) on.push({ ids: [], label: "Untagged", off: () => { L.untagged = false; } });
+  lbTagsDraw();
   ["fFrom", "fTo", "fFlag", "fGraded", "fStars", "fCamera"].forEach(id => $(id).classList.remove("fon"));
   on.forEach(f => f.ids.forEach(id => $(id).classList.add("fon")));
   $("fCount").textContent = on.length ? `· ${on.length} on` : "";
@@ -2961,13 +3150,16 @@ function lbFilterUI() {
     b.onclick = () => { f.off(); lbFilterUI(); L.sel.clear(); runSearch(); }; chips.appendChild(b); });
   return on;
 }
-$("fClear").onclick = () => { ["fFrom", "fTo"].forEach(id => { $(id).value = ""; }); $("fFlag").value = ""; $("fGraded").value = ""; $("fStars").value = "0"; $("fCamera").value = "";
+$("fClear").onclick = () => { L.tags = []; L.untagged = false; ["fFrom", "fTo"].forEach(id => { $(id).value = ""; }); $("fFlag").value = ""; $("fGraded").value = ""; $("fStars").value = "0"; $("fCamera").value = "";
   lbFilterUI(); L.sel.clear(); runSearch(); };
 ["lbWhere", "lbMode", "fFrom", "fTo", "fCamera", "fGraded", "fFlag", "fStars"].forEach(id => $(id).addEventListener("change", () => { lbFilterUI(); L.sel.clear(); $("lbNote").textContent = ""; runSearch(); }));
 $("lbView").onchange = () => { document.querySelectorAll("#grid .cell").forEach(c => { const r = L.photos[+c.dataset.i]; if (r) c.querySelector("img").src = lbThumb(r); }); };
 $("lbSize").oninput = () => $("grid").style.setProperty("--cs", $("lbSize").value + "px");
 try { $("lbNames").checked = localStorage.getItem("fls.names") === "1"; } catch (e) {}
 $("grid").classList.toggle("names", $("lbNames").checked);
+try { $("lbTagsShow").checked = localStorage.getItem("fls.tagsShow") !== "0"; } catch (e) {}
+$("grid").classList.toggle("notags", !$("lbTagsShow").checked);
+$("lbTagsShow").onchange = () => { $("grid").classList.toggle("notags", !$("lbTagsShow").checked); try { localStorage.setItem("fls.tagsShow", $("lbTagsShow").checked ? "1" : "0"); } catch (e) {} };
 $("lbNames").onchange = () => { $("grid").classList.toggle("names", $("lbNames").checked); try { localStorage.setItem("fls.names", $("lbNames").checked ? "1" : "0"); } catch (e) {} };
 document.addEventListener("keydown", (e) => {           // ⌘F: search the Library
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f" && !$("libView").hidden) { e.preventDefault(); $("libq").focus(); $("libq").select(); }
@@ -3476,6 +3668,11 @@ async function cuLoad(sid) {
   $("cuBack").textContent = lib ? "Back to Library" : "Back"; $("cuAgain").textContent = lib ? "Back to Library" : "Back to culls";
   const s = await (await api("/api/cull/session/" + sid)).json();
   CU.sid = sid; CU.groups = s.groups; CU.frames = s.frames; CU.label = s.label;
+  api("/api/tags/photos", esJSON({ photo_ids: Object.keys(s.frames).map(Number) })).then(r => r.json()).then(t => {
+    if (CU.sid !== sid) return;
+    for (const id in CU.frames) CU.frames[id].tags = t[id] || [];
+    if (!$("cuRun").hidden && cuGroup()) cuShow();
+  }).catch(() => {});
   $("cuLabel").textContent = s.label;
   $("cuStart").hidden = true; $("cuDone").hidden = true; $("cuRun").hidden = false;
   cuFilter(true);
@@ -3590,6 +3787,7 @@ function cuShow() {
     if (cuChosen().includes(id)) tags.push(`<span class="c">Compare ${cuChosen().indexOf(id) + 1}</span>`);
     if (id === g.suggested && g.ids.length > 1) tags.push(`<span class="s">★ Suggested pick</span>`);
     if (!f.online) tags.push(`<span class="o">Drive offline</span>`);
+    if (f.tags && f.tags.length) tags.push(`<span class="tg" title="Tags: ${esc(f.tags.join(", "))}">🏷 ${esc(f.tags.join(", "))}</span>`);
     d.innerHTML = `<div class="tags">${tags.join("")}</div><div class="ph"><img src="/api/cull/view/${id}" alt=""></div>
       <div class="meta"><span>${esc(f.name)}</span><span>${f.time ? esc(f.time.slice(11, 19)) : ""}</span>
       ${f.on1 ? `<span class="on1" title="ON1 rating">ON1 ${"★".repeat(f.on1)}</span>` : ""}<span class="stars">${f.rating ? "★".repeat(f.rating) : ""}</span>
@@ -3637,7 +3835,7 @@ function cuShow() {
   }
   if (CU.picks) $("cuWhy").textContent = "";
   $("cuKeys").textContent = CU.picks ? "X reject · P pick again · 1–5 stars · V black & white · ← → frame · Z zoom · C compare · Esc back"
-    : "P pick · Shift+P pick → next group · Enter next group · X reject · ← → frame · V black & white · Z zoom · Shift-click 2 frames, then C compare";
+    : "P pick · Shift+P pick → next group · Enter next group · X reject · ← → frame · V black & white · Z zoom · T tag · Shift-click 2 frames, then C compare";
   // prefetch the next group's views
   const nx = CU.groups[CU.list[CU.gi + 1]];
   if (nx) nx.ids.slice(0, 4).forEach(id => { const im = new Image(); im.src = "/api/cull/view/" + id; });
@@ -3973,7 +4171,7 @@ $("cuCmpBtn").onclick = () => cuCompare();
 $("cuNextBtn").onclick = () => cuNext(1);
 
 document.addEventListener("keydown", (e) => {
-  if ($("cullView").hidden || $("cuRun").hidden || typing(e) || e.metaKey || e.ctrlKey) return;
+  if ($("cullView").hidden || $("cuRun").hidden || typing(e) || e.metaKey || e.ctrlKey || !$("tagBox").hidden) return;
   const k = e.key, g = cuGroup();
   if (CMP.on) {
     const id = CMP.ids[CMP.act], i = g ? g.ids.indexOf(id) : -1;
@@ -4000,6 +4198,7 @@ document.addEventListener("keydown", (e) => {
   }
   if (!g) return;
   if (k === "v" || k === "V") { e.preventDefault(); return cuBW(); }
+  if (k === "t" || k === "T") { e.preventDefault(); return cuTag(e.shiftKey); }
   if (CU.picks && k === "Escape") { e.preventDefault(); return cuPicksMode(false); }
   if (CU.picks && (k === "Enter" || k === "ArrowUp" || k === "ArrowDown")) { e.preventDefault(); const st = (k === "ArrowUp" ? -1 : 1) * (k === "Enter" ? 1 : $("cuFrames").style.gridTemplateColumns.split("minmax").length - 1 || 1);
     CU.fi = Math.min(g.ids.length - 1, Math.max(0, CU.fi + st)); return cuShow(); }

@@ -615,8 +615,8 @@ def library_pause():
 def library_search(q: str = "", cats: str = "street,travel", year: str = "", date_from: str = "",
                    date_to: str = "", camera: str = "", graded: str = "", folder_id: int = 0,
                    flag: str = "", stars: int = 0, offset: int = 0, limit: int = 200, order: str = "newest",
-                   like: str = "", unlike: str = ""):
-    from .library import search
+                   like: str = "", unlike: str = "", tags: str = "", untagged: int = 0):
+    from .library import search, tags as tagdb
     ids = lambda t: [int(x) for x in t.split(",") if x.strip().isdigit()]
     return search.search(_lib().con(), q, limit=min(limit, 3000), offset=offset, order=order,
                          like=ids(like), unlike=ids(unlike),
@@ -624,7 +624,65 @@ def library_search(q: str = "", cats: str = "street,travel", year: str = "", dat
                          date_from=date_from or None, date_to=date_to or None, camera=camera or None,
                          graded=None if graded == "" else graded if graded in ("edited", "stale") else graded == "1",
                          folder_id=folder_id or None,
-                         flag=flag or None, stars=stars or None)
+                         flag=flag or None, stars=stars or None, tags=tagdb.split(tags), untagged=bool(untagged))
+
+
+# --- tags: your own keywords on photos (library database only) ------------------------------------
+
+class TagsIn(BaseModel):
+    photo_ids: list[int] = []
+    tags: list[str] = []
+
+
+class TagRenameIn(BaseModel):
+    old: str
+    new: str = ""
+
+
+@app.get("/api/tags")
+def tags_list():
+    from .library import tags as tagdb
+    return tagdb.all_tags(_lib().con())
+
+
+@app.post("/api/tags/photos")
+def tags_of_photos(body: TagsIn):
+    """{photo_id: [tags]} for these photos (e.g. a selection)."""
+    from .library import tags as tagdb
+    return {str(k): v for k, v in tagdb.for_photos(_lib().con(), body.photo_ids).items()}
+
+
+@app.post("/api/tags/add")
+def tags_add(body: TagsIn):
+    from .library import tags as tagdb
+    c = _lib().con()
+    if not tagdb.split(",".join(body.tags)):
+        raise HTTPException(400, "Type a tag first.")
+    n = tagdb.add(c, body.photo_ids, body.tags)
+    return {"added": n, "tags": tagdb.for_photos(c, body.photo_ids)}
+
+
+@app.post("/api/tags/remove")
+def tags_remove(body: TagsIn):
+    from .library import tags as tagdb
+    c = _lib().con()
+    n = tagdb.remove(c, body.photo_ids, body.tags)
+    return {"removed": n, "tags": tagdb.for_photos(c, body.photo_ids)}
+
+
+@app.post("/api/tags/rename")
+def tags_rename(body: TagRenameIn):
+    from .library import tags as tagdb
+    try:
+        return {"tag": tagdb.rename(_lib().con(), body.old, body.new)}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/tags/delete")
+def tags_delete(body: TagRenameIn):
+    from .library import tags as tagdb
+    return {"removed": tagdb.delete(_lib().con(), body.old)}
 
 
 @app.get("/api/library/thumb/{photo_id}")
@@ -1680,7 +1738,7 @@ class EssayBriefIn(BaseModel):
 
 def _view_ids(c, v):
     """Every photo in a Library view (not just the page on screen); with search words, the clear matches."""
-    from .library import search
+    from .library import search, tags as tagdb
     text = (v.get("q") or "").strip()
     graded = v.get("graded", "")
     res = search.search(c, text, limit=100000, categories=None, year=v.get("year") or None,
@@ -1688,9 +1746,10 @@ def _view_ids(c, v):
                         camera=v.get("camera") or None,
                         graded=None if graded == "" else graded if graded in ("edited", "stale") else graded == "1",
                         folder_id=int(v["folder_id"]) if v.get("folder_id") else None, flag=v.get("flag") or None,
-                        stars=int(v.get("stars") or 0) or None, order="oldest")
+                        stars=int(v.get("stars") or 0) or None, order="oldest",
+                        tags=tagdb.split(v.get("tags") or ""), untagged=bool(v.get("untagged")))
     rows = res["results"]
-    return [r["id"] for r in rows if not text or r.get("strong")]
+    return [r["id"] for r in rows if not text or r.get("strong", True)]   # a tag-only search: every tagged photo
 
 
 @app.post("/api/essays/brief")

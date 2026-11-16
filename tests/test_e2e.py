@@ -103,12 +103,30 @@ def test_click_through_every_tab(app):
         page.evaluate("""async () => { for (const v of [...$("lbMode").options].map(o => o.value)) {
             $("lbMode").value = v; $("lbMode").dispatchEvent(new Event("change")); await new Promise(r => setTimeout(r, 1200)); } }""")
 
+        # Tags: tag two photos (T), filter by the tag, type it in search, the viewer's tag box, rename, remove
+        page.evaluate("""async () => { $("lbMode").value = ""; await runSearch(); lbSelect(0, {}); lbSelect(1, { metaKey: true });
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "t" })); await new Promise(r => setTimeout(r, 800));
+            $("tgIn").value = "Sultan Mosque, rain"; $("tgIn").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+            await new Promise(r => setTimeout(r, 1500)); $("tgDone").click();
+            $("lbTags").querySelector('[data-t="rain"]').click(); await new Promise(r => setTimeout(r, 1500));
+            if (L.total !== 2) throw new Error("tag filter shows " + L.total);
+            $("fClear").click(); await new Promise(r => setTimeout(r, 1000));
+            $("libq").value = "sultan mosque"; await runSearch();
+            if (L.total !== 2 || !$("lbSub").textContent.includes("tagged")) throw new Error("typing a tag: " + $("lbSub").textContent);
+            $("libq").value = ""; await runSearch();
+            lbOpenViewer(0); $("vTagIn").value = "night"; $("vTagIn").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+            await new Promise(r => setTimeout(r, 1200)); lbCloseViewer();
+            await api("/api/tags/rename", esJSON({ old: "night", new: "rain" }));
+            for (const t of ["rain", "Sultan Mosque"]) await api("/api/tags/delete", esJSON({ old: t }));
+            await tagsLoad(); if (TG.all.length) throw new Error("tags left over"); }""")
+
         # Cull: start a cull of the test shoot, compare two frames, zoom
         tab("Cull")
         page.wait_for_timeout(1500)
         page.evaluate(f"""async () => {{ const r = await (await api("/api/cull/start", esJSON({{ scope: {{ folder_id: {app['folder']},
             categories: [] }}, label: "E2E" }}))).json();
             await cuLoad(r.session); await new Promise(r => setTimeout(r, 2000));
+            cuTag(true); await new Promise(r => setTimeout(r, 800)); tagClose();
             await cuZoom(cuGroup().ids[0], 0.5, 0.5); cuZoomClose();
             cuCompare(); await new Promise(r => setTimeout(r, 2500)); cuCompareClose(); }}""")
 

@@ -5,7 +5,7 @@ from pathlib import PurePath
 
 import numpy as np
 
-from . import colours, drives, vision
+from . import colours, drives, tags as tagdb, vision
 
 DEFAULT_CATEGORIES = ("street", "travel")
 CLOSEUP_PENALTY = 0.01   # a close-up match counts slightly less than a whole-photo match
@@ -94,6 +94,10 @@ def _filters(f):
         where.append("m.flag IS NULL")
     if f.get("stars"):
         where.append("COALESCE(m.rating, 0) >= ?"); args.append(int(f["stars"]))
+    for t in f.get("tags") or ():              # every tag listed must be on the photo
+        where.append("EXISTS (SELECT 1 FROM photo_tags pt WHERE pt.photo_id = p.id AND pt.tag = ?)"); args.append(t)
+    if f.get("untagged"):
+        where.append("NOT EXISTS (SELECT 1 FROM photo_tags pt WHERE pt.photo_id = p.id)")
     return (" WHERE " + " AND ".join(where)) if where else "", args
 
 
@@ -188,6 +192,12 @@ def search(con, text="", limit=200, offset=0, order="newest", like=(), unlike=()
     `like` / `unlike`: photo ids marked "More like this" / "Not this" to steer the results (they
     work with or without words)."""
     mounts = drives.online_mounts(con)
+    named = []
+    if text.strip():                          # a tag typed in the search is exact: only photos with it
+        named, text = tagdb.find_in(con, text)
+        if named:
+            filters = dict(filters)
+            filters["tags"] = list(filters.get("tags") or ()) + named
     u = understand(con, text) if text.strip() else None
     if u:
         filters = dict(filters)
@@ -202,7 +212,8 @@ def search(con, text="", limit=200, offset=0, order="newest", like=(), unlike=()
     if not steer and (not u or not (u["text"] or u["colours"] or u["mono"])):
         rows.sort(key=lambda r: (r["capture_time"] or "", r["rel_path"]), reverse=order != "oldest")
         page = rows[offset:offset + limit]
-        return {"total": len(rows), "results": [_shape(r, mounts) for r in page]}
+        return {"total": len(rows), "results": _with_tags(con, [_shape(r, mounts) for r in page]),
+                "understood": {"tags": named}}
     ids, mat = _matrix(con)
     if not len(ids):
         return {"total": 0, "results": []}
@@ -273,8 +284,19 @@ def search(con, text="", limit=200, offset=0, order="newest", like=(), unlike=()
         r["steer"] = "like" if r["id"] in like else "unlike" if r["id"] in unlike else None
         if r["steer"] == "unlike":
             r["strong"] = False
-    return {"total": len(ranked), "strong": strong, "results": results,
-            "understood": {k: u[k] for k in ("year", "month", "colours", "mono", "folder_words")}}
+        if named and not r["grouped"] and r["steer"] != "unlike":
+            r["strong"] = True                # tagged by you: a sure match, the words only order them
+    if named:
+        strong = sum(1 for r in ranked if r["id"] not in dup_ids and r["id"] not in unlike)
+    return {"total": len(ranked), "strong": strong, "results": _with_tags(con, results),
+            "understood": {**{k: u[k] for k in ("year", "month", "colours", "mono", "folder_words")}, "tags": named}}
+
+
+def _with_tags(con, results):
+    got = tagdb.for_photos(con, [r["id"] for r in results])
+    for r in results:
+        r["tags"] = got.get(r["id"], [])
+    return results
 
 
 def photo(con, photo_id):
@@ -282,6 +304,7 @@ def photo(con, photo_id):
     if not r:
         return None
     out = _shape(r, drives.online_mounts(con))
+    out["tags"] = tagdb.for_photos(con, [photo_id]).get(photo_id, [])
     out["files"] = [dict(x) for x in con.execute(
         "SELECT rel_path, kind, role, size, missing FROM files WHERE photo_id=? ORDER BY role != 'original', rel_path",
         (photo_id,))]

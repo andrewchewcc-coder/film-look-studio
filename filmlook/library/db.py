@@ -245,6 +245,14 @@ CREATE TABLE IF NOT EXISTS photo_colours (
     thumb    TEXT NOT NULL,
     shares   TEXT NOT NULL                -- JSON {red, orange, ..., chroma}
 );
+-- Your own keywords (see library/tags.py). Only here: never written to photo files.
+CREATE TABLE IF NOT EXISTS photo_tags (
+    photo_id INTEGER NOT NULL REFERENCES photos(id),
+    tag      TEXT NOT NULL COLLATE NOCASE,
+    added_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (photo_id, tag)
+);
+CREATE INDEX IF NOT EXISTS photo_tags_tag ON photo_tags(tag);
 CREATE TABLE IF NOT EXISTS embeddings (
     photo_id INTEGER PRIMARY KEY REFERENCES photos(id),
     model    TEXT NOT NULL,
