@@ -233,7 +233,7 @@ def full_hash(path):
     return h.hexdigest()
 
 
-def read_exif(paths):
+def read_exif(paths, tags=None):
     """{path: {tag: value}} via one exiftool call for many files."""
     if not paths:
         return {}
@@ -241,7 +241,7 @@ def read_exif(paths):
         args.write("\n".join(str(p) for p in paths))
     try:
         cmd = [EXIFTOOL, "-json", "-n", "-fast", "-charset", "filename=utf8",
-               *[f"-{t}" for t in EXIF_TAGS], "-@", args.name]
+               *[f"-{t}" for t in (tags or EXIF_TAGS)], "-@", args.name]
         out = subprocess.run(cmd, capture_output=True, timeout=600).stdout
         rows = json.loads(out or b"[]")
     except (subprocess.SubprocessError, ValueError):

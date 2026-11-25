@@ -83,6 +83,11 @@
   button.linkish:hover { color: var(--text); }
   #folderName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
   #folderName b { color: var(--text); font-weight: 600; }
+  #gTag { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #esTagWrap { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; }
+  #esTagWrap h3 { font-size: 13px; margin: 0 0 6px; }
+  #esTagActs { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; }
+  #esTagActs button { height: auto; min-height: 30px; font-size: 12px; white-space: normal; }
   #curName { color: var(--text); font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   #curName:not(:empty)::before { content: "·"; color: var(--muted); margin: 0 6px; }
   input[type=text] { background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 7px 10px; border-radius: 6px; font: inherit; }
@@ -94,7 +99,42 @@
      scrolls inside its own panels; the photo always shrinks to fit (portrait or landscape). */
   body { display: flex; flex-direction: column; height: 100vh; }
   header { flex: 0 0 auto; }
-  main, #libView, #cullView, #essayView { flex: 1 1 auto; min-height: 0; }
+  main, #libView, #cullView, #essayView, #impView { flex: 1 1 auto; min-height: 0; }
+  #impView { display: grid; grid-template-columns: 300px 1fr; grid-template-rows: minmax(0, 1fr); }
+  #impView[hidden] { display: none; }
+  #imSide { border-right: 1px solid var(--line); overflow-y: auto; padding: 4px 14px 14px; }
+  #imSide > label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
+  #imSide select, #imSide input[type=text] { width: 100%; height: 32px; box-sizing: border-box; background: var(--field); border: 1px solid var(--line); color: var(--text); padding: 0 8px; border-radius: 6px; font: inherit; font-size: 13px; }
+  #imSide label.chk { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); margin: 10px 0 0; }
+  #imSide .help { font-size: 11.5px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+  #imSide .help code { font-size: 11px; background: var(--field); padding: 0 3px; border-radius: 3px; }
+  #imCards .card { display: block; width: 100%; text-align: left; height: auto; padding: 8px 10px; margin: 6px 0; border-radius: 6px; }
+  #imCards .card.on { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+  #imCards .card b { display: block; font-size: 13px; } #imCards .card span { font-size: 11.5px; color: var(--muted); }
+  #imIntoPath { font-size: 12px; word-break: break-word; margin: 2px 0 6px; }
+  #imMain { overflow-y: auto; padding: 0 16px 30px; min-width: 0; }
+  #imHead { position: sticky; top: 0; z-index: 2; background: var(--bg); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 0 10px; border-bottom: 1px solid var(--line); }
+  #imHead .t { font-size: 16px; font-weight: 600; } #imHead .sub { font-size: 12px; color: var(--muted); }
+  #imProg { margin: 10px 0; } #imProg .bar { height: 6px; background: var(--field); border-radius: 3px; overflow: hidden; }
+  #imProg .bar div { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  #imProg .small { margin-top: 6px; }
+  #imDone { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--accent); border-radius: 8px; }
+  #imDone .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .imDay { margin-top: 16px; }
+  .imDayHead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+  .imDayHead b { font-size: 14px; } .imDayHead .to { color: var(--muted); font-size: 12px; word-break: break-word; }
+  .imGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+  .imCell { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel); cursor: pointer; position: relative; }
+  .imCell.off { opacity: .45; } .imCell.done { opacity: .5; cursor: default; }
+  .imCell .ph { aspect-ratio: 3 / 2; background: var(--stage); display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 12px; }
+  .imCell .ph img { width: 100%; height: 100%; object-fit: contain; }
+  .imCell .nm { padding: 5px 7px 6px; font-size: 11.5px; line-height: 1.35; }
+  .imCell .nm b { display: block; font-weight: 600; overflow-wrap: anywhere; } .imCell .nm span { color: var(--muted); overflow-wrap: anywhere; }
+  .imCell .ck { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 50%; background: #000a; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 1.5px solid #fff; }
+  .imCell:not(.off):not(.done) .ck { background: var(--accent); border-color: var(--accent); }
+  .imCell .lab { position: absolute; top: 6px; right: 6px; background: #000c; color: #fff; font-size: 10.5px; padding: 1px 6px; border-radius: 3px; }
+  #imEmpty { color: var(--muted); padding: 40px 0; line-height: 1.6; max-width: 560px; }
+  #tabImp.card { box-shadow: inset 0 -2px 0 var(--accent); }
   main { display: grid; grid-template-columns: 1fr 290px; grid-template-rows: minmax(0, 1fr); }
   #center { min-height: 0; overflow: hidden; }
   /* Grade's photos: a filmstrip under the photo, like Cull's (the looks live in the Look tab) */
@@ -719,7 +759,7 @@
 <body>
 <header>
   <h1>Film Look Studio</h1>
-  <div class="tabs"><button id="tabLib">Library</button><button id="tabCull">Cull</button><button id="tabGrade">Grade</button><button id="tabEssay">Essays</button></div>
+  <div class="tabs"><button id="tabImp" title="Copy new photos from a memory card into your shoot folders, renamed">Import</button><button id="tabLib">Library</button><button id="tabCull">Cull</button><button id="tabGrade">Grade</button><button id="tabEssay">Essays</button></div>
   <div id="folderBar"><button id="backLib" hidden title="Back to the Library, where these photos came from">← Library</button><span id="folderName" title="">No folder open</span><span id="curName" title="The photo you're grading"></span><button id="open" class="linkish" title="Open a folder that isn't in the Library">Open a folder…</button></div>
   <div id="hdrRight"><button id="noteBtn" title="Recent messages">🔔<i hidden></i></button><button id="actBtn" hidden title="What's running in the background"></button><button id="keysBtn" title="Keyboard shortcuts (?)">?</button><button id="setBtn" title="Settings">⚙ Settings</button><button id="quitBtn" title="Stop Film Look Studio (closing the browser also stops it after 10 minutes)">Quit</button></div>
 </header>
@@ -757,11 +797,43 @@
     <div><h4>Library</h4><p><b>Click</b> select · <b>⌘-click</b> add · <b>Shift-click</b> range<br><b>⌘A</b> select all · <b>Esc</b> clear<br><b>Arrows</b> move · <b>Space / Enter</b> view large<br><b>F</b> show in Finder · <b>T</b> tag</p></div>
     <div><h4>Big viewer</h4><p><b>← →</b> previous / next<br><b>Click / Z</b> zoom to 100% (drag to move)<br><b>G</b> graded / original · <b>S</b> side by side<br><b>V</b> black &amp; white preview · <b>T</b> add a tag · <b>Esc / Space</b> close</p></div>
     <div><h4>Cull</h4><p><b>← →</b> frame · <b>↑ ↓</b> group<br><b>Enter</b> next group · <b>Shift+Enter</b> previous<br><b>Z</b> zoom where you point · <b>C</b> compare two frames at 100% · <b>P</b> pick (stays in the group) · <b>Shift+P</b> pick and go to the next group<br><b>V</b> black &amp; white preview<br><b>T</b> tag this frame · <b>Shift+T</b> tag the whole group</p></div>
-    <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>J</b> (hold) camera JPG · <b>← →</b> previous / next photo · <b>V</b> black &amp; white preview · <b>T</b> tick / untick (⌘-click a photo; Shift-click a range) · <b>\</b> hide the photo strip · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
+    <div><h4>Grade</h4><p><b>⌘Z / ⇧⌘Z</b> undo / redo<br><b>⌘C / ⌘V</b> copy / paste a grade<br><b>B</b> (hold) before · <b>J</b> (hold) camera JPG · <b>← →</b> previous / next photo · <b>V</b> black &amp; white preview · <b>T</b> tick / untick (⌘-click a photo; Shift-click a range) · <b>K</b> tags (all ticked photos when this one is ticked) · <b>\</b> hide the photo strip · <b>C</b> crop · <b>Z</b> zoom<br>Double-click a slider: reset it</p></div>
     <div><h4>Essays</h4><p><b>⌘Z</b> undo · drag to reorder<br><b>🔒</b> lock a photo · <b>⇄</b> replace</p></div>
   </div>
   <div class="small">Press <b>?</b> any time to see this.</div>
 </div></div>
+<section id="impView" hidden>
+  <div id="imSide">
+    <div class="sideHead" style="border-top:0;margin-top:8px">From</div>
+    <div id="imCards"><div class="small">Looking for a memory card…</div></div>
+    <button id="imOther" class="linkish" title="Import from a folder instead of a card">Another folder…</button>
+    <div class="sideHead">Copy to</div>
+    <label>Into</label>
+    <select id="imInto"></select>
+    <div id="imIntoPath" class="small"></div>
+    <label for="imShoot">Shoot name</label>
+    <input type="text" id="imShoot" placeholder="e.g. Ex-ACLP gathering" spellcheck="false">
+    <label for="imFolderT">Folder name</label>
+    <select id="imFolderT"></select>
+    <input type="text" id="imFolderC" hidden spellcheck="false" style="margin-top:6px">
+    <label class="chk"><input type="checkbox" id="imPerDay" checked> A folder for each day</label>
+    <label for="imNameT">File names</label>
+    <select id="imNameT"></select>
+    <input type="text" id="imNameC" hidden spellcheck="false" style="margin-top:6px" placeholder="{YY}-{MM}-{DD}-{hh}-{mm}-{ss}">
+    <div class="help">Made from when each photo was taken. Pieces for your own: <code>{YYYY}</code> <code>{YY}</code> <code>{MM}</code> <code>{DD}</code> <code>{hh}</code> <code>{mm}</code> <code>{ss}</code> <code>{shoot}</code> <code>{camera}</code> <code>{name}</code> (the camera's) <code>{n}</code> (001, 002…).<br>RAW + JPG of one shot keep one name. Shots in the same second get -02, -03…</div>
+    <div class="help" style="margin-top:12px">The card is only read: nothing on it is changed or deleted. Only new files are added to your folders; an existing file is never replaced. Every copy is checked against the card.</div>
+  </div>
+  <div id="imMain">
+    <div id="imHead"><div><div class="t" id="imTitle">Import</div><div class="sub" id="imSub"></div></div><span style="flex:1"></span>
+      <button id="imAll" hidden>Select all new</button><button id="imNone" hidden>Select none</button>
+      <button id="imEject" hidden title="Eject the card, like dragging it to the Bin">⏏ Eject card</button>
+      <button id="imGo" class="primary" hidden>Import</button></div>
+    <div id="imProg" hidden><div class="bar"><div></div></div><div class="small" id="imProgText"></div></div>
+    <div id="imDone" hidden></div>
+    <div id="imDays"></div>
+    <div id="imEmpty" hidden></div>
+  </div>
+</section>
 <section id="libView" hidden>
   <div id="libSide">
     <label for="lbWhere">Browse</label>
@@ -913,6 +985,7 @@
     <h2>Essays</h2>
     <div id="esList" class="small">None yet.</div>
     <div class="small" style="margin-top:14px;line-height:1.5">To make a new essay, go to the <b>Library</b>, choose photos (a selection, a shoot or a year), and click <b>Make an essay</b>. <b>Add to essay…</b> adds a selection to one of these.</div>
+    <div id="esTagWrap"><h3>From a tag</h3><div id="esTags" class="small"></div><div id="esTagActs" hidden></div></div>
   </div>
   <div id="esMain">
     <div id="esEmpty">Choose an essay on the left, or make a new one from the Library (Make an essay).</div>
@@ -1013,6 +1086,7 @@
         <button id="z100" title="100% — actual pixels (Z zooms where the pointer is)">100%</button>
         <span id="zLabel">Fit</span>
         <button id="zBW" title="Preview in black and white (V). Only changes what you see here, not the grade.">B&amp;W</button>
+        <button id="gTag" title="Tags on this photo (K). With photos ticked, tags all the ticked ones.">🏷 Tag</button>
       </div>
       <div id="badge" hidden></div>
       <div id="busy"></div>
@@ -1789,7 +1863,7 @@ async function select(name) {
   camCheck(name);
   await loadEdit();                           // its own crop, look and sliders
   if (S.current !== name) return;
-  showLookInfo(); renderBig();
+  showLookInfo(); renderBig(); gradeTagLabel();
 }
 // Each photo remembers its look and sliders (saved as you work, like the crop).
 let gradeTimer = null, gradePending = null;
@@ -2078,7 +2152,9 @@ const esc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<":
 
 function setTab(tab) {
   if (!$("libView").hidden && tab !== "lib") L.scroll = $("libMain").scrollTop;   // a hidden panel forgets its scroll
-  const lib = tab === "lib", grade = tab === "grade", cullT = tab === "cull", essT = tab === "essay";
+  const lib = tab === "lib", grade = tab === "grade", cullT = tab === "cull", essT = tab === "essay", imp = tab === "imp";
+  $("impView").hidden = !imp; $("tabImp").classList.toggle("on", imp);
+  if (imp) imOpen(); else imLeave();
   $("libView").hidden = !lib; $("gradeView").hidden = !grade; $("cullView").hidden = !cullT;
   $("essayView").hidden = !essT; $("tabEssay").classList.toggle("on", essT);
   if (essT) esOpen();
@@ -2089,6 +2165,7 @@ function setTab(tab) {
   if (cullT) { if (!CU.sid) cuOpenStart(); else if (!$("cuRun").hidden) cuRefreshMarks(); }
 }
 $("tabCull").onclick = () => setTab("cull");
+$("tabImp").onclick = () => setTab("imp");
 $("tabEssay").onclick = () => setTab("essay");
 $("tabLib").onclick = () => setTab("lib");
 $("tabGrade").onclick = () => setTab("grade");
@@ -2202,8 +2279,8 @@ $("pauseBtn").onclick = async () => { $("scanStatus").textContent = "Pausing aft
 const PK = { path: null, dirs: [], canAdd: false, mode: "library" };
 async function openPicker(mode) {
   PK.mode = mode;
-  $("picker").querySelector("h3").textContent = mode === "grade" ? "Open a folder in Grade" : "Choose a photo folder";
-  $("pkAdd").textContent = mode === "grade" ? "Open this folder" : "Add this folder";
+  $("picker").querySelector("h3").textContent = { grade: "Open a folder in Grade", import: "Import into this folder", importsrc: "Import from a folder" }[mode] || "Choose a photo folder";
+  $("pkAdd").textContent = { grade: "Open this folder", import: "Copy into this folder", importsrc: "Import from this folder" }[mode] || "Add this folder";
   $("picker").hidden = false;
   try {                                    // the drive / place menu
     const b = await (await api("/api/library/browse")).json();
@@ -2222,7 +2299,7 @@ async function pkGo(path) {
     $("pkPath").textContent = b.path && PK.mode === "grade" ? `${where} — ${b.photos ? b.photos + " photo" + (b.photos === 1 ? "" : "s") : "no photos"} here` : where;
     $("pkUp").disabled = !b.parent;
     $("pkWhy").textContent = b.path && !b.can_add ? b.why_not : "";
-    $("pkAdd").disabled = !PK.canAdd || (PK.mode === "grade" && !b.photos);
+    $("pkAdd").disabled = PK.mode === "importsrc" ? !b.path : !PK.canAdd || (PK.mode === "grade" && !b.photos);
     const sel = [...$("pkPlace").options].find(o => o.value && b.path && (b.path + "/").startsWith(o.value + "/"));
     $("pkPlace").value = sel ? sel.value : "";
     $("pkFilter").value = ""; pkList();
@@ -2245,6 +2322,8 @@ $("pkFilter").addEventListener("input", pkList);
 $("pkCancel").onclick = () => { $("picker").hidden = true; };
 $("pkAdd").onclick = async () => {
   if (PK.mode === "grade") { $("picker").hidden = true; return openGradeFolder(PK.path); }
+  if (PK.mode === "import") { $("picker").hidden = true; IM.into = PK.path; imIntoFill(); $("imInto").value = PK.path; return imPlanSoon(); }
+  if (PK.mode === "importsrc") { $("picker").hidden = true; return imChoose(PK.path); }
   try {
     await api("/api/library/roots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: PK.path }) });
     $("picker").hidden = true; await loadLib();
@@ -2630,11 +2709,11 @@ function lbEssaySource() {
   if (sel.length) return { photo_ids: sel.map(r => r.id), label: `your ${sel.length} selected photos` };
   if ($("lbMode").value) return { photo_ids: L.photos.map(r => r.id), label: `the ${L.photos.length} photos shown` };
   const p = params(0); delete p.offset; delete p.limit;
-  return { view: p, label: "everything in this view" };
+  return { view: p, label: L.tags.length && !p.q ? `the photos tagged ${L.tags.map(t => `“${t}”`).join(" and ")}` : "everything in this view" };
 }
 $("lbEssay").onclick = async () => {
   const src = lbEssaySource();
-  $("brName").value = "Best of " + $("lbTitle").textContent.replace(/^Worth a second look · |^On this day · /, "");
+  $("brName").value = L.tags.length && !src.photo_ids ? L.tags.join(" · ") : "Best of " + $("lbTitle").textContent.replace(/^Worth a second look · |^On this day · /, "");
   $("brMsg").textContent = "";
   const looks = [{ id: "neutral", name: "Neutral (no look)" }, ...(S.looks || [])];
   $("brLook").innerHTML = looks.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join("");
@@ -2824,6 +2903,212 @@ function cuTag(all) {
   });
 }
 $("cuTagBtn").onclick = (e) => { e.currentTarget.blur(); cuTag(e.shiftKey); };
+// --- Import from a memory card (library/importer.py). The card is only read; only new, checked files are added.
+const IM = { cards: [], src: null, plan: null, sel: new Set(), roots: [], presets: null, timer: null, poll: null, seen: new Set(), into: null };
+function imPrefs() { try { return JSON.parse(localStorage.getItem("fls.import") || "{}"); } catch (e) { return {}; } }
+function imSavePrefs() {
+  try { localStorage.setItem("fls.import", JSON.stringify({ into: $("imInto").value, intoCustom: IM.into, folder_t: $("imFolderT").value,
+    folder_c: $("imFolderC").value, name_t: $("imNameT").value, name_c: $("imNameC").value, per_day: $("imPerDay").checked })); } catch (e) {}
+}
+async function imCardsLoad() {
+  const r = await (await api("/api/import/cards")).json();
+  IM.cards = r.cards; IM.roots = r.roots;
+  if (!IM.presets) {
+    IM.presets = r;
+    const pf = imPrefs();
+    $("imFolderT").innerHTML = r.folder_presets.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join("") + `<option value="custom">Your own…</option>`;
+    $("imNameT").innerHTML = r.name_presets.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join("") + `<option value="custom">Your own…</option>`;
+    if (pf.folder_t) $("imFolderT").value = pf.folder_t; if (pf.folder_c) $("imFolderC").value = pf.folder_c;
+    if (pf.name_t) $("imNameT").value = pf.name_t; if (pf.name_c) $("imNameC").value = pf.name_c;
+    if (pf.per_day === false) $("imPerDay").checked = false;
+    IM.into = pf.intoCustom || null; IM.intoPick = pf.into || "auto";
+    $("imFolderC").hidden = $("imFolderT").value !== "custom"; $("imNameC").hidden = $("imNameT").value !== "custom";
+  }
+  imIntoFill();
+  return r;
+}
+function imIntoFill() {
+  const cur = $("imInto").value || IM.intoPick || "auto";
+  $("imInto").innerHTML = `<option value="auto">The year's folder (e.g. 2026 Photography)</option>`
+    + IM.roots.map(r => `<option value="${esc(r.path)}">${esc(r.drive)} › ${esc(r.rel_path)}</option>`).join("")
+    + (IM.into && !IM.roots.some(r => r.path === IM.into) ? `<option value="${esc(IM.into)}">${esc(IM.into)}</option>` : "")
+    + `<option value="pick">Choose another folder…</option>`;
+  $("imInto").value = [...$("imInto").options].some(o => o.value === cur) ? cur : "auto";
+}
+function imCardsDraw() {
+  const el = $("imCards");
+  const list = IM.cards.map(c => `<button class="card${IM.src === c.path ? " on" : ""}" data-p="${esc(c.path)}"><b>💾 ${esc(c.name)}</b><span>${c.files} file${c.files === 1 ? "" : "s"} on the card</span></button>`);
+  if (IM.src && !IM.cards.some(c => c.path === IM.src))
+    list.push(`<button class="card on" data-p="${esc(IM.src)}"><b>📁 ${esc(IM.src.split("/").pop())}</b><span>${esc(IM.src)}</span></button>`);
+  el.innerHTML = list.length ? list.join("") : `<div class="small" style="line-height:1.5">No memory card found. Put the card in the card reader; it shows up here by itself.</div>`;
+  el.querySelectorAll("[data-p]").forEach(b => b.onclick = () => imChoose(b.dataset.p));
+}
+async function imOpen() {
+  try { await imCardsLoad(); } catch (e) { return status(e.message, true); }
+  if (!IM.src && IM.cards.length) IM.src = IM.cards[0].path;
+  imCardsDraw();
+  const st = await (await api("/api/import/state")).json();
+  if (st.running) { imShowProgress(); imWatch(); }
+  if (IM.src) imPlan(true); else imEmpty();
+  clearInterval(IM.timer);
+  IM.timer = setInterval(async () => {                  // a card put in or taken out shows up by itself
+    if ($("impView").hidden) return;
+    const before = IM.cards.map(c => c.path).join("|");
+    try { await imCardsLoad(); } catch (e) { return; }
+    if (IM.cards.map(c => c.path).join("|") === before) return;
+    if (IM.src && !IM.cards.some(c => c.path === IM.src) && IM.src.startsWith("/Volumes/") && IM.src.split("/").length === 3) IM.src = null;
+    if (!IM.src && IM.cards.length) { IM.src = IM.cards[0].path; IM.sel.clear(); imPlan(true); }
+    imCardsDraw(); if (!IM.src) imEmpty();
+  }, 3000);
+}
+function imLeave() { clearInterval(IM.timer); IM.timer = null; }
+function imEmpty() {
+  IM.plan = null; $("imDays").innerHTML = ""; $("imGo").hidden = $("imAll").hidden = $("imNone").hidden = $("imEject").hidden = true;
+  $("imTitle").textContent = "Import"; $("imSub").textContent = "";
+  $("imEmpty").hidden = false;
+  $("imEmpty").innerHTML = "Put your memory card in the card reader. Its photos and videos appear here, grouped by day, with the names they'll get.<br><br>"
+    + "Then type the shoot name on the left and click <b>Import</b>. New shoots go into your year's folder (for example <b>2026 Photography › 2026 11 17 Shoot name</b>) and appear in the Library, ready to cull.";
+}
+function imChoose(path) { IM.src = path; IM.sel.clear(); imCardsDraw(); imPlan(true); }
+function imSettings() {
+  const ft = $("imFolderT").value, nt = $("imNameT").value, into = $("imInto").value;
+  return { source: IM.src, into: into === "pick" ? "auto" : into, shoot: $("imShoot").value.trim(),
+           folder_t: ft === "custom" ? $("imFolderC").value : ft, name_t: nt === "custom" ? $("imNameC").value : nt,
+           per_day: $("imPerDay").checked };
+}
+let imPlanTimer = null;
+function imPlanSoon() { clearTimeout(imPlanTimer); imPlanTimer = setTimeout(() => imPlan(false), 350); imSavePrefs(); }
+async function imPlan(fresh) {
+  if (!IM.src) return imEmpty();
+  $("imEmpty").hidden = true;
+  const src = IM.src, seq = (IM.seq = (IM.seq || 0) + 1);
+  if (fresh) { $("imTitle").textContent = src.split("/").pop(); $("imSub").textContent = "Reading the card…"; $("imDays").innerHTML = ""; }
+  let p;
+  try { p = await (await api("/api/import/plan", esJSON(imSettings()))).json(); }
+  catch (e) { if (seq === IM.seq) { $("imSub").textContent = ""; status(e.message, true); } return; }
+  if (seq !== IM.seq || src !== IM.src) return;
+  const keys = new Set(p.shots.filter(s => s.status === "new").map(s => s.key));
+  if (fresh || !IM.plan) IM.sel = new Set(keys); else IM.sel = new Set([...IM.sel].filter(k => keys.has(k)));
+  IM.plan = p; imDraw();
+}
+function imSize(b) { return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.max(1, Math.round(b / 1e6)) + " MB"; }
+function imCount(shots) {
+  const ph = shots.filter(s => s.kind === "photo").length, vi = shots.length - ph;
+  return [ph ? `${ph} photo${ph === 1 ? "" : "s"}` : "", vi ? `${vi} video${vi === 1 ? "" : "s"}` : ""].filter(Boolean).join(" + ") || "nothing";
+}
+function imDraw() {
+  const p = IM.plan; if (!p) return;
+  const isCard = IM.cards.some(c => c.path === IM.src);
+  $("imTitle").textContent = (isCard ? "💾 " : "📁 ") + IM.src.split("/").pop();
+  $("imSub").textContent = `${imCount(p.shots)} · ${p.new} new` + (p.imported ? ` · ${p.imported} already imported` : "");
+  $("imEject").hidden = !isCard;
+  const days = {};
+  for (const s of p.shots) (days[s.when.slice(0, 10)] ||= []).push(s);
+  const fmt = (d) => new Date(d + "T12:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const into = (f) => f ? f.split("/").slice(-2).join(" › ") : "choose a folder on the left (Into)";
+  $("imDays").innerHTML = Object.entries(days).map(([d, ss]) => {
+    const folders = [...new Set(ss.filter(s => s.status === "new").map(s => s.folder))];
+    const nNew = ss.filter(s => s.status === "new").length;
+    return `<div class="imDay"><div class="imDayHead"><b>${esc(fmt(d))}</b><span>${imCount(ss)}${nNew < ss.length ? ` · ${ss.length - nNew} already imported` : ""}</span>
+      ${folders.length ? `<span class="to">→ ${folders.map(f => esc(into(f))).join(", ")}</span>` : ""}
+      ${nNew ? `<button class="linkish" data-day="${d}">Select / unselect this day</button>` : ""}</div>
+      <div class="imGrid">${ss.map(s => {
+        const done = s.status !== "new", on = IM.sel.has(s.key), f0 = s.files[0];
+        const base = (f0.dst || f0.name).replace(/\.[^.]+$/, ""), exts = s.files.map(f => (f.dst || f.name).match(/\.[^.]+$/)?.[0] || "").join(" + ");
+        const pic = s.kind === "video" ? `🎬 Video` : `<img loading="lazy" src="/api/import/thumb?${q({ path: IM.src + "/" + f0.rel })}" alt="">`;
+        return `<div class="imCell${done ? " done" : on ? "" : " off"}" data-k="${esc(s.key)}" title="${esc(s.files.map(f => f.name + " → " + (f.dst || "")).join("\n"))}${done ? "\n" + esc(s.where || "Already imported") : ""}">
+          <div class="ph">${pic}</div>${done ? `<span class="lab">Imported</span>` : `<span class="ck">${on ? "✓" : ""}</span>`}
+          <div class="nm"><b>${esc(base)}<span style="font-weight:400">${esc(exts)}</span></b><span>${esc(s.files.map(f => f.name).join(", "))} · ${esc(s.when.slice(11, 19))}</span></div></div>`;
+      }).join("")}</div></div>`;
+  }).join("") || `<div id="imEmpty">There are no photos or videos on this card.</div>`;
+  $("imDays").querySelectorAll(".imCell:not(.done)").forEach(c => c.onclick = () => {
+    const k = c.dataset.k; IM.sel.has(k) ? IM.sel.delete(k) : IM.sel.add(k); imDraw(); });
+  $("imDays").querySelectorAll("[data-day]").forEach(b => b.onclick = () => {
+    const ks = days[b.dataset.day].filter(s => s.status === "new").map(s => s.key), all = ks.every(k => IM.sel.has(k));
+    ks.forEach(k => all ? IM.sel.delete(k) : IM.sel.add(k)); imDraw(); });
+  const chosen = p.shots.filter(s => IM.sel.has(s.key) && s.status === "new");
+  const noFolder = chosen.some(s => !s.folder);
+  $("imAll").hidden = $("imNone").hidden = !p.new;
+  $("imGo").hidden = !p.new;
+  $("imGo").disabled = !chosen.length || noFolder || !!IM.running;
+  $("imGo").textContent = chosen.length ? `Import ${imCount(chosen)} (${imSize(chosen.reduce((a, s) => a + s.size, 0))})` : "Import";
+  $("imGo").title = noFolder ? "Choose where to copy them first (Into, on the left)" : "Copy the selected photos and videos, renamed, then check every copy against the card";
+  const f = $("imInto").value === "auto" ? [...new Set(chosen.map(s => s.folder))] : [];
+  $("imIntoPath").textContent = $("imInto").value === "auto" ? (f.length ? "→ " + f.map(x => x.split("/").slice(-2, -1)[0]).filter((v, i, a) => a.indexOf(v) === i).join(", ") : "") : "";
+}
+$("imAll").onclick = () => { IM.sel = new Set(IM.plan.shots.filter(s => s.status === "new").map(s => s.key)); imDraw(); };
+$("imNone").onclick = () => { IM.sel.clear(); imDraw(); };
+["imShoot", "imFolderC", "imNameC"].forEach(id => $(id).addEventListener("input", imPlanSoon));
+$("imPerDay").onchange = imPlanSoon;
+$("imFolderT").onchange = () => { $("imFolderC").hidden = $("imFolderT").value !== "custom"; if (!$("imFolderC").hidden && !$("imFolderC").value) $("imFolderC").value = "{YYYY} {MM} {DD} {shoot}"; imPlanSoon(); };
+$("imNameT").onchange = () => { $("imNameC").hidden = $("imNameT").value !== "custom"; if (!$("imNameC").hidden && !$("imNameC").value) $("imNameC").value = "{YY}-{MM}-{DD}-{hh}-{mm}-{ss}"; imPlanSoon(); };
+$("imInto").onchange = () => { if ($("imInto").value === "pick") { $("imInto").value = "auto"; return openPicker("import"); } imPlanSoon(); };
+$("imOther").onclick = () => openPicker("importsrc");
+$("imGo").onclick = async () => {
+  const p = IM.plan; if (!p) return;
+  const keys = p.shots.filter(s => IM.sel.has(s.key) && s.status === "new").map(s => s.key);
+  if (!keys.length) return;
+  if (!$("imShoot").value.trim() && /\{shoot\}/.test(imSettings().folder_t + imSettings().name_t)
+      && !confirm("The shoot has no name yet, so the folder will be just the date.\n\nImport anyway?")) return $("imShoot").focus();
+  try {
+    await api("/api/import/start", esJSON({ ...imSettings(), keys }));
+  } catch (e) { return status(e.message, true); }
+  imShowProgress(); imWatch();
+};
+function imShowProgress() { IM.running = true; $("imProg").hidden = false; $("imDone").hidden = true; $("imGo").disabled = true; }
+function imWatch() {
+  clearInterval(IM.poll);
+  IM.poll = setInterval(async () => {
+    let st; try { st = await (await api("/api/import/state")).json(); } catch (e) { return; }
+    const pct = st.bytes_todo ? 100 * st.bytes_done / st.bytes_todo : 0;
+    $("imProg").querySelector(".bar div").style.width = pct.toFixed(1) + "%";
+    $("imProgText").textContent = st.running ? `Copying and checking ${Math.min(st.done + 1, st.todo)} of ${st.todo}${st.current ? " · " + st.current : ""} · ${imSize(st.bytes_done)} of ${imSize(st.bytes_todo)}`
+      : st.scan && st.scan.running ? "Copied. Adding the shoot to the Library…" : "";
+    if (st.running || (st.scan && st.scan.running && st.phase_after === "scanning")) return;
+    clearInterval(IM.poll); IM.running = false; $("imProg").hidden = true;
+    imFinished(st);
+  }, 700);
+}
+async function imFinished(st) {
+  const folders = st.folders || [], names = folders.map(f => f.split("/").pop());
+  const errs = st.errors || [];
+  let shoots = [];
+  try { shoots = await (await api("/api/browse/shoots")).json(); } catch (e) {}
+  const ids = folders.map(f => (shoots.find(s => f.endsWith("/" + s.path)) || {}).id).filter(Boolean);
+  $("imDone").hidden = false;
+  $("imDone").innerHTML = `<b>${st.phase === "stopped" ? "Stopped." : errs.length && !st.copied ? "Nothing was copied — see why below." : errs.length ? "Imported, with problems." : "Imported."}</b>
+    ${st.copied} file${st.copied === 1 ? "" : "s"} copied into ${names.map(n => `<b>${esc(n)}</b>`).join(", ") || "—"}, each checked against the card.
+    ${errs.length ? `<div class="small" style="color:var(--bad, #e66);margin-top:6px">${errs.slice(0, 8).map(esc).join("<br>")}${errs.length > 8 ? `<br>…and ${errs.length - 8} more` : ""}</div>` : ""}
+    <div class="row">${ids.length ? `<button id="imLib" class="primary">Open in Library</button><button id="imCull">Cull this shoot</button>` : ""}
+    ${IM.cards.some(c => c.path === IM.src) ? `<button id="imEject2">⏏ Eject card</button>` : ""}</div>`;
+  if (ids.length) {
+    $("imLib").onclick = () => imToLibrary(ids[0], false);
+    $("imCull").onclick = () => imToLibrary(ids[0], true);
+  }
+  if ($("imEject2")) $("imEject2").onclick = () => $("imEject").click();
+  status(`Imported ${st.copied} file${st.copied === 1 ? "" : "s"}` + (errs.length ? ` · ${errs.length} problem(s)` : ""), !!errs.length);
+  imPlan(false);
+}
+async function imToLibrary(folderId, cull) {
+  setTab("lib"); await loadLib();
+  $("lbWhere").value = "f:" + folderId; L.tags = []; L.untagged = false; $("libq").value = "";
+  lbFilterUI(); await runSearch();
+  if (cull) { await lbCullButton(); $("lbCull").click(); }
+}
+$("imEject").onclick = async () => {
+  try { await api("/api/import/eject", esJSON({ source: IM.src })); }
+  catch (e) { return status(e.message, true); }
+  status("Card ejected. You can take it out.");
+  IM.src = null; await imCardsLoad(); imCardsDraw(); imEmpty(); $("imDone").hidden = true;
+};
+// Anywhere in the app: a card put in lights up the Import tab and says so once.
+setInterval(async () => {
+  if (!$("impView").hidden || document.hidden) return;
+  let r; try { r = await (await api("/api/import/cards")).json(); } catch (e) { return; }
+  $("tabImp").classList.toggle("card", r.cards.length > 0);
+  for (const c of r.cards) if (!IM.seen.has(c.path)) { IM.seen.add(c.path); status(`Memory card “${c.name}” is in. Click Import (top left) to copy its photos.`); }
+  for (const p of [...IM.seen]) if (!r.cards.some(c => c.path === p)) IM.seen.delete(p);
+}, 8000);
 // "New shoot" notice: spots new shoot folders (or new photos in one) on plugged-in drives.
 const NEW = { pending: [], ready: [] };
 function newSeen() { try { return JSON.parse(localStorage.getItem("fls.newDismissed") || "[]"); } catch (e) { return []; } }
@@ -4329,7 +4614,7 @@ let gzPointer = null;
 $("stage").addEventListener("mousemove", (e) => { const r = $("stage").getBoundingClientRect(); gzPointer = [e.clientX - r.left, e.clientY - r.top]; });
 $("stage").addEventListener("mouseleave", () => { gzPointer = null; });
 document.addEventListener("keydown", (e) => {
-  if ($("gradeView").hidden || CR.on || typing(e) || e.metaKey || e.ctrlKey || !S.current) return;
+  if ($("gradeView").hidden || CR.on || typing(e) || e.metaKey || e.ctrlKey || !S.current || !$("tagBox").hidden) return;
   const k = e.key, p = gzPointer || [];
   if (k === "+" || k === "=") { e.preventDefault(); zoomTo(GZ.scale * 1.4, ...p); }
   else if (k === "-" || k === "_") { e.preventDefault(); zoomTo(GZ.scale / 1.4, ...p); }
@@ -4337,6 +4622,7 @@ document.addEventListener("keydown", (e) => {
   else if (k === "z" || k === "Z") { e.preventDefault(); if (GZ.fit) zoomTo(1, ...p); else zoomFit(); }
   else if (k === "v" || k === "V") { e.preventDefault(); gradeBW(); }
   else if (k === "t" || k === "T") { e.preventDefault(); tickThumb(S.current, !S.ticked.has(S.current)); }
+  else if (k === "k" || k === "K") { e.preventDefault(); gradeTag(); }
   else if (k === "ArrowRight" || k === "ArrowLeft") { e.preventDefault(); gradeStep(k === "ArrowRight" ? 1 : -1); }
   else if ("pPxXuU".includes(k)) { e.preventDefault(); gradeMark({ flag: k.toLowerCase() === "p" ? "pick" : k.toLowerCase() === "x" ? "reject" : null }); }
   else if ("12345".includes(k)) { e.preventDefault(); const cur = (S.marks[S.current] || [null, 0])[1]; gradeMark({ rating: cur === +k ? 0 : +k }); }
@@ -4355,6 +4641,30 @@ async function gradeMark(change) {           // the same marks as Cull and the L
     status(r.flag === "pick" ? "Picked" + (r.rating ? " · " + "★".repeat(r.rating) : "") : r.flag === "reject" ? "Rejected" : r.rating ? "★".repeat(r.rating) : "Unmarked");
   } catch (e) { status(e.message, true); }
 }
+// Tags from Grade (K or 🏷): this photo, or every ticked photo when this one is ticked too.
+const GT = {};                               // file name -> library photo id (null: not in the Library)
+async function gradePid(name) {
+  if (!(name in GT)) { try { GT[name] = (await (await api("/api/photo_id?" + q({ name }))).json()).id; } catch (e) { GT[name] = null; } }
+  return GT[name];
+}
+async function gradeTagLabel() {
+  const name = S.current, b = $("gTag"); if (!name) return;
+  const id = await gradePid(name); if (name !== S.current) return;
+  if (!id) { b.textContent = "🏷 Tag"; b.title = "This photo isn't in the Library yet, so it can't be tagged (scan its folder first)."; return; }
+  const t = (await (await api("/api/tags/photos", esJSON({ photo_ids: [id] }))).json())[id] || [];
+  if (name !== S.current) return;
+  b.textContent = t.length ? "🏷 " + t.join(", ") : "🏷 Tag";
+  b.title = (t.length ? "Tags: " + t.join(", ") + ". " : "") + "Click (or K) to add or remove tags. With photos ticked, tags all the ticked ones.";
+}
+async function gradeTag() {
+  if (!S.current) return;
+  const names = S.ticked.has(S.current) && S.ticked.size > 1 ? S.photos.filter(n => S.ticked.has(n)) : [S.current];
+  const ids = (await Promise.all(names.map(gradePid))).filter(Boolean);
+  if (!ids.length) return status("This photo isn't in the Library yet, so it can't be tagged. Scan its folder first.", true);
+  await tagOpen(ids, names.length > 1 ? `${ids.length} ticked photos` : S.current, () => gradeTagLabel());
+  if (ids.length < names.length) $("tgMsg").textContent = `${names.length - ids.length} ticked photo(s) aren't in the Library yet and were left out.`;
+}
+$("gTag").onclick = (e) => { e.currentTarget.blur(); gradeTag(); };
 function gradeBW(on) {                       // a viewing aid only: nothing is saved or exported
   const st = $("stage"), v = typeof on === "boolean" ? on : st.style.getPropertyValue("--bw") !== "1";
   st.classList.add("bwUsed"); st.style.setProperty("--bw", v ? "1" : "0"); $("zBW").classList.toggle("on", v);
@@ -4372,6 +4682,7 @@ function esWhen(ts) {                       // "Today", "Yesterday", "3 days ago
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(d.getFullYear() !== t.getFullYear() ? { year: "numeric" } : {}) });
 }
 async function esList() {
+  esTagsDraw().catch(() => {});
   const rows = await (await api("/api/essays")).json();
   $("esList").innerHTML = rows.length ? "" : "None yet.";
   for (const r of rows) {
@@ -4381,6 +4692,41 @@ async function esList() {
     d.onclick = () => esLoad(r.id);
     $("esList").appendChild(d);
   }
+}
+// Essays from your tags: a new essay chosen from the tagged photos, or add them all to the essay that's open.
+let esTagPick = null;
+async function esTagsDraw() {
+  const all = await tagsLoad();
+  if (!all.length) { $("esTags").innerHTML = "No tags yet. Tag photos in the Library, Cull or Grade (e.g. “Sultan Mosque”), then make an essay from them here."; $("esTagActs").hidden = true; return; }
+  if (esTagPick && !all.some(t => t.tag === esTagPick)) esTagPick = null;
+  $("esTags").innerHTML = all.map(t => `<button class="tgChip${t.tag === esTagPick ? " on" : ""}" data-t="${esc(t.tag)}" title="${t.count} photo${t.count === 1 ? "" : "s"} tagged “${esc(t.tag)}”">${esc(t.tag)} <i>${t.count}</i></button>`).join("");
+  $("esTags").querySelectorAll("[data-t]").forEach(b => b.onclick = () => { esTagPick = esTagPick === b.dataset.t ? null : b.dataset.t; esTagsDraw(); });
+  const a = $("esTagActs"); a.hidden = !esTagPick;
+  if (!esTagPick) return;
+  const n = (all.find(t => t.tag === esTagPick) || {}).count || 0;
+  a.innerHTML = `<button id="esTagNew" class="primary" title="Choose the best of these photos in a suggested order (the usual Make an essay)">Make an essay from “${esc(esTagPick)}” (${n})</button>`
+    + (ES.id ? `<button id="esTagAdd" title="Add every photo with this tag to the open essay, at the end">Add all ${n} to “${esc(ES.name)}”</button>` : "")
+    + `<button id="esTagLib" title="See these photos in the Library">Show them in the Library</button>`;
+  $("esTagNew").onclick = () => esTagToLib(esTagPick, true);
+  $("esTagLib").onclick = () => esTagToLib(esTagPick, false);
+  if (ES.id) $("esTagAdd").onclick = async () => {
+    const tag = esTagPick, eid = ES.id;
+    try {
+      const res = await (await api("/api/library/search?" + q({ tags: tag, cats: "", limit: 3000, order: "oldest" }))).json();
+      const ids = res.results.map(r => r.id);
+      const r = await (await api(`/api/essays/${eid}/add`, esJSON({ photo_ids: ids }))).json();
+      await esLoad(eid);
+      $("esNote").textContent = `Added ${r.added} photo${r.added === 1 ? "" : "s"} tagged “${tag}” at the end` + (r.added < ids.length ? ` (${ids.length - r.added} were already in it)` : "") + ". Drag them into place.";
+    } catch (e) { $("esNote").textContent = e.message; }
+  };
+}
+async function esTagToLib(tag, essay) {          // the Library, showing only this tag (then Make an essay, if asked)
+  setTab("lib");
+  ["fFrom", "fTo"].forEach(id => { $(id).value = ""; }); $("fFlag").value = ""; $("fGraded").value = ""; $("fStars").value = "0"; $("fCamera").value = "";
+  $("libq").value = ""; lbSteerClear(); $("lbMode").value = ""; $("lbWhere").value = "";
+  L.tags = [tag]; L.untagged = false; L.sel.clear();
+  lbFilterUI(); await runSearch();
+  if (essay) $("lbEssay").click();
 }
 async function esLoad(id, keepUndo = false) {
   $("esNote").textContent = "Loading…";
@@ -5606,6 +5952,7 @@ const GO = { items: [], shown: [], i: 0 };
 function goStatic() {
   const gr = () => !$("gradeView").hidden;
   return [
+    { label: "Import from a card", kind: "Tab", run: () => setTab("imp") },
     { label: "Library", kind: "Tab", run: () => setTab("lib") },
     { label: "Cull", kind: "Tab", run: () => setTab("cull") },
     { label: "Grade", kind: "Tab", run: () => setTab("grade") },

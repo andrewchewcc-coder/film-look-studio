@@ -45,6 +45,13 @@ for i in range(6):
     ex = Image.Exif(); ex[0x9003] = (t0 + timedelta(seconds=3 * i)).strftime("%Y:%m:%d %H:%M:%S")
     ex[0x010F] = "LEICA CAMERA AG"; ex[0x0110] = "LEICA Q3 43"
     im.save(shoot / f"25-05-04-18-15-{i:02d}.jpg", exif=ex, quality=85)
+card = shoot.parent.parent / "CARD" / "DCIM" / "100TEST"          # a pretend memory card for Import
+card.mkdir(parents=True)
+for i in range(3):
+    im = Image.fromarray((rng.random((40, 60, 3)) * 255).astype(np.uint8)).resize((900, 600), Image.BICUBIC)
+    ex = Image.Exif(); ex[0x9003] = "2025:06:01 10:00:0" + str(i // 2)   # two in the same second
+    im.save(card / f"T000{i}.JPG", exif=ex, quality=85)
+(shoot.parent.parent / "DEST").mkdir()
 con = db.connect()
 scan.add_root(con, str(shoot))
 scan.scan(con)
@@ -78,7 +85,8 @@ def app(tmp_path_factory):
             break
         except OSError:
             time.sleep(0.25)
-    yield {"url": url, "photos": n, "essay": eid, "folder": folder, "env": env}
+    yield {"url": url, "photos": n, "essay": eid, "folder": folder, "env": env,
+           "card": str(tmp / "CARD"), "dest": str(tmp / "DEST")}
     server.terminate()
     server.wait(10)
 
@@ -96,6 +104,18 @@ def test_click_through_every_tab(app):
         page.goto(app["url"])
         page.wait_for_timeout(2500)
         tab = lambda name: page.get_by_role("button", name=name, exact=True).first.click()
+
+        # Import: the pretend card into a temp folder, checked copies, then the new shoot in the Library
+        page.evaluate(f"""async () => {{ setTab("imp"); await new Promise(r => setTimeout(r, 1000));
+            IM.into = {json.dumps(app['dest'])}; imIntoFill(); $("imInto").value = IM.into; $("imShoot").value = "E2E import";
+            imChoose({json.dumps(app['card'])}); await new Promise(r => setTimeout(r, 2500));
+            if (!$("imGo").textContent.includes("3 photos")) throw new Error("import plan: " + $("imGo").textContent);
+            await api("/api/import/thumb?" + q({{ path: {json.dumps(app['card'] + '/DCIM/100TEST/T0000.JPG')} }}));
+            $("imGo").click();
+            for (let k = 0; k < 120 && $("imDone").hidden; k++) await new Promise(r => setTimeout(r, 500));
+            if (!$("imDone").innerText.includes("3 files copied")) throw new Error("import: " + $("imDone").innerText);
+            $("imLib").click(); await new Promise(r => setTimeout(r, 3000));
+            if (L.total !== 3) throw new Error("imported shoot shows " + L.total); }}""")
 
         # Library: the shoot, a search, Worth a second look / On this day
         tab("Library")
@@ -153,6 +173,9 @@ def test_click_through_every_tab(app):
             await api("/api/masks/refit", esJSON({ name: S.photos[0], old: { crop: [0.1, 0.1, 0.8, 0.8] },
               masks: [{ kind: "radial", cx: 0.5, cy: 0.5, rx: 0.2, ry: 0.2 }, { kind: "linear" }, { kind: "brush", id }] }));
             await api("/api/mark_file", esJSON({ name: S.photos[0], flag: "pick", rating: 3 }));   // marking from Grade
+            await gradeTag(); await new Promise(r => setTimeout(r, 800));                 // tagging from Grade (K)
+            $("tgIn").value = "Grade tag"; $("tgDone").click(); await new Promise(r => setTimeout(r, 1500));
+            if (!$("gTag").textContent.includes("Grade tag")) throw new Error("Grade tag label: " + $("gTag").textContent);
             gradeStep(1); gradeBW(); gradeBW();
             tickThumb(S.photos[0], true); tickThumb(S.photos[Math.min(1, S.photos.length - 1)], true, true);   // Shift-click range
             window.confirm = () => true; $("copyExport").click();                       // copy grade + export ticked
@@ -175,6 +198,10 @@ def test_click_through_every_tab(app):
         page.evaluate(f"""async () => {{ await esLoad({app['essay']}); await new Promise(r => setTimeout(r, 2500));
             for (const p of ["check", "ai", "pairs", "bench", "fill", "export", "book", "contact", "publish", "brief"]) {{
                 await esPanel(p); await new Promise(r => setTimeout(r, 1500)); }} }}""")
+        # Essays from a tag: the tag list, its actions, add all to the open essay, then remove the tag
+        page.evaluate("""async () => { await esTagsDraw(); $("esTags").querySelector('[data-t="Grade tag"]').click();
+            await new Promise(r => setTimeout(r, 800)); $("esTagAdd").click(); await new Promise(r => setTimeout(r, 2500));
+            await api("/api/tags/delete", esJSON({ old: "Grade tag" })); await esTagsDraw(); }""")
         # Slideshow: title card, then the photos (rendered from the RAW at full-screen size), end card, Esc
         page.click("#esShow")
         page.wait_for_function("SS.on && SS.i === -1 && $('ssStart').classList.contains('on')")

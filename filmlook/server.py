@@ -627,6 +627,116 @@ def library_search(q: str = "", cats: str = "street,travel", year: str = "", dat
                          flag=flag or None, stars=stars or None, tags=tagdb.split(tags), untagged=bool(untagged))
 
 
+# --- import from a memory card (library/importer.py: copies only new files, checked; the card is only read) ---
+
+class ImportIn(BaseModel):
+    source: str
+    into: str = "auto"
+    shoot: str = ""
+    folder_t: str = "{YYYY} {MM} {DD} {shoot}"
+    name_t: str = "{YY}-{MM}-{DD}-{hh}-{mm}-{ss}"
+    per_day: bool = True
+    keys: list[str] = []
+
+
+def _import_settings(b):
+    return {"source": b.source, "into": b.into or "auto", "shoot": b.shoot, "folder_t": b.folder_t,
+            "name_t": b.name_t, "per_day": b.per_day}
+
+
+@app.get("/api/import/cards")
+def import_cards():
+    from .library import importer, scan
+    return {"cards": importer.cards(), "roots": [r for r in scan.list_roots(_lib().con()) if r["path"]],
+            "name_presets": importer.NAME_PRESETS, "folder_presets": importer.FOLDER_PRESETS,
+            "job": importer.job}
+
+
+@app.post("/api/import/plan")
+def import_plan(body: ImportIn):
+    from .library import importer
+    if not Path(body.source).is_dir():
+        raise HTTPException(404, "The card isn't there any more. Put it back in and try again.")
+    try:
+        return importer.plan(_lib().con(), **_import_settings(body))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+def _import_after(folders):
+    """When the copying is done: the new shoot folders join the Library and get scanned."""
+    from .library import importer, service
+    c = db_connect()
+    try:
+        ids = importer.add_to_library(c, folders)
+    finally:
+        c.close()
+    service.start_scan(ids)
+    return "scanning"
+
+
+def db_connect():
+    from .library import db
+    return db.connect()
+
+
+@app.post("/api/import/start")
+def import_start(body: ImportIn):
+    from .library import importer
+    try:
+        return importer.start(_lib().con(), body.keys, after=_import_after, **_import_settings(body))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/import/state")
+def import_state():
+    from .library import importer, service
+    return {**importer.job, "scan": service.job}
+
+
+@app.post("/api/import/stop")
+def import_stop():
+    from .library import importer
+    return importer.stop()
+
+
+@app.post("/api/import/eject")
+def import_eject(body: ImportIn):
+    from .library import importer
+    if importer.job["running"]:
+        raise HTTPException(409, "Wait for the import to finish before ejecting the card.")
+    try:
+        importer.eject(body.source)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
+
+
+_import_thumbs = {}
+
+
+@app.get("/api/import/thumb")
+def import_thumb(path: str):
+    """A small picture of a photo on the card (only files of the card being shown)."""
+    from .library import importer, scene
+    items = importer._listing["items"] or []
+    it = next((i for i in items if i["path"] == path), None)
+    if not it or it["kind"] == "video":
+        raise HTTPException(404, "not on the card")
+    key = (path, it["size"])
+    if key not in _import_thumbs:
+        try:
+            im = scene.upright_preview(path, it["kind"])
+        except Exception:
+            raise HTTPException(404, "no preview")
+        im.thumbnail((480, 480), Image.LANCZOS)
+        if len(_import_thumbs) > 3000:
+            _import_thumbs.clear()
+        _import_thumbs[key] = engine.jpeg_bytes(im, 80)
+    return Response(_import_thumbs[key], media_type="image/jpeg", headers={"Cache-Control": "max-age=3600"})
+
+
 # --- tags: your own keywords on photos (library database only) ------------------------------------
 
 class TagsIn(BaseModel):
@@ -1045,6 +1155,12 @@ def activity():
     if lib.job.get("running"):
         out.append({"id": "scan", "kind": "scan", "label": "Scanning for new photos", "done": lib.job.get("done", 0),
                     "total": lib.job.get("todo", 0), "current": lib.job.get("phase", ""), "finished": False, "cancel": True})
+    from .library import importer
+    ij = importer.job
+    if ij.get("running") or (ij.get("finished_at") and _t.time() - ij["finished_at"] < 90):
+        out.append({"id": "import", "kind": "import", "label": "Importing from the card", "done": ij.get("done", 0),
+                    "total": ij.get("todo", 0), "current": ij.get("current", ""), "finished": not ij.get("running"),
+                    "error": "; ".join(ij.get("errors") or []) or None, "cancel": False})
     now = _t.time()
     for jid, j in list(jobs.items()):
         if "kind" not in j:
@@ -2295,7 +2411,8 @@ async def _note_activity(request, call_next):
 
 
 def _busy():
-    return bool(_lib().job.get("running")) or any(not j.get("finished", True) for j in list(jobs.values()))
+    from .library import importer
+    return bool(_lib().job.get("running")) or bool(importer.job.get("running")) or any(not j.get("finished", True) for j in list(jobs.values()))
 
 
 def _stop_soon():

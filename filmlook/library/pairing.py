@@ -79,6 +79,28 @@ def _name_parent(stem, candidates):
     return best
 
 
+SHOT_NUMBER_RE = re.compile(r"-\d{2,3}")     # 26-11-17-21-02-59-02: the 2nd shot in that second (Import names)
+
+
+def _own_shot(f, parent_file, parent_stem):
+    """A numbered name (-02) that is really another shot: taken at another moment (the same second,
+    other milliseconds), or not touched by an editing app."""
+    if not SHOT_NUMBER_RE.fullmatch(_stem(f)[len(parent_stem):]):
+        return False                          # "X copy", "X-IG", "X_(2)": copies and exports stay with X
+    ta, tb = _time(f), _time(parent_file)
+    return (ta is not None and tb is not None and ta != tb) or not _edited(f)
+
+
+def _edited(f):
+    """An editing app wrote this file (its Software tag or edit history says so)."""
+    try:
+        x = json.loads(f.get("exif") or "{}")
+    except (ValueError, AttributeError):
+        return False
+    soft = (x.get("software") or "").lower()
+    return bool(x.get("edit_history")) or any(e in soft for e in EDITORS)
+
+
 def group(files):
     """files: dicts with id, rel_path, kind, capture_time (and exif JSON, for camera JPGs).
     Returns [(primary_id, [(file_id, role), ...])] — primary listed first as 'original'."""
@@ -107,7 +129,7 @@ def group(files):
     for f in others:
         role = "camera" if is_camera_jpg(f) else "export"
         parent = _name_parent(_stem(f), raws)
-        if parent and _times_agree(f, raws[parent], zone_shift=True):
+        if parent and _times_agree(f, raws[parent], zone_shift=True) and not (parent != _stem(f) and _own_shot(f, raws[parent], parent)):
             groups[owner[parent]].append((f["id"], role))
             continue
         t = _time(f)
@@ -123,7 +145,7 @@ def group(files):
         if f["kind"] != "jpg":
             continue  # an unmatched .onphoto has no original to hang on
         parent = _name_parent(_stem(f), standalone)
-        if parent and _times_agree(f, standalone[parent], zone_shift=True):
+        if parent and _times_agree(f, standalone[parent], zone_shift=True) and not _own_shot(f, standalone[parent], parent):
             groups[standalone[parent]["id"]].append((f["id"], "export"))
         else:
             standalone[_stem(f)] = f

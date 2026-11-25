@@ -19,6 +19,8 @@ full-resolution JPGs. Owner: Andrew (street photographer, Leica Q3 43, macOS).
   twins, so the page follows the Mac's Appearance; canvases read them with `cssVar()`. Overlays on photos stay dark.
 - Run the app with `./studio <command>` (see `./studio -h`). First-time setup: `./setup.sh`.
 - Never modify or delete source RAW files; exports go to `graded/` next to them.
+- Import (Nov 2026, Andrew agreed) is the ONLY place the app writes into photo folders besides exports: it creates NEW files in the
+  shoot folder he chooses, never overwrites / changes / deletes anything, and only reads the card.
 
 ## Code map
 
@@ -196,7 +198,19 @@ error. Extend it when adding a tab, panel or button that calls the server.
   written to photo files). Grid shows every tag as its own label (Display → Show tags on photos, fls.tagsShow). Library: select + T or Tag… (`#tagBox`, `tagOpen(ids, label, done)`), viewer panel tag field (T focuses it), sidebar
   Tags list = filter (several = all of them; Untagged; Edit → ✎ rename/merge, ✕ remove). Typing a tag in search = exactly the photos with it
   (`tags.find_in`; extra words only order them, all count as clear matches). Cull: T tags the frame, Shift+T the whole group. A tag filter flows
-  into Make an essay / Publish via the view (`_view_ids`). Sidecar XMP/ON1 keywords are NOT imported (only 4 in his library).
+  into Make an essay / Publish via the view (`_view_ids`). Grade: 🏷 button in the zoom bar (`#gTag`, shows the photo's tags) or K
+  (T is tick there); this photo, or all ticked when it's ticked (`gradeTag`, names → ids via /api/photo_id). Essays sidebar "From a tag"
+  (`esTagsDraw`): Make an essay from it (= Library filtered to the tag + Make an essay, `esTagToLib`), Add all to the open essay, Show in Library. Sidecar XMP/ON1 keywords are NOT imported (only 4 in his library).
+- Import tab (first tab; `library/importer.py`, `/api/import/*`, page `IM` / `imOpen` / `imPlan` / `imDraw`): cards = any /Volumes/* with DCIM
+  (polled every 3 s on the tab; elsewhere every 8 s lights the tab + one notice). `plan()` reads the card with exiftool (DateTimeOriginal +
+  SubSec, else CreationDate; videos never CreateDate (UTC) → the card's file time), groups RAW+JPG by folder+stem, sorts by time, names from
+  templates ({YYYY} {YY} {MM} {DD} {hh} {mm} {ss} {name} {shoot} {camera} {n}; default {YY}-{MM}-{DD}-{hh}-{mm}-{ss}, his own), a taken name
+  (this import or on disk) → -02, -03…; folder "{YYYY} {MM} {DD} {shoot}" per day under Into (auto = the library root named for that year,
+  `year_root`, else "2027 Photography" beside the latest). Already imported = same name + size there, or same size + quick hash anywhere in
+  the library. Copy: `.name.wen-part` → blake2b of the card bytes vs read-back → copystat → os.link (never replaces) → unlink temp; card
+  untouched. Afterwards the folders join the Library (`add_to_library`, adds the parent as a root if needed) and get scanned; then Open in
+  Library / Cull this shoot / ⏏ Eject (diskutil). Videos are copied but not in the Library (MEDIA_KINDS has no video). Pairing: a numbered
+  name (`pairing._own_shot`, -NN) is its own photo unless times are identical and an editor wrote it (checked: no change to his library).
 - Grade ticking (`tickThumb(name, on, range)`): the checkbox, ⌘-click a photo or T ticks; Shift-click ticks every photo shown between the last one ticked
   (`S.lastTick`) and this one. Export → Copy grade + export ticked (`#copyExport`) = `/api/grade/copy` onto the ticked others, then `exportNames(ticked, own=true)`.
 - Keys are the same across tabs: P / X / U / 1–5 mark in Library, Cull and Grade (Grade: `gradeMark` → `POST /api/mark_file`; 0 stays Fit there), ← → previous / next (Grade: `gradeStep`, follows the strip filter),

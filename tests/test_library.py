@@ -500,3 +500,13 @@ def test_tags_find_photos_exactly(tmp_path, monkeypatch):
     tags.rename(con, "sultan mosque", "Masjid Sultan")
     assert tags.all_tags(con) == [{"tag": "Masjid Sultan", "count": 3}]
     assert tags.delete(con, "masjid sultan") == 3 and tags.all_tags(con) == []
+
+
+def test_numbered_same_second_shots_are_separate_photos():
+    files = [f(1, "26-11-24-19-30-05.jpg", "jpg", "2026-11-24T19:30:05.100"),
+             f(2, "26-11-24-19-30-05-02.jpg", "jpg", "2026-11-24T19:30:05.400"),   # Import's 2nd shot that second
+             f(3, "26-11-24-19-30-05-IG.jpg", "jpg", "2026-11-24T19:30:05.100"),   # an export of the first
+             f(4, "26-11-24-19-30-09.dng", "raw", "2026-11-24T19:30:09.000"),
+             f(5, "26-11-24-19-30-09-02.jpg", "jpg", "2026-11-24T19:30:09.300")]   # JPG-only 2nd shot beside a RAW
+    g = as_dict(pairing.group(files))
+    assert g == {1: [(1, "original"), (3, "export")], 2: [(2, "original")], 4: [(4, "original")], 5: [(5, "original")]}
